@@ -10,6 +10,8 @@ import vegRoutes from "./routes/veg.routes.js";
 import securityRoutes from "./routes/security.routes.js";
 import projectRoutes from "./routes/project.routes.js";
 import nexusRoutes from "./routes/nexus.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import exportRoutes from "./routes/export.routes.js";
 
 const app = express();
 
@@ -43,6 +45,8 @@ app.use("/api/veg", vegRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api", projectRoutes);
 app.use("/api/nexus", nexusRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/export", exportRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);
