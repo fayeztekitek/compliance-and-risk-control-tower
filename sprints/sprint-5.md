@@ -1,54 +1,77 @@
-# Sprint 5: Executive Dashboard & KPI Engine
+# Sprint 5: Nexus IQ & Background Jobs
 
 **Duration:** 2 weeks
-**Goal:** Production dashboard with real-time data, 5×5 heatmap, chart widgets, export.
+**Goal:** Sonatype Nexus IQ integration with policy evaluation, vulnerability sync, and BullMQ background job infrastructure.
 
 ---
 
 ## Tasks
 
-### Backend — Dashboard Endpoints
-- [ ] `GET /api/dashboard/executive` — consolidated payload (KPIs, KRIs, heatmap, trends)
-- [ ] `GET /api/dashboard/kpi` — 16 real-time KPI calculations (from KPIEngineService)
-- [ ] `GET /api/dashboard/kri` — 4 KRI thresholds with status
-- [ ] `GET /api/dashboard/heatmap` — 5×5 risk matrix coordinate data
-- [ ] `GET /api/dashboard/trends` — historical KPI snapshots (monthly aggregation)
-- [ ] `GET /api/export/csv` — CSV export of any filtered dataset
-- [ ] `GET /api/export/pdf` — audit report generation
+### Backend — BullMQ Infrastructure
+- [ ] Install & configure BullMQ with Redis connection
+- [ ] Queue definitions: `nexus-sync`, `kpi-recalc`, `sla-breach`, `waiver-expiry`, `email-notify`
+- [ ] Worker base class + individual workers
+- [ ] Job scheduler (repeatable cron jobs)
+- [ ] Job dashboard API: `GET /api/jobs` — status, retry, logs
 
-### Backend — Background Jobs (BullMQ)
-- [ ] KPI recalculation job — runs every 15 minutes, cached in Redis
-- [ ] Historical KPI archive job — daily snapshot to `kpi_snapshots` table
-- [ ] Dashboard cache invalidation on data mutation
+### Backend — Nexus IQ Service
+- [ ] `NexusHttpClient` — raw HTTP calls with exponential backoff retry
+- [ ] `NexusDataMapper` — transforms API responses → domain models
+- [ ] `NexusSyncService` — orchestrates full sync lifecycle
+- [ ] `NexusSyncOrchestrator` — BullMQ job for scheduled + manual syncs
+- [ ] Mock mode toggle: `USE_MOCK_DATA` env var switches between mock seeds and live data
+- [ ] Connection config stored in database (`nexus_config` table)
 
-### Frontend — Dashboard Components
-- [ ] Replace localStorage dashboard data with TanStack Query (auto-refresh 60s)
-- [ ] KPI card grid (16 cards with status colors, trend arrows, target indicators)
-- [ ] 5×5 heatmap with cell drill-down (migrate existing logic to hook)
-- [ ] Scanner suite bar chart (Veracode / Nexpose / PenTest breakdown)
-- [ ] Chronos RTD area chart (project slippage over time)
-- [ ] KRI financial breach limits panel (breach cost, SLA exceeded, budget, non-compliant SaaS)
-- [ ] "Yesterday's Pending Items" panel (migrate existing to data-driven)
-- [ ] Critical Exposures Registry — top 5 critical/high vulnerabilities
-- [ ] Upcoming Committees widget
-- [ ] Export buttons (CSV, PDF) with loading state
-- [ ] Role-based KPI visibility (some KPIs hidden from EXECUTIVE_READ_ONLY)
+### Backend — Risk Score Engine
+- [ ] `RiskScoreService.calculate()` — 8-factor weighted formula
+- [ ] `RiskScoreService.getProductGrade()` — GREEN/ORANGE/RED threshold logic
+- [ ] `RiskScoreService.getAggregates()` — per-product KPI calculations
 
-### Chart Configuration (Recharts)
-- [ ] Bar chart: vulnerabilities by scanner + severity stack
-- [ ] Area chart: RTD trends by month
-- [ ] Pie/Radar chart: KPI category distribution
-- [ ] Heatmap: 5×5 grid with color intensity based on count
+### Backend — API Routes
+- [ ] `GET/PUT /api/nexus/config` — connection settings CRUD
+- [ ] `POST /api/nexus/config/test` — test connection probe
+- [ ] `POST /api/nexus/sync` — trigger sync (BullMQ job)
+- [ ] `GET /api/nexus/sync/status` — real job progress via Redis
+- [ ] `GET /api/nexus/sync/logs` — paginated sync history from DB
+- [ ] `GET /api/nexus/products` — from database or mock
+- [ ] `GET /api/nexus/applications` — list with product mapping
+- [ ] `GET /api/nexus/vulnerabilities` — paginated, filterable
+- [ ] `GET /api/nexus/kpis/executive` — real KPI snapshot
+- [ ] `GET /api/nexus/kpis/product/:id` — per-product KPIs
+- [ ] `GET /api/nexus/risk-score/product/:id` — 8-factor risk score
+- [ ] `GET /api/nexus/waivers` — list waivers
+- [ ] `POST /api/nexus/waivers` — create waiver
+
+### Backend — Background Job Workers
+- [ ] `nexus-sync` worker — full Nexus IQ data sync
+- [ ] `sla-breach` worker — detect overdue vulnerabilities, create SLA incidents
+- [ ] `waiver-expiry` worker — auto-expire waivers past expiry_date
+- [ ] `email-notify` worker — send notifications (placeholder)
+
+### Frontend — Nexus IQ Workspace
+- [ ] Connection settings panel (URL, credentials, test button)
+- [ ] Sync trigger button with real-time progress bar
+- [ ] Product explorer with drill-down
+- [ ] Vulnerability explorer (searchable/filterable CVE list)
+- [ ] Waiver management UI
+- [ ] Risk score display per product
+- [ ] Job dashboard (status, retry, history)
+
+### Mock Data Compatibility
+- [ ] When `USE_MOCK_DATA=true`: seed tables from `nexusMockData.ts`
+- [ ] When `USE_MOCK_DATA=false`: data from real Nexus IQ sync
+- [ ] Service layer identical in both modes
 
 ---
 
 ## Deliverables
 
-- [ ] Dashboard loads all KPIs within 500ms
-- [ ] 5×5 heatmap interactive with cell drill-down
-- [ ] Historical trends viewable by month
-- [ ] CSV and PDF export working
-- [ ] Background KPI recalculation running
+- [ ] BullMQ queue infrastructure with 5 workers
+- [ ] Nexus IQ sync (mock + real modes)
+- [ ] 8-factor risk score engine
+- [ ] Connection configuration UI
+- [ ] Sync progress + job dashboard
+- [ ] Scheduled SLA breach + waiver expiry checks
 
 ---
 
@@ -56,7 +79,6 @@
 
 | Type | Count | Description |
 |------|-------|-------------|
-| Unit | 6 | KPI engine exact match, KRI thresholds, heatmap coordinates, trend MoM calc, cache hit vs miss, CSV formatter |
-| Integration | 5 | Executive endpoint, CSV content type, PDF generation, cached vs uncached speed, trend data format |
-| Functional | 3 | Dashboard → drill heatmap → export CSV; KPI refresh cycle |
-| Performance | 2 | Dashboard under 500ms with 1000 vulns, export under 2s |
+| Unit | 8 | HTTP retry, data mapper, risk score boundaries, job scheduling, mock/real toggle |
+| Integration | 6 | Config CRUD, sync status, product endpoint, waiver, job lifecycle, SLA breach detection |
+| Functional | 2 | Configure → test → sync → view dashboard; waiver create → auto-expire |

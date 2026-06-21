@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.routes.js";
 import vegRoutes from "./routes/veg.routes.js";
 import securityRoutes from "./routes/security.routes.js";
 import projectRoutes from "./routes/project.routes.js";
+import nexusRoutes from "./routes/nexus.routes.js";
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/veg", vegRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api", projectRoutes);
+app.use("/api/nexus", nexusRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);

@@ -1,18 +1,24 @@
 # Current Sprint: Sprint 5 — Nexus IQ & Background Jobs
 
-**Status:** `PENDING`  
-**Started:** —  
-**Target:** 2026-06-21
+**Status:** `IN PROGRESS`  
+**Started:** 2026-06-21  
+**Branch:** sprint-5
 
 ---
 
-## Backlog
+## Progress
 
-- [ ] Nexus IQ integration — policy evaluation, vulnerability sync
-- [ ] BullMQ background jobs — email notifications, SLA breach scans, waiver expiry checks
-- [ ] Job dashboard UI (status, retry, logs)
-- [ ] Tests for Nexus service + job workers
-- [ ] Frontend nexus monitoring widget
+- [ ] BullMQ queue infrastructure + 5 workers
+- [ ] NexusIQHttpClient with retry + mock toggle
+- [ ] NexusDataMapper + NexusSyncService
+- [ ] NexusSyncOrchestrator (BullMQ job)
+- [ ] RiskScoreService (8-factor formula, grades, aggregates)
+- [ ] All Nexus API routes (config, sync, products, vulns, waivers, KPIs)
+- [ ] Frontend: Nexus workspace (connection, sync, products, vulns, waivers, jobs)
+- [ ] SLA breach detection worker
+- [ ] Waiver expiry worker
+- [ ] Email notification worker (placeholder)
+- [ ] Tests: 8 unit + 6 integration + 2 functional
 
 ## Previous Sprint Reports
 

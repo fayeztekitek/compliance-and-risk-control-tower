@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "bullmq": "^5.79.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -36,9 +37,9 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.14.0",
     "@types/pg": "^8.11.10",
+    "@types/supertest": "^6.0.2",
     "esbuild": "^0.25.0",
     "supertest": "^7.0.0",
-    "@types/supertest": "^6.0.2",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vitest": "^3.1.1"

@@ -1,65 +1,54 @@
-# Sprint 6: Nexus IQ Connector
+# Sprint 6: Executive Dashboard & KPI Engine
 
 **Duration:** 2 weeks
-**Goal:** Production-ready Sonatype Nexus IQ integration with real sync.
+**Goal:** Production dashboard with real-time data, 5×5 heatmap, chart widgets, export.
 
 ---
 
 ## Tasks
 
-### Backend — Refactored Nexus Architecture
-- [ ] `NexusHttpClient` — raw HTTP calls with exponential backoff retry
-- [ ] `NexusDataMapper` — transforms API responses → domain models
-- [ ] `NexusSyncService` — orchestrates full sync lifecycle
-- [ ] `NexusSyncOrchestrator` — BullMQ job for scheduled + manual syncs
-- [ ] Mock mode toggle: `USE_MOCK_DATA` env var switches between mock seeds and live data
-- [ ] Connection config stored in database (`nexus_config` table) — not hardcoded
+### Backend — Dashboard Endpoints
+- [ ] `GET /api/dashboard/executive` — consolidated payload (KPIs, KRIs, heatmap, trends)
+- [ ] `GET /api/dashboard/kpi` — 16 real-time KPI calculations (from KPIEngineService)
+- [ ] `GET /api/dashboard/kri` — 4 KRI thresholds with status
+- [ ] `GET /api/dashboard/heatmap` — 5×5 risk matrix coordinate data
+- [ ] `GET /api/dashboard/trends` — historical KPI snapshots (monthly aggregation)
+- [ ] `GET /api/export/csv` — CSV export of any filtered dataset
+- [ ] `GET /api/export/pdf` — audit report generation
 
-### Backend — Risk Score Engine
-- [ ] `RiskScoreService.calculate()` — 8-factor weighted formula (migrate from `server.ts`)
-- [ ] `RiskScoreService.getProductGrade()` — GREEN/ORANGE/RED threshold logic
-- [ ] `RiskScoreService.getAggregates()` — per-product KPI calculations
+### Backend — Background Jobs (BullMQ)
+- [ ] KPI recalculation job — runs every 15 minutes, cached in Redis
+- [ ] Historical KPI archive job — daily snapshot to `kpi_snapshots` table
+- [ ] Dashboard cache invalidation on data mutation
 
-### Backend — API Routes
-- [ ] `GET/PUT /api/nexus/config` — connection settings CRUD
-- [ ] `POST /api/nexus/config/test` — test connection probe
-- [ ] `POST /api/nexus/sync` — trigger sync (BullMQ job)
-- [ ] `GET /api/nexus/sync/status` — real job progress via Redis
-- [ ] `GET /api/nexus/sync/logs` — paginated sync history from DB
-- [ ] `GET /api/nexus/products` — from database or mock
-- [ ] `GET /api/nexus/applications` — list with product mapping
-- [ ] `GET /api/nexus/vulnerabilities` — paginated, filterable
-- [ ] `GET /api/nexus/kpis/executive` — real KPI snapshot
-- [ ] `GET /api/nexus/kpis/product/:id` — per-product KPIs
-- [ ] `GET /api/nexus/risk-score/product/:id` — 8-factor risk score
-- [ ] `GET /api/nexus/waivers` — list waivers
-- [ ] `POST /api/nexus/waivers` — create waiver
+### Frontend — Dashboard Components
+- [ ] Replace localStorage dashboard data with TanStack Query (auto-refresh 60s)
+- [ ] KPI card grid (16 cards with status colors, trend arrows, target indicators)
+- [ ] 5×5 heatmap with cell drill-down (migrate existing logic to hook)
+- [ ] Scanner suite bar chart (Veracode / Nexpose / PenTest breakdown)
+- [ ] Chronos RTD area chart (project slippage over time)
+- [ ] KRI financial breach limits panel (breach cost, SLA exceeded, budget, non-compliant SaaS)
+- [ ] "Yesterday's Pending Items" panel (migrate existing to data-driven)
+- [ ] Critical Exposures Registry — top 5 critical/high vulnerabilities
+- [ ] Upcoming Committees widget
+- [ ] Export buttons (CSV, PDF) with loading state
+- [ ] Role-based KPI visibility (some KPIs hidden from EXECUTIVE_READ_ONLY)
 
-### Frontend — Nexus Workspace
-- [ ] Replace `NexusApiClient` calls with TanStack Query hooks
-- [ ] Executive KPI dashboard: global risk score, vulnerability breakdown, product heatmap
-- [ ] Product drill-down: per-product risk score, severity counts, security debt, compliance %, MTTR
-- [ ] Vulnerability explorer: searchable/filterable CVE list with severity, reachability, fix availability
-- [ ] Waiver management UI: create, view, filter
-- [ ] Connection settings panel: URL, username, token, timeout, retry configuration
-- [ ] Connection probe button with success/failure indicator
-- [ ] Sync trigger button with real-time progress bar (poll `/api/nexus/sync/status`)
-- [ ] CSV and PDF export
-
-### Mock Data Compatibility
-- [ ] When `USE_MOCK_DATA=true`: seed tables populated from `nexusMockData.ts`
-- [ ] When `USE_MOCK_DATA=false`: data comes from real Nexus IQ sync
-- [ ] Service layer behavior identical in both modes
+### Chart Configuration (Recharts)
+- [ ] Bar chart: vulnerabilities by scanner + severity stack
+- [ ] Area chart: RTD trends by month
+- [ ] Pie/Radar chart: KPI category distribution
+- [ ] Heatmap: 5×5 grid with color intensity based on count
 
 ---
 
 ## Deliverables
 
-- [ ] Nexus IQ configuration saved in database (not hardcoded)
-- [ ] Sync runs as background job with real-time progress
-- [ ] 8-factor risk score engine matches existing formula
-- [ ] Product drill-down shows accurate risk data
-- [ ] Export works from both mock and real data paths
+- [ ] Dashboard loads all KPIs within 500ms
+- [ ] 5×5 heatmap interactive with cell drill-down
+- [ ] Historical trends viewable by month
+- [ ] CSV and PDF export working
+- [ ] Background KPI recalculation running
 
 ---
 
@@ -67,7 +56,7 @@
 
 | Type | Count | Description |
 |------|-------|-------------|
-| Unit | 6 | Retry logic, data mapper, risk score (boundary cases), token masking, mock/real toggle, product grade |
-| Integration | 5 | Config CRUD, sync job status, product endpoint, waiver creation, export format |
-| Functional | 3 | Configure → test → sync → view dashboard → export; bulk sync 5000 vulns |
-| Performance | 2 | Sync handles 5000+ vulnerabilities, risk score API under 200ms |
+| Unit | 6 | KPI engine exact match, KRI thresholds, heatmap coordinates, trend MoM calc, cache hit vs miss, CSV formatter |
+| Integration | 5 | Executive endpoint, CSV content type, PDF generation, cached vs uncached speed, trend data format |
+| Functional | 3 | Dashboard → drill heatmap → export CSV; KPI refresh cycle |
+| Performance | 2 | Dashboard under 500ms with 1000 vulns, export under 2s |
