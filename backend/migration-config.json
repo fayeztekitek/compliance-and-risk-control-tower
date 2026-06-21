@@ -1,0 +1,8 @@
+{
+  "migration-file-language": "sql",
+  "dir": "migrations",
+  "database-url": "postgres://postgres:postgres@localhost:5432/compliance_tower",
+  "schema": "public",
+  "migration-table-name": "pgmigrations",
+  "migration-filename-format": "utc"
+}

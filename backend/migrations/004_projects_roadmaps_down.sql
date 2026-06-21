@@ -1,0 +1,10 @@
+DROP TRIGGER IF EXISTS update_rtd_reviews_updated_at ON rtd_reviews;
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
+DROP TRIGGER IF EXISTS update_roadmaps_updated_at ON roadmaps;
+DROP TABLE IF EXISTS rtd_reviews;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS roadmaps;
+DROP TYPE IF EXISTS milestone_status;
+DROP TYPE IF EXISTS roadmap_type;
+DROP TYPE IF EXISTS go_live_state;
+DROP TYPE IF EXISTS project_status;

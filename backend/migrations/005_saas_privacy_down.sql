@@ -1,0 +1,10 @@
+DROP TRIGGER IF EXISTS update_data_processing_inventory_updated_at ON data_processing_inventory;
+DROP TRIGGER IF EXISTS update_privacy_assessments_updated_at ON privacy_assessments;
+DROP TRIGGER IF EXISTS update_saas_applications_updated_at ON saas_applications;
+DROP TABLE IF EXISTS data_processing_inventory;
+DROP TABLE IF EXISTS privacy_assessments;
+DROP TABLE IF EXISTS saas_applications;
+DROP TYPE IF EXISTS privacy_design_status;
+DROP TYPE IF EXISTS gdpr_risk;
+DROP TYPE IF EXISTS data_category;
+DROP TYPE IF EXISTS lifecycle_stage;

@@ -1,0 +1,13 @@
+DROP TRIGGER IF EXISTS update_contracts_updated_at ON contracts;
+DROP TRIGGER IF EXISTS update_opportunities_updated_at ON opportunities;
+DROP TRIGGER IF EXISTS update_veg_requests_updated_at ON veg_requests;
+DROP TABLE IF EXISTS contracts;
+DROP TABLE IF EXISTS opportunities;
+DROP TABLE IF EXISTS veg_requests;
+DROP TYPE IF EXISTS go_nogo_decision;
+DROP TYPE IF EXISTS bid_decision;
+DROP TYPE IF EXISTS department_state;
+DROP TYPE IF EXISTS veg_request_status;
+DROP TYPE IF EXISTS veg_request_type;
+DROP TYPE IF EXISTS sales_stage;
+DROP TYPE IF EXISTS compliance_status;

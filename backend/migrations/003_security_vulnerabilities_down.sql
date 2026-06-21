@@ -1,0 +1,14 @@
+DROP TRIGGER IF EXISTS update_sla_incidents_updated_at ON sla_incidents;
+DROP TRIGGER IF EXISTS update_risk_acceptances_updated_at ON risk_acceptances;
+DROP TRIGGER IF EXISTS update_waivers_updated_at ON waivers;
+DROP TRIGGER IF EXISTS update_vulnerabilities_updated_at ON vulnerabilities;
+DROP TABLE IF EXISTS sla_incidents;
+DROP TABLE IF EXISTS risk_acceptances;
+DROP TABLE IF EXISTS waivers;
+DROP TABLE IF EXISTS vulnerabilities;
+DROP TYPE IF EXISTS sla_incident_status;
+DROP TYPE IF EXISTS ra_status;
+DROP TYPE IF EXISTS waiver_status;
+DROP TYPE IF EXISTS scanner_source;
+DROP TYPE IF EXISTS vuln_status;
+DROP TYPE IF EXISTS severity;
