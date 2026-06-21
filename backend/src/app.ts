@@ -8,6 +8,7 @@ import { logger } from "./core/logger.js";
 import authRoutes from "./routes/auth.routes.js";
 import vegRoutes from "./routes/veg.routes.js";
 import securityRoutes from "./routes/security.routes.js";
+import projectRoutes from "./routes/project.routes.js";
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/veg", vegRoutes);
 app.use("/api/security", securityRoutes);
+app.use("/api", projectRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);
