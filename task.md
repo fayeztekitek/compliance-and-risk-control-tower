@@ -19,18 +19,22 @@
 - [x] Request logging middleware — already in place
 - [x] Health check endpoint — already in place
 - [x] Error standardization (AppError + errorMiddleware) — already in place
+- [x] Rate limiting middleware (express-rate-limit) — 100 req/min global, 10 req/min auth
+- [x] Graceful shutdown handler (SIGTERM/SIGINT) — DB pool drain
+- [x] Sprint 7 tests — 9 passing (5 integration, 4 unit)
+- [x] npm audit — 1 low severity (esbuild in vitest/vite, Windows only, acceptable)
+- [x] Frontend UX polish — ErrorBoundary, Toast notifications, Skeleton loading, EmptyState, 404 page
+- [x] E2E tests (Playwright) — login flows (login, logout, invalid creds, redirect)
 
 ### Pending
-- [ ] Rate limiting middleware (express-rate-limit)
-- [ ] Graceful shutdown handler (SIGTERM)
-- [ ] npm audit — fix low severity vulnerability
 - [ ] Generate TypeScript client from OpenAPI spec
 - [ ] Replace manual API client with generated client
 - [ ] Executive Dashboard frontend page (KPI grid, heatmap, charts)
 - [ ] Export buttons (CSV + PDF) in frontend
-- [ ] Error boundaries, loading states, empty states, toast notifications
-- [ ] E2E tests (Playwright)
-- [ ] Sprint 7 unit/integration/functional tests
+- [ ] Merge `sprint-7` into `main`
+- [ ] Run full regression on `main`
+- [ ] Commit Sprint 7 completion report
+- [ ] Push `main` to GitHub
 
 ## Previous Sprint Reports
 

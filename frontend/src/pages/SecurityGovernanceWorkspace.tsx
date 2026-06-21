@@ -10,6 +10,8 @@ import {
   useSlaIncidents, useDetectSlaBreaches, useCheckWaiverExpiry, useImportScan,
 } from "../hooks/useSecurity";
 import type { Vulnerability } from "../api/security.api";
+import EmptyState from "../components/ui/EmptyState";
+import { SkeletonTable } from "../components/ui/Skeleton";
 
 type ViewMode = "list" | "detail" | "create" | "waivers" | "risk-acceptances" | "sla" | "scan-import";
 
@@ -123,55 +125,63 @@ export default function SecurityGovernanceWorkspace() {
 
         {/* Table */}
         {isLoading ? (
-          <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <SkeletonTable rows={5} />
+          </div>
         ) : (
           <>
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Title</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Severity</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Scanner</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Product</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">SLA Due</th>
-                    <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(vulnData?.data ?? []).map((v) => {
-                    const isOverdue = v.status === "OPEN" && new Date(v.slaDueDate) <= new Date();
-                    return (
-                      <tr key={v.id} className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${isOverdue ? "bg-red-50" : ""}`}>
-                        <td className="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">{v.title}</td>
-                        <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${SEVERITY_BADGE[v.severity]}`}>{v.severity}</span></td>
-                        <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[v.status]}`}>{v.status.replace(/_/g, " ")}</span></td>
-                        <td className="px-4 py-3 text-slate-600 text-xs">{v.sourceScanner}</td>
-                        <td className="px-4 py-3 text-slate-600 text-xs">{v.targetProduct || "—"}</td>
-                        <td className="px-4 py-3 text-xs">
-                          <span className={isOverdue ? "text-red-600 font-medium" : "text-slate-500"}>
-                            {new Date(v.slaDueDate).toLocaleDateString()}
-                            {isOverdue && <AlertTriangle className="inline w-3 h-3 ml-1 text-red-500" />}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex gap-1 justify-end">
-                            {v.status === "OPEN" && (
-                              <button onClick={() => setFpModal({ vulnId: v.id, explanation: "" })} className="text-xs text-slate-500 hover:text-slate-700 underline">False Pos</button>
-                            )}
-                            <button onClick={() => { setMode("detail"); setSelectedId(v.id); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">View</button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {(!vulnData?.data || vulnData.data.length === 0) && (
-                    <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No vulnerabilities found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {(!vulnData?.data || vulnData.data.length === 0) ? (
+              <EmptyState
+                icon={ShieldAlert}
+                title="No vulnerabilities"
+                description="Import scan results or create a vulnerability manually."
+                action={{ label: "Import Scan", onClick: () => setMode("scan-import") }}
+              />
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Title</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Severity</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Scanner</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Product</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">SLA Due</th>
+                      <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(vulnData?.data ?? []).map((v) => {
+                      const isOverdue = v.status === "OPEN" && new Date(v.slaDueDate) <= new Date();
+                      return (
+                        <tr key={v.id} className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${isOverdue ? "bg-red-50" : ""}`}>
+                          <td className="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">{v.title}</td>
+                          <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${SEVERITY_BADGE[v.severity]}`}>{v.severity}</span></td>
+                          <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[v.status]}`}>{v.status.replace(/_/g, " ")}</span></td>
+                          <td className="px-4 py-3 text-slate-600 text-xs">{v.sourceScanner}</td>
+                          <td className="px-4 py-3 text-slate-600 text-xs">{v.targetProduct || "—"}</td>
+                          <td className="px-4 py-3 text-xs">
+                            <span className={isOverdue ? "text-red-600 font-medium" : "text-slate-500"}>
+                              {new Date(v.slaDueDate).toLocaleDateString()}
+                              {isOverdue && <AlertTriangle className="inline w-3 h-3 ml-1 text-red-500" />}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex gap-1 justify-end">
+                              {v.status === "OPEN" && (
+                                <button onClick={() => setFpModal({ vulnId: v.id, explanation: "" })} className="text-xs text-slate-500 hover:text-slate-700 underline">False Pos</button>
+                              )}
+                              <button onClick={() => { setMode("detail"); setSelectedId(v.id); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">View</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {vulnData && vulnData.total > vulnData.limit && (
               <div className="flex items-center justify-between text-sm text-slate-600">
                 <span>{((vulnData.page - 1) * vulnData.limit) + 1}–{Math.min(vulnData.page * vulnData.limit, vulnData.total)} of {vulnData.total}</span>

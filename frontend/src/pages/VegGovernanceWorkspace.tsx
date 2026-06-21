@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { useVegList, useVegById, useCreateVeg, useUpdateVeg, useDeleteVeg, useSignoffVeg, useBidDecision, useGoNoGo, useCreateOpportunity, useCreateContract } from "../hooks/useVegRequests";
 import type { VegRequest } from "../api/veg.api";
+import EmptyState from "../components/ui/EmptyState";
+import { SkeletonTable } from "../components/ui/Skeleton";
 
 type ViewMode = "list" | "detail" | "create" | "edit";
 type VegType = "RFI" | "RFP" | "NEW_CLIENT_REQUEST" | "BD_REQUEST" | "ACC_CODE_CREATION" | "BID_COMMITTEE_OVERSIGHT";
@@ -139,49 +141,57 @@ export default function VegGovernanceWorkspace() {
 
         {/* Table */}
         {isLoading ? (
-          <div className="flex justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600" /></div>
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <SkeletonTable rows={5} />
+          </div>
         ) : (
           <>
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Title</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Type</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Client</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                    <th className="text-left px-4 py-3 font-medium text-slate-600">Date</th>
-                    <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(listData?.data ?? []).map((veg) => (
-                    <tr key={veg.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleSelect(veg.id)}>
-                      <td className="px-4 py-3 font-medium text-slate-800">{veg.title}</td>
-                      <td className="px-4 py-3 text-slate-600">{veg.type.replace(/_/g, " ")}</td>
-                      <td className="px-4 py-3 text-slate-600">{veg.client}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[veg.status]}`}>
-                          {veg.status.replace(/_/g, " ")}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 text-xs">{new Date(veg.date).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={e => { e.stopPropagation(); handleDelete(veg.id); }}
-                          className="text-xs text-red-600 hover:text-red-800 font-medium"
-                        >
-                          Delete
-                        </button>
-                      </td>
+            {(!listData?.data || listData.data.length === 0) ? (
+              <EmptyState
+                icon={Briefcase}
+                title="No VEG requests"
+                description="Create your first VEG request to get started."
+                action={{ label: "New VEG Request", onClick: () => { resetForm(); setMode("create"); } }}
+              />
+            ) : (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Title</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Type</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Client</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
+                      <th className="text-left px-4 py-3 font-medium text-slate-600">Date</th>
+                      <th className="text-right px-4 py-3 font-medium text-slate-600">Actions</th>
                     </tr>
-                  ))}
-                  {(!listData?.data || listData.data.length === 0) && (
-                    <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No VEG requests found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {(listData?.data ?? []).map((veg) => (
+                      <tr key={veg.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors" onClick={() => handleSelect(veg.id)}>
+                        <td className="px-4 py-3 font-medium text-slate-800">{veg.title}</td>
+                        <td className="px-4 py-3 text-slate-600">{veg.type.replace(/_/g, " ")}</td>
+                        <td className="px-4 py-3 text-slate-600">{veg.client}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[veg.status]}`}>
+                            {veg.status.replace(/_/g, " ")}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 text-xs">{new Date(veg.date).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={e => { e.stopPropagation(); handleDelete(veg.id); }}
+                            className="text-xs text-red-600 hover:text-red-800 font-medium"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Pagination */}
             {listData && listData.total > listData.limit && (

@@ -5,6 +5,7 @@ import swaggerUi from "swagger-ui-express";
 import { env } from "./config/env.js";
 import { swaggerSpec } from "./config/swagger.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
+import { generalLimiter, authLimiter } from "./middleware/rateLimit.middleware.js";
 import { logger } from "./core/logger.js";
 
 import authRoutes from "./routes/auth.routes.js";
@@ -25,6 +26,9 @@ app.use(cors({
   origin: env.CORS_ORIGIN.split(",").map(s => s.trim()),
   credentials: true,
 }));
+
+// Rate limiting
+app.use(generalLimiter);
 
 // Body parsing
 app.use(express.json({ limit: "1mb" }));
@@ -48,7 +52,7 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 }));
 
 // Routes
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/veg", vegRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api", projectRoutes);
