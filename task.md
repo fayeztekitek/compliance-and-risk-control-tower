@@ -1,24 +1,25 @@
-# Current Sprint: Sprint 5 — Nexus IQ & Background Jobs
+# Current Sprint: Sprint 6 — Executive Dashboard & KPI Engine
 
-**Status:** `IN PROGRESS`  
-**Started:** 2026-06-21  
-**Branch:** sprint-5
+**Status:** `PENDING`  
+**Started:** —  
+**Branch:** sprint-6
 
 ---
 
-## Progress
+## Backlog
 
-- [ ] BullMQ queue infrastructure + 5 workers
-- [ ] NexusIQHttpClient with retry + mock toggle
-- [ ] NexusDataMapper + NexusSyncService
-- [ ] NexusSyncOrchestrator (BullMQ job)
-- [ ] RiskScoreService (8-factor formula, grades, aggregates)
-- [ ] All Nexus API routes (config, sync, products, vulns, waivers, KPIs)
-- [ ] Frontend: Nexus workspace (connection, sync, products, vulns, waivers, jobs)
-- [ ] SLA breach detection worker
-- [ ] Waiver expiry worker
-- [ ] Email notification worker (placeholder)
-- [ ] Tests: 8 unit + 6 integration + 2 functional
+- [ ] `GET /api/dashboard/executive` — consolidated payload
+- [ ] `GET /api/dashboard/kpi` — 16 real-time KPI calculations
+- [ ] `GET /api/dashboard/kri` — 4 KRI thresholds with status
+- [ ] `GET /api/dashboard/heatmap` — 5×5 risk matrix
+- [ ] `GET /api/dashboard/trends` — historical KPI snapshots
+- [ ] `GET /api/export/csv` — CSV export
+- [ ] `GET /api/export/pdf` — PDF audit report
+- [ ] KPI recalculation job (BullMQ) — every 15 min
+- [ ] Historical KPI archive job — daily snapshot
+- [ ] Dashboard cache invalidation on data mutation
+- [ ] Frontend: KPI card grid, 5×5 heatmap, charts, export buttons
+- [ ] Recharts: bar chart, area chart, heatmap, pie/radar
 
 ## Previous Sprint Reports
 
@@ -29,6 +30,7 @@
 | Sprint 2 | ✅ | `sprints/sprint-2-completed.md` |
 | Sprint 3 | ✅ | `sprints/sprint-3-completed.md` |
 | Sprint 4 | ✅ | `sprints/sprint-4-completed.md` |
+| Sprint 5 | ✅ | `sprints/sprint-5-completed.md` |
 
 ## Default Credentials
 
