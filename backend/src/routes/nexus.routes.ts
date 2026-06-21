@@ -13,7 +13,18 @@ const router = Router();
 router.use(authMiddleware);
 router.use(rbacMiddleware(["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"]));
 
-// ---- Config ----
+/**
+ * @openapi
+ * /nexus/config:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get Nexus IQ configuration
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Nexus config (token masked)
+ */
 router.get("/config", async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const config = await nexusService.getConfig();
@@ -25,6 +36,18 @@ router.get("/config", async (_req: Request, res: Response, next: NextFunction) =
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /nexus/config:
+ *   put:
+ *     tags: [Nexus]
+ *     summary: Create or replace Nexus IQ configuration
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Config updated
+ */
 router.put("/config", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = nexusConfigSchema.parse(req.body);
@@ -36,6 +59,18 @@ router.put("/config", async (req: Request, res: Response, next: NextFunction) =>
   }
 });
 
+/**
+ * @openapi
+ * /nexus/config:
+ *   patch:
+ *     tags: [Nexus]
+ *     summary: Partial update of Nexus IQ configuration
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Config updated
+ */
 router.patch("/config", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = nexusConfigUpdateSchema.parse(req.body);
@@ -47,6 +82,18 @@ router.patch("/config", async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
+/**
+ * @openapi
+ * /nexus/config/test:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Test Nexus IQ connection
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Connection test result
+ */
 router.post("/config/test", async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.testConnection();
@@ -54,7 +101,18 @@ router.post("/config/test", async (_req: Request, res: Response, next: NextFunct
   } catch (err) { next(err); }
 });
 
-// ---- Sync ----
+/**
+ * @openapi
+ * /nexus/sync:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Trigger a Nexus IQ sync
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Sync triggered
+ */
 router.post("/sync", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = triggerSyncSchema.parse(req.body);
@@ -66,6 +124,18 @@ router.post("/sync", async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
+/**
+ * @openapi
+ * /nexus/sync/status/{batchId}:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get sync status by batch ID
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Sync status
+ */
 router.get("/sync/status/:batchId", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.getSyncStatus(req.params.batchId);
@@ -73,6 +143,18 @@ router.get("/sync/status/:batchId", async (req: Request, res: Response, next: Ne
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /nexus/sync/logs:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: List sync logs with pagination
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Paginated sync logs
+ */
 router.get("/sync/logs", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
@@ -82,7 +164,18 @@ router.get("/sync/logs", async (req: Request, res: Response, next: NextFunction)
   } catch (err) { next(err); }
 });
 
-// ---- Products ----
+/**
+ * @openapi
+ * /nexus/products:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: List Nexus IQ products
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product list
+ */
 router.get("/products", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.listProducts(req.query.search as string);
@@ -90,6 +183,18 @@ router.get("/products", async (req: Request, res: Response, next: NextFunction) 
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /nexus/products/{productId}:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get product details by ID
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product details
+ */
 router.get("/products/:productId", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.getProduct(req.params.productId);
@@ -97,7 +202,18 @@ router.get("/products/:productId", async (req: Request, res: Response, next: Nex
   } catch (err) { next(err); }
 });
 
-// ---- Applications ----
+/**
+ * @openapi
+ * /nexus/applications:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: List applications, optionally filtered by product
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Application list
+ */
 router.get("/applications", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.listApplications(req.query.productId as string, req.query.search as string);
@@ -105,7 +221,18 @@ router.get("/applications", async (req: Request, res: Response, next: NextFuncti
   } catch (err) { next(err); }
 });
 
-// ---- Vulnerabilities ----
+/**
+ * @openapi
+ * /nexus/vulnerabilities:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: List Nexus vulnerabilities with pagination and filters
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Paginated vulnerability list
+ */
 router.get("/vulnerabilities", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const query = nexusQuerySchema.parse(req.query);
@@ -117,6 +244,18 @@ router.get("/vulnerabilities", async (req: Request, res: Response, next: NextFun
   }
 });
 
+/**
+ * @openapi
+ * /nexus/vulnerabilities/{id}:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get vulnerability by ID
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Vulnerability details
+ */
 router.get("/vulnerabilities/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.getVulnerability(req.params.id);
@@ -124,7 +263,18 @@ router.get("/vulnerabilities/:id", async (req: Request, res: Response, next: Nex
   } catch (err) { next(err); }
 });
 
-// ---- Waivers ----
+/**
+ * @openapi
+ * /nexus/waivers:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: List Nexus waivers
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Waiver list
+ */
 router.get("/waivers", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.listWaivers({ productId: req.query.productId as string, status: req.query.status as string });
@@ -132,6 +282,18 @@ router.get("/waivers", async (req: Request, res: Response, next: NextFunction) =
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /nexus/waivers:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Create a Nexus waiver
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Waiver created
+ */
 router.post("/waivers", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = createNexusWaiverSchema.parse(req.body);
@@ -143,7 +305,18 @@ router.post("/waivers", async (req: Request, res: Response, next: NextFunction) 
   }
 });
 
-// ---- KPI ----
+/**
+ * @openapi
+ * /nexus/kpis/executive:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get executive KPI summary from Nexus data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Executive KPI payload
+ */
 router.get("/kpis/executive", async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.getExecutiveKpis();
@@ -151,6 +324,18 @@ router.get("/kpis/executive", async (_req: Request, res: Response, next: NextFun
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /nexus/kpis/product/{productId}:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get KPI drill-down for a specific product
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Product KPI data
+ */
 router.get("/kpis/product/:productId", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.getProductKpis(req.params.productId);
@@ -158,6 +343,18 @@ router.get("/kpis/product/:productId", async (req: Request, res: Response, next:
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /nexus/risk-score/product/{productId}:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get risk score for a product
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Risk score with grade
+ */
 router.get("/risk-score/product/:productId", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.getProductRiskScore(req.params.productId);
@@ -165,7 +362,18 @@ router.get("/risk-score/product/:productId", async (req: Request, res: Response,
   } catch (err) { next(err); }
 });
 
-// ---- Jobs Dashboard ----
+/**
+ * @openapi
+ * /nexus/jobs:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get BullMQ job statuses dashboard
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Job status counts
+ */
 router.get("/jobs", async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const { getJobStatuses } = await import("../services/queue.service.js");

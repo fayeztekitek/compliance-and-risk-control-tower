@@ -1,22 +1,36 @@
-# Current Sprint: Sprint 7 — OpenAPI Integration & Frontend Polish
+# Current Sprint: Sprint 7 — Production Hardening & OpenAPI
 
-**Status:** `PENDING`  
-**Started:** —  
+**Status:** `IN PROGRESS`  
+**Started:** 2026-06-21  
 **Branch:** sprint-7
 
 ---
 
 ## Backlog
 
-- [ ] Generate OpenAPI spec from backend routes
+### Done
+- [x] OpenAPI/Swagger setup with swagger-jsdoc + swagger-ui-express
+- [x] JSDoc annotations on all route files (auth, veg, security, project, nexus, dashboard, export)
+- [x] Swagger UI served at `GET /api/docs`
+- [x] Request body size limit (1mb) — already in place
+- [x] Security headers via Helmet — already in place
+- [x] CORS whitelist — already in place
+- [x] Structured JSON logging via Pino — already in place
+- [x] Request logging middleware — already in place
+- [x] Health check endpoint — already in place
+- [x] Error standardization (AppError + errorMiddleware) — already in place
+
+### Pending
+- [ ] Rate limiting middleware (express-rate-limit)
+- [ ] Graceful shutdown handler (SIGTERM)
+- [ ] npm audit — fix low severity vulnerability
 - [ ] Generate TypeScript client from OpenAPI spec
 - [ ] Replace manual API client with generated client
-- [ ] Executive Dashboard workspace page (KPI grid, heatmap, charts)
+- [ ] Executive Dashboard frontend page (KPI grid, heatmap, charts)
 - [ ] Export buttons (CSV + PDF) in frontend
-- [ ] KPI recalculation job (BullMQ) — every 15 min
-- [ ] Historical KPI archive job — daily snapshot
-- [ ] Dashboard cache invalidation on data mutation
-- [ ] UI polish, error boundaries, loading states
+- [ ] Error boundaries, loading states, empty states, toast notifications
+- [ ] E2E tests (Playwright)
+- [ ] Sprint 7 unit/integration/functional tests
 
 ## Previous Sprint Reports
 

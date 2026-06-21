@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import swaggerUi from "swagger-ui-express";
 import { env } from "./config/env.js";
+import { swaggerSpec } from "./config/swagger.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
 import { logger } from "./core/logger.js";
 
@@ -38,6 +40,12 @@ app.use((req, _res, next) => {
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+// API documentation
+app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: ".swagger-ui .topbar { display: none }",
+  customSiteTitle: "Control Tower API Docs",
+}));
 
 // Routes
 app.use("/api/auth", authRoutes);

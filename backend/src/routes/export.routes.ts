@@ -8,6 +8,27 @@ const router = Router();
 router.use(authMiddleware);
 router.use(rbacMiddleware(["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"]));
 
+/**
+ * @openapi
+ * /export/csv:
+ *   get:
+ *     tags: [Export]
+ *     summary: Export data as CSV
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dataset
+ *         schema: { type: string, default: kpis }
+ *         description: Dataset to export (kpis, kris, heatmap, etc.)
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ */
 router.get("/csv", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const dataset = (req.query.dataset as string) || "kpis";
@@ -18,6 +39,23 @@ router.get("/csv", async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /export/pdf:
+ *   get:
+ *     tags: [Export]
+ *     summary: Export data as PDF (HTML-based)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dataset
+ *         schema: { type: string, default: kpis }
+ *         description: Dataset to export
+ *     responses:
+ *       200:
+ *         description: PDF file download (HTML format)
+ */
 router.get("/pdf", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const dataset = (req.query.dataset as string) || "kpis";

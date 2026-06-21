@@ -11,11 +11,31 @@ import {
 
 const router = Router();
 
-// All VEG routes require auth + COMPLIANCE_OFFICER level or above
 router.use(authMiddleware);
 router.use(rbacMiddleware(["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "PRODUCT_OWNER", "EXECUTIVE_READ_ONLY"]));
 
-// List
+/**
+ * @openapi
+ * /veg:
+ *   get:
+ *     tags: [VEG]
+ *     summary: List VEG requests with pagination and search
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Paginated VEG request list
+ */
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const query = listVegQuerySchema.parse(req.query);
@@ -27,7 +47,23 @@ router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Get by id
+/**
+ * @openapi
+ * /veg/{id}:
+ *   get:
+ *     tags: [VEG]
+ *     summary: Get VEG request by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: VEG request details
+ */
 router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await vegService.getById(req.params.id);
@@ -35,7 +71,24 @@ router.get("/:id", async (req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
-// Create
+/**
+ * @openapi
+ * /veg:
+ *   post:
+ *     tags: [VEG]
+ *     summary: Create a new VEG request
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       201:
+ *         description: VEG request created
+ */
 router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = createVegSchema.parse(req.body);
@@ -47,7 +100,23 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   }
 });
 
-// Update
+/**
+ * @openapi
+ * /veg/{id}:
+ *   patch:
+ *     tags: [VEG]
+ *     summary: Update a VEG request
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: VEG request updated
+ */
 router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = updateVegSchema.parse(req.body);
@@ -59,7 +128,23 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
   }
 });
 
-// Delete
+/**
+ * @openapi
+ * /veg/{id}:
+ *   delete:
+ *     tags: [VEG]
+ *     summary: Soft-delete a VEG request
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: VEG request deleted
+ */
 router.delete("/:id", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await vegService.delete(req.params.id);
@@ -67,7 +152,27 @@ router.delete("/:id", async (req: Request, res: Response, next: NextFunction) =>
   } catch (err) { next(err); }
 });
 
-// Department sign-off
+/**
+ * @openapi
+ * /veg/{id}/signoff/{department}:
+ *   patch:
+ *     tags: [VEG]
+ *     summary: Update department sign-off status
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *       - in: path
+ *         name: department
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Sign-off updated
+ */
 router.patch("/:id/signoff/:department", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = departmentSignoffSchema.parse({ department: req.params.department, ...req.body });
@@ -79,7 +184,18 @@ router.patch("/:id/signoff/:department", async (req: Request, res: Response, nex
   }
 });
 
-// Bid decision
+/**
+ * @openapi
+ * /veg/{id}/bid:
+ *   patch:
+ *     tags: [VEG]
+ *     summary: Update bid decision
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Bid decision recorded
+ */
 router.patch("/:id/bid", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = bidDecisionSchema.parse(req.body);
@@ -91,7 +207,18 @@ router.patch("/:id/bid", async (req: Request, res: Response, next: NextFunction)
   }
 });
 
-// Go/No-Go decision
+/**
+ * @openapi
+ * /veg/{id}/gonogo:
+ *   patch:
+ *     tags: [VEG]
+ *     summary: Update Go/No-Go decision
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Go/No-Go decision recorded
+ */
 router.patch("/:id/gonogo", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = goNogoSchema.parse(req.body);
@@ -103,7 +230,18 @@ router.patch("/:id/gonogo", async (req: Request, res: Response, next: NextFuncti
   }
 });
 
-// Batch sync (CRM import)
+/**
+ * @openapi
+ * /veg/batch-sync:
+ *   post:
+ *     tags: [VEG]
+ *     summary: Batch sync VEG requests from CRM
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Sync results
+ */
 router.post("/batch-sync", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = batchSyncSchema.parse(req.body);
@@ -115,7 +253,18 @@ router.post("/batch-sync", async (req: Request, res: Response, next: NextFunctio
   }
 });
 
-// Create opportunity (nested under VEG)
+/**
+ * @openapi
+ * /veg/{id}/opportunities:
+ *   post:
+ *     tags: [VEG]
+ *     summary: Create an opportunity under a VEG
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Opportunity created
+ */
 router.post("/:id/opportunities", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = createOpportunitySchema.parse(req.body);
@@ -127,7 +276,18 @@ router.post("/:id/opportunities", async (req: Request, res: Response, next: Next
   }
 });
 
-// Create contract (nested under opportunity)
+/**
+ * @openapi
+ * /veg/opportunities/{opportunityId}/contracts:
+ *   post:
+ *     tags: [VEG]
+ *     summary: Create a contract under an opportunity
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Contract created
+ */
 router.post("/opportunities/:opportunityId/contracts", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = createContractSchema.parse(req.body);
