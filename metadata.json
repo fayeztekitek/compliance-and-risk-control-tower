@@ -1,0 +1,6 @@
+{
+  "name": "Compliance & Risk Control Tower",
+  "description": "Unified strategic and operational dashboard for governing product roadmaps, project delivery risk (RTD), security vulnerabilities, SaaS lifecycle, GDPR privacy, and contractual compliance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
