@@ -1,25 +1,22 @@
-# Current Sprint: Sprint 6 — Executive Dashboard & KPI Engine
+# Current Sprint: Sprint 7 — OpenAPI Integration & Frontend Polish
 
 **Status:** `PENDING`  
 **Started:** —  
-**Branch:** sprint-6
+**Branch:** sprint-7
 
 ---
 
 ## Backlog
 
-- [ ] `GET /api/dashboard/executive` — consolidated payload
-- [ ] `GET /api/dashboard/kpi` — 16 real-time KPI calculations
-- [ ] `GET /api/dashboard/kri` — 4 KRI thresholds with status
-- [ ] `GET /api/dashboard/heatmap` — 5×5 risk matrix
-- [ ] `GET /api/dashboard/trends` — historical KPI snapshots
-- [ ] `GET /api/export/csv` — CSV export
-- [ ] `GET /api/export/pdf` — PDF audit report
+- [ ] Generate OpenAPI spec from backend routes
+- [ ] Generate TypeScript client from OpenAPI spec
+- [ ] Replace manual API client with generated client
+- [ ] Executive Dashboard workspace page (KPI grid, heatmap, charts)
+- [ ] Export buttons (CSV + PDF) in frontend
 - [ ] KPI recalculation job (BullMQ) — every 15 min
 - [ ] Historical KPI archive job — daily snapshot
 - [ ] Dashboard cache invalidation on data mutation
-- [ ] Frontend: KPI card grid, 5×5 heatmap, charts, export buttons
-- [ ] Recharts: bar chart, area chart, heatmap, pie/radar
+- [ ] UI polish, error boundaries, loading states
 
 ## Previous Sprint Reports
 
@@ -31,6 +28,7 @@
 | Sprint 3 | ✅ | `sprints/sprint-3-completed.md` |
 | Sprint 4 | ✅ | `sprints/sprint-4-completed.md` |
 | Sprint 5 | ✅ | `sprints/sprint-5-completed.md` |
+| Sprint 6 | ✅ | `sprints/sprint-6-completed.md` |
 
 ## Default Credentials
 
