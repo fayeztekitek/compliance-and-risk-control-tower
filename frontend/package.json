@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "node node_modules/@playwright/test/cli.js test",
+    "generate-api-types": "cd \"../backend\" && node node_modules/tsx/dist/cli.mjs scripts/generate-api-types.ts && cd \"../frontend\" && node node_modules/openapi-typescript/bin/cli.js src/api/generated/schema.json --output src/api/generated/api.d.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
@@ -37,6 +38,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "autoprefixer": "^10.4.21",
     "jsdom": "^25.0.0",
+    "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4.1.14",
     "typescript": "~5.8.2",
     "vite": "^6.2.3",

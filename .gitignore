@@ -9,3 +9,7 @@ coverage/
 **/node_modules/
 **/dist/
 **/coverage/
+
+# Generated API types
+frontend/src/api/generated/api.d.ts
+frontend/src/api/generated/schema.json

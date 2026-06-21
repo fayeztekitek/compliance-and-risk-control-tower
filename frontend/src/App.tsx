@@ -6,6 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import VegGovernanceWorkspace from "./pages/VegGovernanceWorkspace";
 import SecurityGovernanceWorkspace from "./pages/SecurityGovernanceWorkspace";
+import ExecutiveDashboard from "./pages/ExecutiveDashboard";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import ToastContainer from "./components/ui/Toast";
 
@@ -50,29 +51,35 @@ export default function App() {
               <div className="flex-1 flex flex-col h-screen min-w-0">
                 <main className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-8">
                   <div className="max-w-7xl mx-auto w-full pb-12">
-                    <h2 className="text-2xl font-bold text-slate-800 mb-4">
-                      {currentView === "dashboard" && "Executive Dashboard"}
-                      {currentView === "veg" && (
-                        <ErrorBoundary>
-                          <VegGovernanceWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "security" && (
-                        <ErrorBoundary>
-                          <SecurityGovernanceWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "nexus" && "Nexus IQ Connector"}
-                      {currentView === "roadmaps" && "Roadmaps & Projects"}
-                      {currentView === "saas" && "SaaS Governance"}
-                      {currentView === "audits" && "Audits & Contracts"}
-                      {currentView === "committees" && "Committees"}
-                      {currentView === "admin" && "Administration"}
-                    </h2>
-                    {currentView !== "veg" && currentView !== "security" && (
-                      <p className="text-slate-500">
-                        Workspace content will be implemented in subsequent sprints.
-                      </p>
+                    {currentView === "dashboard" && (
+                      <ErrorBoundary>
+                        <ExecutiveDashboard />
+                      </ErrorBoundary>
+                    )}
+                    {currentView === "veg" && (
+                      <ErrorBoundary>
+                        <VegGovernanceWorkspace />
+                      </ErrorBoundary>
+                    )}
+                    {currentView === "security" && (
+                      <ErrorBoundary>
+                        <SecurityGovernanceWorkspace />
+                      </ErrorBoundary>
+                    )}
+                    {currentView !== "dashboard" && currentView !== "veg" && currentView !== "security" && (
+                      <>
+                        <h2 className="text-2xl font-bold text-slate-800 mb-4">
+                          {currentView === "nexus" && "Nexus IQ Connector"}
+                          {currentView === "roadmaps" && "Roadmaps & Projects"}
+                          {currentView === "saas" && "SaaS Governance"}
+                          {currentView === "audits" && "Audits & Contracts"}
+                          {currentView === "committees" && "Committees"}
+                          {currentView === "admin" && "Administration"}
+                        </h2>
+                        <p className="text-slate-500">
+                          Workspace content will be implemented in subsequent sprints.
+                        </p>
+                      </>
                     )}
                   </div>
                 </main>
