@@ -62,9 +62,9 @@ export default function App() {
                         <ExecutiveDashboard />
                       </ErrorBoundary>
                     )}
-                    {currentView === "veg" && (
+                    {(currentView === "veg" || currentView === "veg-workflow") && (
                       <ErrorBoundary>
-                        <VegGovernanceWorkspace />
+                        <VegGovernanceWorkspace initialTab={currentView === "veg-workflow" ? "workflow" : "deals"} />
                       </ErrorBoundary>
                     )}
                     {currentView === "security" && (

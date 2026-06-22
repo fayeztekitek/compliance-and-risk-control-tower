@@ -78,4 +78,20 @@ describe("VEG API Client", () => {
     const result = await vegApi.goNoGo("1", "GO");
     expect(result.data.data.goNoGoDecision).toBe("GO");
   });
+
+  it("createOpportunity should call POST /api/veg/:id/opportunities", async () => {
+    (apiClient.post as any).mockResolvedValue({ data: { data: { id: "opp-1", name: "Test Opp", value: 100 } } });
+
+    const result = await vegApi.createOpportunity("1", { name: "Test Opp", value: 100 });
+    expect(result.data.data.name).toBe("Test Opp");
+    expect(apiClient.post).toHaveBeenCalledWith("/api/veg/1/opportunities", { name: "Test Opp", value: 100 });
+  });
+
+  it("createContract should call POST /api/veg/opportunities/:oppId/contracts", async () => {
+    (apiClient.post as any).mockResolvedValue({ data: { data: { id: "ctr-1", title: "Test Contract" } } });
+
+    const result = await vegApi.createContract("opp-1", { title: "Test Contract", start_date: "2024-01-01", end_date: "2024-12-31" });
+    expect(result.data.data.title).toBe("Test Contract");
+    expect(apiClient.post).toHaveBeenCalledWith("/api/veg/opportunities/opp-1/contracts", { title: "Test Contract", start_date: "2024-01-01", end_date: "2024-12-31" });
+  });
 });
