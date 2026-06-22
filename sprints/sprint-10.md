@@ -23,9 +23,9 @@ These items were deferred from Sprint 7 and are prioritized for Sprint 10:
 ## Tasks
 
 ### Backend — VEG Deal Export
-- [ ] `GET /api/veg-deals/export?format=csv` endpoint with same filters as list
-- [ ] Stream CSV with all 38 columns
-- [ ] Filename includes date and filter context
+- [x] `GET /api/veg-deals/export?format=csv` endpoint with same filters as list
+- [x] Stream CSV with all 38 columns
+- [x] Filename includes date and filter context
 
 ### Backend — VEG Event Bus
 - [ ] Create `veg-events.service.ts` (EventEmitter pattern)
@@ -46,8 +46,8 @@ These items were deferred from Sprint 7 and are prioritized for Sprint 10:
 - [ ] `GET /api/dashboard/veg-kpis` — total deals, total TCV, won count, avg deal size, won rate
 
 ### Frontend — VEG Deal Export
-- [ ] Export button on VEG Deal list (filter-aware)
-- [ ] Download progress indicator
+- [x] Export button on VEG Deal list (filter-aware)
+- [ ] Download progress indicator (deferred — window.open approach sufficient)
 
 ### Frontend — Advanced Charts (Dashboard Mode)
 - [ ] TCV trend line chart (Recharts)

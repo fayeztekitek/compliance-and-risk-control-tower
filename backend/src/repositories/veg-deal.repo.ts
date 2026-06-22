@@ -261,6 +261,31 @@ export const vegDealRepo = {
     `);
   },
 
+  async exportAll(filters: Omit<VegDealFilters, "page" | "limit">) {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (filters.search) {
+      conditions.push(`(client ILIKE $${idx} OR business_owner ILIKE $${idx} OR veg_id ILIKE $${idx} OR opportunity_crm ILIKE $${idx})`);
+      params.push(`%${filters.search}%`);
+      idx++;
+    }
+    if (filters.region) { conditions.push(`region = $${idx++}`); params.push(filters.region); }
+    if (filters.businessLine) { conditions.push(`business_line = $${idx++}`); params.push(filters.businessLine); }
+    if (filters.decision) { conditions.push(`decision = $${idx++}`); params.push(filters.decision); }
+    if (filters.salesStatus) { conditions.push(`sales_status = $${idx++}`); params.push(filters.salesStatus); }
+    if (filters.businessOwner) { conditions.push(`business_owner = $${idx++}`); params.push(filters.businessOwner); }
+    if (filters.year) { conditions.push(`veg_year = $${idx++}`); params.push(filters.year); }
+    if (filters.client) { conditions.push(`client ILIKE $${idx++}`); params.push(`%${filters.client}%`); }
+
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const result = await query<VegDealRow>(
+      `SELECT ${COLS} FROM veg_deals ${where} ORDER BY veg_date DESC, veg_id DESC`
+    );
+    return result.rows;
+  },
+
   async getTopClients(limit: number = 10) {
     return query<{ client: string; count: string; total_tcv: string }>(`
       SELECT client, COUNT(*)::text as count, COALESCE(SUM(tcv), 0)::text as total_tcv

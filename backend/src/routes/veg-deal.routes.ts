@@ -130,6 +130,50 @@ router.get("/regions", async (_req: Request, res: Response, next: NextFunction) 
 
 /**
  * @openapi
+ * /veg-deals/export:
+ *   get:
+ *     tags: [VEG Deals]
+ *     summary: Export VEG deals as CSV
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: region
+ *         schema: { type: string }
+ *       - in: query
+ *         name: businessLine
+ *         schema: { type: string }
+ *       - in: query
+ *         name: decision
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ */
+router.get("/export", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filters = listVegDealQuerySchema.parse(req.query);
+    const csv = await vegDealService.exportCsv(filters);
+    const date = new Date().toISOString().slice(0, 10);
+    const filtersLabel = filters.search ? `-${filters.search.slice(0, 20)}` : "";
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="veg-deals-${date}${filtersLabel}.csv"`);
+    res.send(csv);
+  } catch (err: any) {
+    if (err.name === "ZodError") return next(new ValidationError("Invalid query", err.flatten().fieldErrors));
+    next(err);
+  }
+});
+
+/**
+ * @openapi
  * /veg-deals/{id}:
  *   get:
  *     tags: [VEG Deals]
