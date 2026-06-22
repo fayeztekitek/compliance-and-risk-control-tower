@@ -10,6 +10,7 @@ import {
   Users,
   Settings,
   LogOut,
+  FileSignature,
 } from "lucide-react";
 
 interface NavItem {
@@ -22,6 +23,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "PRODUCT_OWNER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
   { id: "veg", label: "VEG Governance", icon: Briefcase, allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "PRODUCT_OWNER", "EXECUTIVE_READ_ONLY"] },
+  { id: "veg-workflow", label: "VEG Workflow", icon: FileSignature, allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "PRODUCT_OWNER", "EXECUTIVE_READ_ONLY"] },
   { id: "security", label: "Security", icon: ShieldAlert, allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
   { id: "nexus", label: "Nexus IQ", icon: Radar, allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
   { id: "roadmaps", label: "Roadmaps", icon: Map, allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },

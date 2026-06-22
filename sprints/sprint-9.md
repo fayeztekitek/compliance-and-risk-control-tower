@@ -1,6 +1,7 @@
 # Sprint 9: Classic VEG Workflow Frontend
 
 **Status:** 🟡 In Progress  
+**Started:** 2026-06-22  
 **Branch:** `sprint-9-veg-workflow`  
 **Goal:** Build the missing frontend UI for the existing classic VEG workflow (department sign-offs, bid/go-no-go decisions, opportunities, contracts). Backend + API + hooks already exist — only frontend is missing.
 
