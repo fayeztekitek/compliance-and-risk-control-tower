@@ -1,4 +1,5 @@
 import { nexusRepo } from "../repositories/nexus.repo.js";
+import { unifiedFindingRepo } from "../repositories/unifiedFinding.repo.js";
 import { riskScoreService } from "./riskScore.service.js";
 import { createClientFromConfig } from "./nexusHttpClient.js";
 import { NotFoundError } from "../core/errors.js";
@@ -54,8 +55,23 @@ export const nexusService = {
       const vulns = await client.executeRequest<any[]>("api/v2/vulnerabilities");
 
       if (Array.isArray(vulns)) {
-        await nexusRepo.bulkUpsertVulnerabilities(vulns.map((v: any) => ({
-          ...v, syncBatchId: batchId,
+        await unifiedFindingRepo.bulkUpsertFindings(vulns.map((v: any) => ({
+          sourceTool: "NEXUS",
+          sourceId: v.vulnerabilityId,
+          sourceTable: "nexus_vulnerabilities",
+          title: v.cveId || `${v.componentName}:${v.componentVersion}`,
+          unifiedSeverity: v.severity,
+          cvssScore: v.cvssScore,
+          cveId: v.cveId,
+          status: v.status || "OPEN",
+          componentName: v.componentName,
+          componentVersion: v.componentVersion,
+          packageUrl: v.packageUrl,
+          scanId: v.scanId,
+          applicationId: v.applicationId,
+          fixAvailable: v.fixAvailable || false,
+          recommendedVersion: v.recommendedVersion,
+          metadata: { refId: v.refId, syncBatchId },
         })));
       }
 
@@ -87,13 +103,13 @@ export const nexusService = {
     return nexusRepo.listApplications(productId, search);
   },
 
-  // ---- Vulnerabilities ----
+  // ---- Vulnerabilities (via unified_findings) ----
   async listVulnerabilities(filters: any) {
-    return nexusRepo.listVulnerabilities(filters);
+    return unifiedFindingRepo.listFindings({ ...filters, sourceTool: "NEXUS" });
   },
 
   async getVulnerability(id: string) {
-    const v = await nexusRepo.getVulnerability(id);
+    const v = await unifiedFindingRepo.getFinding(id);
     if (!v) throw new NotFoundError("Vulnerability", id);
     return v;
   },
@@ -118,7 +134,7 @@ export const nexusService = {
 
     const productHeatmap = await Promise.all(
       products.map(async (p: any) => {
-        const vulns = await nexusRepo.listVulnerabilities({ page: 1, limit: 10000, productId: p.productId });
+        const vulns = await unifiedFindingRepo.listFindings({ page: 1, limit: 10000, productId: p.productId });
         const aggregates = riskScoreService.getAggregates(vulns.data, p.businessCriticality);
         return {
           productId: p.productId,
@@ -140,7 +156,7 @@ export const nexusService = {
     const product = await nexusRepo.getProduct(productId);
     if (!product) throw new NotFoundError("Product", productId);
 
-    const vulns = await nexusRepo.listVulnerabilities({ page: 1, limit: 10000, productId });
+    const vulns = await unifiedFindingRepo.listFindings({ page: 1, limit: 10000, productId });
     const aggregates = riskScoreService.getAggregates(vulns.data, product.businessCriticality);
     const waivers = await nexusRepo.listWaivers({ productId });
 
@@ -155,9 +171,9 @@ export const nexusService = {
         .map((v: any) => ({
           componentName: v.componentName,
           version: v.componentVersion,
-          severity: v.severity,
+          severity: v.unifiedSeverity,
           cvssScore: v.cvssScore,
-          vulnerabilityId: v.vulnerabilityId,
+          vulnerabilityId: v.id,
         })),
     };
   },
@@ -165,7 +181,7 @@ export const nexusService = {
   async getProductRiskScore(productId: string) {
     const product = await nexusRepo.getProduct(productId);
     if (!product) throw new NotFoundError("Product", productId);
-    const vulns = await nexusRepo.listVulnerabilities({ page: 1, limit: 10000, productId });
+    const vulns = await unifiedFindingRepo.listFindings({ page: 1, limit: 10000, productId });
     const aggregates = riskScoreService.getAggregates(vulns.data, product.businessCriticality);
     return aggregates;
   },

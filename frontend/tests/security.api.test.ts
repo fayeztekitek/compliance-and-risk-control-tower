@@ -35,7 +35,7 @@ describe("Security API Client", () => {
 
   it("createWaiver calls POST", async () => {
     (apiClient.post as any).mockResolvedValue({ data: { data: { id: "w1", status: "PENDING" } } });
-    const result = await securityApi.createWaiver({ vulnerabilityId: "v1", title: "W", rationale: "R", expiryDate: "2026-12-31" });
+    const result = await securityApi.createWaiver({ vulnerabilityId: "v1", title: "W", rationale: "R", expiryDate: "2026-12-31" } as any);
     expect(result.data.data.status).toBe("PENDING");
   });
 

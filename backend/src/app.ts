@@ -15,6 +15,18 @@ import projectRoutes from "./routes/project.routes.js";
 import nexusRoutes from "./routes/nexus.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import exportRoutes from "./routes/export.routes.js";
+import auditRoutes from "./routes/audit.routes.js";
+import committeeRoutes from "./routes/committee.routes.js";
+import adminRoutes from "./routes/admin.routes.js";
+import unifiedFindingRoutes from "./routes/unifiedFinding.routes.js";
+import enrichmentRoutes from "./routes/enrichment.routes.js";
+import organizationRoutes from "./routes/organization.routes.js";
+import findingComponentRoutes from "./routes/findingComponent.routes.js";
+import findingOccurrenceRoutes from "./routes/findingOccurrence.routes.js";
+import scanReportRoutes from "./routes/scanReport.routes.js";
+import reportRoutes from "./routes/report.routes.js";
+import trendRoutes from "./routes/trend.routes.js";
+import mitigationRoutes from "./routes/mitigation.routes.js";
 
 const app = express();
 
@@ -59,6 +71,18 @@ app.use("/api", projectRoutes);
 app.use("/api/nexus", nexusRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/export", exportRoutes);
+app.use("/api/audits", auditRoutes);
+app.use("/api/committees", committeeRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/unified-findings", unifiedFindingRoutes);
+app.use("/api", enrichmentRoutes);
+app.use("/api", organizationRoutes);
+app.use("/api/finding-components", findingComponentRoutes);
+app.use("/api/finding-occurrences", findingOccurrenceRoutes);
+app.use("/api/scan-reports", scanReportRoutes);
+app.use("/api/reports", reportRoutes);
+app.use("/api/trends", trendRoutes);
+app.use("/api/mitigations", mitigationRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);

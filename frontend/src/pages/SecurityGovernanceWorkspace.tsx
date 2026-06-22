@@ -447,7 +447,7 @@ export default function SecurityGovernanceWorkspace() {
           </button>
           {importScan.data && (
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-              Imported {importScan.data.data.imported} vulnerabilities successfully
+              Imported {(importScan.data as any).data?.imported || 0} vulnerabilities successfully
             </div>
           )}
         </div>

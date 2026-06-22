@@ -33,8 +33,9 @@ describe("Projects API (integration)", () => {
 
   it("POST /api/projects should create with valid data", async () => {
     if (!dbAvailable || !token) return;
-    const r = await request(app).post("/api/projects").set("Authorization", `Bearer ${token}`).send({ name: "Test Project", code: "TST001" });
-    expect([201, 400]).toContain(r.status);
-    if (r.status === 201) expect(r.body.data).toHaveProperty("id");
+    const uniqueCode = `TST-${Date.now()}`;
+    const r = await request(app).post("/api/projects").set("Authorization", `Bearer ${token}`).send({ name: "Test Project", code: uniqueCode });
+    expect(r.status).toBe(201);
+    expect(r.body.data).toHaveProperty("id");
   });
 });

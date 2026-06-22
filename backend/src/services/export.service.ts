@@ -9,17 +9,18 @@ export const exportService = {
 
     switch (dataset) {
       case "vulnerabilities": {
-        const { nexusRepo } = await import("../repositories/nexus.repo.js");
-        const vulns = await nexusRepo.listVulnerabilities({ page: 1, limit: 10000, ...filters });
-        headers = ["Vulnerability ID", "Severity", "CVSS", "Component", "Status", "Age (days)", "Application ID"];
+        const { unifiedFindingRepo } = await import("../repositories/unifiedFinding.repo.js");
+        const vulns = await unifiedFindingRepo.listFindings({ page: 1, limit: 10000, ...filters });
+        headers = ["ID", "Source Tool", "Severity", "CVSS", "CVE", "Component", "Status", "Age (days)"];
         rows = vulns.data.map((v: any) => ({
-          "Vulnerability ID": v.vulnerabilityId,
-          Severity: v.severity,
-          CVSS: v.cvssScore,
-          Component: v.componentName,
+          ID: v.id,
+          "Source Tool": v.sourceTool,
+          Severity: v.unifiedSeverity,
+          CVSS: v.cvssScore ?? "",
+          CVE: v.cveId ?? "",
+          Component: v.componentName ?? "",
           Status: v.status,
-          "Age (days)": v.ageInDays,
-          "Application ID": v.applicationId,
+          "Age (days)": v.ageInDays ?? "",
         }));
         break;
       }

@@ -47,11 +47,11 @@ INSERT INTO audits (title, type, date, status, lead_auditor) VALUES
 
 -- Some audit findings
 INSERT INTO audit_findings (audit_id, title, description, severity, status, target_entity)
-SELECT id, 'Incomplete access revocation for terminated employees', 'Three terminated employees still had active database access 30 days after termination', 'HIGH', 'OPEN', 'HR Systems'
+SELECT id, 'Incomplete access revocation for terminated employees', 'Three terminated employees still had active database access 30 days after termination', 'HIGH'::finding_severity, 'OPEN'::finding_status, 'HR Systems'
 FROM audits WHERE title = 'User Access Review - Production Systems'
 UNION ALL
-SELECT id, 'No encryption at rest for backup tapes', 'Backup tapes stored offsite are not encrypted', 'CRITICAL', 'CLOSED', 'Backup Infrastructure'
+SELECT id, 'No encryption at rest for backup tapes', 'Backup tapes stored offsite are not encrypted', 'CRITICAL'::finding_severity, 'CLOSED'::finding_status, 'Backup Infrastructure'
 FROM audits WHERE title = 'Encryption Standards Review'
 UNION ALL
-SELECT id, 'Missing DRP documentation for Soliam Cloud', 'Soliam Cloud migration DRP documentation has not been updated since 2024', 'MEDIUM', 'OPEN', 'Soliam Cloud Migration'
+SELECT id, 'Missing DRP documentation for Soliam Cloud', 'Soliam Cloud migration DRP documentation has not been updated since 2024', 'MEDIUM'::finding_severity, 'OPEN'::finding_status, 'Soliam Cloud Migration'
 FROM audits WHERE title = 'Disaster Recovery Plan Test - Q2';

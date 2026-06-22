@@ -13,6 +13,7 @@ export const queues = {
   waiverExpiry: new Queue("waiver-expiry", { connection }),
   emailNotify: new Queue("email-notify", { connection }),
   kpiRecalc: new Queue("kpi-recalc", { connection }),
+  enrichment: new Queue("enrichment", { connection }),
 };
 
 export async function startWorkers() {

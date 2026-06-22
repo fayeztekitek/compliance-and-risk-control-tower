@@ -55,3 +55,47 @@ export function useDashboardTrends(months = 12) {
     staleTime: 60_000,
   });
 }
+
+export function useMttr() {
+  return useQuery({
+    queryKey: ["dashboard", "mttr"],
+    queryFn: async () => {
+      const { data } = await dashboardApi.mttr();
+      return data.data;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useSlaBreach() {
+  return useQuery({
+    queryKey: ["dashboard", "sla"],
+    queryFn: async () => {
+      const { data } = await dashboardApi.slaBreach();
+      return data.data;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useDistinctVsOccurrences() {
+  return useQuery({
+    queryKey: ["dashboard", "distinct-occurrences"],
+    queryFn: async () => {
+      const { data } = await dashboardApi.distinctVsOccurrences();
+      return data.data;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useCompliancePosture() {
+  return useQuery({
+    queryKey: ["dashboard", "compliance"],
+    queryFn: async () => {
+      const { data } = await dashboardApi.compliancePosture();
+      return data.data;
+    },
+    staleTime: 60_000,
+  });
+}

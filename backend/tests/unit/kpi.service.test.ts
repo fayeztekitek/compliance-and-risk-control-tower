@@ -34,6 +34,7 @@ describe("KPI Service", () => {
       "totalProjects", "deviatingProjects", "budgetOverrunProjects",
       "activeWaivers", "productsRed", "productsOrange", "productsGreen",
       "globalRiskScore", "complianceScore", "securityDebtScore",
+      "distinctFindings", "totalOccurrences", "occurrenceRatio",
     ];
     for (const key of expectedKeys) {
       expect(kpis).toHaveProperty(key);

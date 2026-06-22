@@ -7,6 +7,12 @@ import NotFoundPage from "./pages/NotFoundPage";
 import VegGovernanceWorkspace from "./pages/VegGovernanceWorkspace";
 import SecurityGovernanceWorkspace from "./pages/SecurityGovernanceWorkspace";
 import ExecutiveDashboard from "./pages/ExecutiveDashboard";
+import RoadmapWorkspace from "./pages/RoadmapWorkspace";
+import SaaSGovernanceWorkspace from "./pages/SaaSGovernanceWorkspace";
+import AuditWorkspace from "./pages/AuditWorkspace";
+import CommitteeWorkspace from "./pages/CommitteeWorkspace";
+import AdminWorkspace from "./pages/AdminWorkspace";
+import NexusOverview from "./pages/NexusOverview";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import ToastContainer from "./components/ui/Toast";
 
@@ -66,20 +72,41 @@ export default function App() {
                         <SecurityGovernanceWorkspace />
                       </ErrorBoundary>
                     )}
-                    {currentView !== "dashboard" && currentView !== "veg" && currentView !== "security" && (
-                      <>
-                        <h2 className="text-2xl font-bold text-slate-800 mb-4">
-                          {currentView === "nexus" && "Nexus IQ Connector"}
-                          {currentView === "roadmaps" && "Roadmaps & Projects"}
-                          {currentView === "saas" && "SaaS Governance"}
-                          {currentView === "audits" && "Audits & Contracts"}
-                          {currentView === "committees" && "Committees"}
-                          {currentView === "admin" && "Administration"}
-                        </h2>
-                        <p className="text-slate-500">
-                          Workspace content will be implemented in subsequent sprints.
-                        </p>
-                      </>
+                    {currentView === "roadmaps" && (
+                      <ErrorBoundary>
+                        <RoadmapWorkspace />
+                      </ErrorBoundary>
+                    )}
+                    {currentView === "saas" && (
+                      <ErrorBoundary>
+                        <SaaSGovernanceWorkspace />
+                      </ErrorBoundary>
+                    )}
+                    {currentView === "audits" && (
+                      <ErrorBoundary>
+                        <AuditWorkspace />
+                      </ErrorBoundary>
+                    )}
+                    {currentView === "committees" && (
+                      <ErrorBoundary>
+                        <CommitteeWorkspace />
+                      </ErrorBoundary>
+                    )}
+                    {currentView === "admin" && (
+                      <ErrorBoundary>
+                        <AdminWorkspace />
+                      </ErrorBoundary>
+                    )}
+                    {currentView === "nexus" && (
+                      <ErrorBoundary>
+                        <NexusOverview />
+                      </ErrorBoundary>
+                    )}
+                    {currentView !== "dashboard" && currentView !== "veg" && currentView !== "security" && currentView !== "nexus" && currentView !== "roadmaps" && currentView !== "saas" && currentView !== "audits" && currentView !== "committees" && currentView !== "admin" && (
+                      <div className="text-center py-16 text-slate-500">
+                        <p className="text-lg font-medium">Workspace not found</p>
+                        <p className="text-sm mt-1">The requested view does not exist.</p>
+                      </div>
                     )}
                   </div>
                 </main>

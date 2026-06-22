@@ -150,6 +150,36 @@ export const projectRepo = {
     return Math.min(score, 100);
   },
 
+  async getAudit(id: string) {
+    const r = await query("SELECT id,created_at,updated_at,title,type,date,status,lead_auditor FROM audits WHERE id=$1 AND deleted_at IS NULL", [id]);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async updateFinding(id: string, data: any) {
+    const fields: string[] = []; const params: any[] = []; let idx = 1;
+    const map: Record<string, string> = { title: "title", description: "description", severity: "severity", status: "status", targetEntity: "target_entity" };
+    for (const [k, c] of Object.entries(map)) { if (data[k] !== undefined) { fields.push(`${c}=$${idx++}`); params.push(data[k]); } }
+    if (!fields.length) return null;
+    params.push(id);
+    const r = await query(`UPDATE audit_findings SET ${fields.join(",")} WHERE id=$${idx} RETURNING id,created_at,updated_at,audit_id,title,description,severity,status,target_entity`, params);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async listCapa(auditId: string) {
+    return (await query(
+      `SELECT ca.id,ca.created_at,ca.updated_at,ca.finding_id,ca.description,ca.owner,ca.due_date,ca.status,ca.completion_date,ca.evidence_description FROM corrective_actions ca JOIN audit_findings af ON ca.finding_id = af.id WHERE af.audit_id=$1 ORDER BY ca.created_at DESC`,
+      [auditId]
+    )).rows;
+  },
+
+  async createCapa(auditId: string, data: any) {
+    const finding = await query("INSERT INTO audit_findings (audit_id, title, description, severity) VALUES ($1,$2,$3,$4) RETURNING id",
+      [auditId, data.description ? data.description.substring(0, 255) : "Corrective Action", data.description || null, "MEDIUM"]);
+    const r = await query("INSERT INTO corrective_actions (finding_id, description, owner, due_date) VALUES ($1,$2,$3,$4) RETURNING id,created_at,updated_at,finding_id,description,owner,due_date,status,completion_date,evidence_description",
+      [finding.rows[0].id, data.description, data.owner || null, data.dueDate]);
+    return r.rows[0];
+  },
+
   // ========== Audits ==========
   async listAudits() {
     const r = await query("SELECT id,created_at,updated_at,title,type,date,status,lead_auditor,deleted_at FROM audits WHERE deleted_at IS NULL ORDER BY created_at DESC");
@@ -237,6 +267,31 @@ export const projectRepo = {
     const r = await query("INSERT INTO committee_decisions (committee_id, title, context, outcome, owner, comments) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,created_at,updated_at,committee_id,title,context,outcome,owner,comments",
       [committeeId, data.title, data.context || null, data.outcome, data.owner || null, data.comments || null]);
     return r.rows[0];
+  },
+
+  async getCommittee(id: string) {
+    const r = await query("SELECT id,created_at,updated_at,name,date,time,type,status,participants,agenda,minutes FROM committees WHERE id=$1 AND deleted_at IS NULL", [id]);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async listCommitteeObligations(committeeId: string) {
+    return (await query("SELECT id,created_at,updated_at,title,source_contract,requirement,frequency,last_verified_date,status,verified_by,deleted_at FROM contractual_obligations WHERE deleted_at IS NULL ORDER BY created_at DESC")).rows;
+  },
+
+  async createCommitteeObligation(committeeId: string, data: any) {
+    const r = await query("INSERT INTO contractual_obligations (title, source_contract, requirement, frequency) VALUES ($1,$2,$3,$4) RETURNING id,created_at,updated_at,title,source_contract,requirement,frequency,last_verified_date,status,verified_by",
+      [data.title, data.sourceContract || null, data.requirement, data.frequency || null]);
+    return r.rows[0];
+  },
+
+  async updateObligation(id: string, data: any) {
+    const fields: string[] = []; const params: any[] = []; let idx = 1;
+    const map: Record<string, string> = { title: "title", sourceContract: "source_contract", requirement: "requirement", frequency: "frequency", status: "status" };
+    for (const [k, c] of Object.entries(map)) { if (data[k] !== undefined) { fields.push(`${c}=$${idx++}`); params.push(data[k]); } }
+    if (!fields.length) return null;
+    params.push(id);
+    const r = await query(`UPDATE contractual_obligations SET ${fields.join(",")} WHERE id=$${idx} RETURNING id,created_at,updated_at,title,source_contract,requirement,frequency,last_verified_date,status,verified_by`, params);
+    return r.rows.length ? r.rows[0] : null;
   },
 
   // ========== Contractual Obligations ==========

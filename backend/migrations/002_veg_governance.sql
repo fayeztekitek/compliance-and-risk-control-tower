@@ -56,7 +56,7 @@ CREATE TABLE opportunities (
 
 CREATE INDEX idx_opp_veg ON opportunities(veg_request_id);
 
-CREATE TYPE compliance_status AS ENUM ('COMPLIANT', 'NON_COMPLIANT', 'WARNING');
+CREATE TYPE compliance_status AS ENUM ('COMPLIANT', 'NON_COMPLIANT', 'WARNING', 'OVERDUE');
 
 CREATE TABLE contracts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

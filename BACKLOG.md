@@ -1,59 +1,163 @@
-# Enhancement Backlog
+# Enhancement Backlog — Consolidated Plan
 
-Enhancements identified during sprints, deferred to post-sprint-7 for implementation.
+Enhancements identified from deferred backlog + original spec gaps, organized into themes.
 
 ---
 
-## Sprint 0 — Foundation
-- (none)
+## Theme A: Seed Data & Demo Readiness
 
-## Sprint 1 — Auth & RBAC
-- (none)
+Priority: High | Effort: Low | Dependency: None
 
-## Sprint 2 — VEG Governance
-- [ ] **Seed data:** Add 30-50 VEG seed records so the list page isn't empty on first load
-- [ ] **Pagination UX:** Add page number buttons and page size selector (currently Prev/Next only)
-- [ ] **Loading skeletons:** Replace spinner with skeleton rows matching table structure
-- [ ] **Error toasts:** Show user-friendly API error messages (Snackbar/toast component)
-- [ ] **react-hook-form integration:** Wire up Opportunity/Contract forms with `@hookform/resolvers` for proper validation
-- [ ] **Empty state CTA:** Add "Create your first request" button when list is empty
+| Item | Origin | Status |
+|------|--------|--------|
+| 30-50 VEG seed records (requests, opps, contracts) | Backlog Sprint 2 | ❌ |
+| Vulnerability, waiver, risk acceptance seed records | Backlog Sprint 3 | ❌ |
+| Nexus product, application, vulnerability seed records | Backlog Sprint 5 | ❌ |
+| Audit, committee, finding seed records | Backlog Sprint 4 | ✅ (009_seed_data.sql exists) |
+| Roadmap/project seed data | Original spec | ✅ (auto-seeded on startup) |
 
-## Sprint 3 — Security Governance
-- [ ] **Seed data:** Add vulnerability, waiver, risk acceptance seed records
-- [ ] **Real-time SLA breach notifications:** Toast/alert when SLA overdue detected
-- [ ] **Scan import UI polish:** Show parse error details, preview rows before import
-- [ ] **Bulk operations:** Select multiple vulns for bulk status change or waiver
+**Files affected:** `backend/migrations/010_seed_veg.sql`, `011_seed_security.sql`, `012_seed_nexus.sql`
 
-## Sprint 4 — Projects, Roadmaps, SaaS, Audits
-- [ ] **Frontend pages:** Projects list/detail, SaaS lifecycle, audit trail, committee calendar
-- [ ] **Seed data:** Add project, roadmap, audit, committee seed records
-- [ ] **Gantt chart:** Visual roadmap timeline view
-- [ ] **SaaS cost tracking:** Currency conversion, cost trend chart
-- [ ] **CAPA evidence upload:** File attachment support for corrective actions
+---
 
-## Sprint 5 — Nexus IQ & Background Jobs
-- [ ] **Frontend pages:** Nexus dashboard, product list, vulnerability explorer, waiver manager
-- [ ] **BullMQ monitoring UI:** Dashboard showing queue depth, job status, retry counts
-- [ ] **Seed data:** Add nexus product, application, vulnerability seed records
-- [ ] **Slack/email integration:** Real notifications from email-notify queue
-- [ ] **Nexus sync scheduling UI:** Cron expression picker for sync frequency
+## Theme B: Missing Frontend Pages
 
-## Sprint 6 — Executive Dashboard & KPIs
-- [ ] **Frontend:** Executive Dashboard workspace page (KPI card grid, 5x5 heatmap, KRI panel, charts)
-- [ ] **Recharts integration:** Bar chart (scanner count), area chart (RTD trends), heatmap (severity×age), pie/radar (risk distribution)
-- [ ] **Export buttons:** Wire CSV + PDF download buttons in frontend
-- [ ] **KPI recalculation job (BullMQ):** Wire up kpi-recalc queue with 15-min cron
-- [ ] **Historical KPI archive job:** Daily snapshot persistence
-- [ ] **Dashboard cache invalidation:** Bust cache on data mutation events
+Priority: High | Effort: High | Dependency: Backend APIs exist
 
-## Sprint 7 — Final Integration (OpenAPI, Docs, Polish)
-- [ ] **OpenAPI spec:** Generate from route metadata (zod-to-openapi or swagger-jsdoc)
-- [ ] **TypeScript client:** Generate from OpenAPI spec, replace manual API client
-- [ ] **API documentation page:** Swagger UI or Scalar
-- [ ] **Error boundaries:** React error boundaries for each workspace
-- [ ] **Loading skeletons:** Consistent skeleton loading pattern across all pages
-- [ ] **Empty states:** "Create first X" CTA for every list page
-- [ ] **Keyboard navigation:** Tab order, shortcuts for common actions
-- [ ] **Dark mode:** CSS variable toggle, persist preference
-- [ ] **i18n preparation:** Extract strings, add locale switcher
-- [ ] **Performance audit:** Lazy load routes, memoize selectors, bundle analysis
+| Page | Backend Ready | Frontend |
+|------|-------------|----------|
+| **Projects** — list, detail, RTD review, budget view | ✅ Sprint 4 | ❌ |
+| **SaaS Lifecycle** — onboarding/go-live/offboarding, readiness score | ✅ Sprint 4 | ❌ |
+| **Audits** — plan, evidence, findings, CAPA | ✅ Sprint 4 | ❌ |
+| **Committees** — calendar, agenda, decisions, minutes | ✅ Sprint 4 | ❌ |
+| **Nexus IQ** — product list, vuln explorer, waiver manager, sync dashboard | ✅ Sprint 5 | ❌ |
+| **Administration** — users, roles, permissions, KPI thresholds | ✅ Sprint 1 | ❌ |
+
+**Implementation pattern for each page:**
+- `frontend/src/api/{module}.api.ts` — API client
+- `frontend/src/hooks/use{Module}.ts` — TanStack Query hooks
+- `frontend/src/pages/{Module}/...` — React pages with search/filter/pagination
+- `frontend/src/components/ui/` — reused Skeleton, EmptyState, Toast, ErrorBoundary
+
+**Estimated effort:** 2–3 pages per sprint, ~3 sprints total.
+
+---
+
+## Theme C: Notifications & Integrations
+
+Priority: Medium | Effort: High | Dependency: BullMQ queues already defined
+
+| Item | Backend | Frontend |
+|------|---------|----------|
+| **Slack integration** for email-notify queue | ✅ queue exists, unwired | ❌ webhook config |
+| **Email sending** (nodemailer or SendGrid) | ✅ queue exists, unwired | ❌ |
+| **Real-time SLA breach alerts** → toast/notification | ❌ service logic partial | ❌ |
+| **BullMQ monitoring UI** (queue depth, job status, retry) | ❌ | ❌ (use Bull Board or custom) |
+| **Nexus sync scheduling UI** (cron picker) | ❌ | ❌ |
+
+**Architecture:** Wire BullMQ workers → add notification router → frontend polls SSE or uses WebSocket for real-time alerts.
+
+---
+
+## Theme D: UX Polish & Enterprise Features
+
+Priority: Medium | Effort: Medium | Dependency: None
+
+| Item | Origin | Notes |
+|------|--------|-------|
+| react-hook-form + zod resolver on all forms | Backlog Sprint 2 | Replace manual `useState` |
+| Pagination UX — page buttons, page size selector | Backlog Sprint 2 | Currently Prev/Next only |
+| Scan import UI — parse errors, preview rows | Backlog Sprint 3 | Currently basic textarea |
+| Bulk operations — select vulns, bulk status/waiver | Backlog Sprint 3 | ❌ |
+| Gantt chart for roadmap timeline | Backlog Sprint 4 | Use `@neodrag/gantt` or similar |
+| SaaS cost tracking — currency, trend chart | Backlog Sprint 4 | ❌ |
+| CAPA evidence file upload | Backlog Sprint 4 | ❌ |
+| Keyboard navigation — tab order, shortcuts | Backlog Sprint 7 | ❌ |
+| Dark mode — CSS variables, persist preference | Backlog Sprint 7 | ❌ |
+| i18n — extract strings, locale switcher | Backlog Sprint 7 | ❌ |
+| Performance audit — lazy routes, memoize, bundle analysis | Backlog Sprint 7 | ❌ |
+
+---
+
+## Theme E: Access & Identity Management
+
+Priority: Medium | Effort: High | Dependency: New module
+
+| Item | Description |
+|------|-------------|
+| **Access review module** — least privilege checks | New tables: `access_reviews`, `access_findings`, `dormant_accounts` |
+| **Role change recalibration** — auto-revoke on role change | ❌ |
+| **Dormant account detection** — 90d inactivity threshold | ❌ |
+| **Staff/subcontractor access audits** — quarterly workflow | Original spec — quarterly audits |
+
+---
+
+## Theme F: Dashboard & KPI Hardening
+
+Priority: Low | Effort: Medium | Dependency: None
+
+| Item | Notes |
+|------|-------|
+| Wire kpi-recalc BullMQ queue with 15-min cron | Queue exists, worker unwired |
+| Historical KPI snapshot archive job (daily) | ❌ |
+| Dashboard cache invalidation on data mutation | ❌ |
+| Export buttons wire CSV + PDF in frontend | Backend endpoints exist, frontend buttons exist but unwired |
+
+---
+
+## Theme G: Business Process Features (Original Spec Gaps)
+
+Priority: Low | Effort: High | Dependency: Business requirements
+
+| Item | Description |
+|------|-------------|
+| **Chronos integration** — man-days monitoring, auto-create project after contract signature | External system API |
+| **Awareness & training campaigns** — e-learning module, target audience tracking | New module |
+| **BD Request → ACC code creation** — workflow extension | Extends VEG workflow |
+| **Privacy by Design / GDPR** — "to be initiated" items | Extends SaaS privacy module |
+| **Continuous monitoring** — real-time control effectiveness | Requires dashboard refresh |
+
+---
+
+## Proposed Sprint Plan
+
+| Sprint | Theme | Deliverables |
+|--------|-------|-------------|
+| **Sprint 8** | **A + B (first half)** | Seed data all modules + Projects frontend + SaaS frontend |
+| **Sprint 9** | **B (second half)** | Audits frontend + Committees frontend + Admin page |
+| **Sprint 10** | **C + F** | Notifications (Slack/email/SLA), BullMQ wiring, dashboard hardening |
+| **Sprint 11** | **D** | UX polish (forms, pagination, Gantt, bulk, dark mode, i18n) |
+| **Sprint 12** | **E + G** | Access & Identity module + Business process features |
+| **Sprint 13** | **Nexus frontend** | Nexus product/vuln/waiver/sync pages |
+
+---
+
+## Summary of All Incomplete Items
+
+| # | Item | Priority | Effort | Sprint |
+|---|------|----------|--------|--------|
+| 1 | Seed data (VEG, Security, Nexus) | 🔴 High | Small | 8 |
+| 2 | Projects frontend page | 🔴 High | Medium | 8 |
+| 3 | SaaS Lifecycle frontend page | 🔴 High | Medium | 8 |
+| 4 | Audits frontend page | 🔴 High | Medium | 9 |
+| 5 | Committees frontend page | 🔴 High | Medium | 9 |
+| 6 | Admin page (users, roles, KPIs) | 🔴 High | Medium | 9 |
+| 7 | Slack/email notifications | 🟡 Medium | Medium | 10 |
+| 8 | Real-time SLA alerts | 🟡 Medium | Medium | 10 |
+| 9 | Wire BullMQ kpi-recalc + archive | 🟡 Medium | Small | 10 |
+| 10 | Dashboard cache invalidation | 🟡 Medium | Small | 10 |
+| 11 | react-hook-form + zod on forms | 🟡 Medium | Medium | 11 |
+| 12 | Pagination UX (page selector) | 🟡 Medium | Small | 11 |
+| 13 | Gantt chart for roadmaps | 🟢 Low | Medium | 11 |
+| 14 | Dark mode | 🟢 Low | Small | 11 |
+| 15 | i18n | 🟢 Low | Medium | 11 |
+| 16 | Bulk operations (vulns) | 🟡 Medium | Medium | 11 |
+| 17 | CAPA evidence upload | 🟢 Low | Small | 11 |
+| 18 | Keyboard navigation | 🟢 Low | Small | 11 |
+| 19 | Performance audit | 🟢 Low | Small | 11 |
+| 20 | Access & Identity module | 🟡 Medium | Large | 12 |
+| 21 | Chronos integration | 🟢 Low | Large | 12 |
+| 22 | Awareness & training module | 🟢 Low | Large | 12 |
+| 23 | BD Request → ACC code | 🟢 Low | Medium | 12 |
+| 24 | Nexus frontend pages | 🟡 Medium | Large | 13 |
+| 25 | BullMQ monitoring UI | 🟢 Low | Medium | 13 |

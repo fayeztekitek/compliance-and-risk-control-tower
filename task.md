@@ -17,7 +17,15 @@
 | Sprint 5 | Nexus IQ & Background Jobs (BullMQ, risk scoring, sync) | 20 |
 | Sprint 6 | Executive Dashboard & KPI Engine (16 KPIs, 4 KRIs, 5x5 heatmap) | 10 |
 | Sprint 7 | Production Hardening & OpenAPI + Frontend UX + Dashboard page | 9 |
+| Sprint 8 | Seed Data + Backend Routes + Frontend Pages (Roadmaps, SaaS, Audits, Committees, Admin) | 0 |
 | **Total** | | **143+** |
+
+## Sprint 8 Deliverables
+- Seed migrations 010-012 (VEG, Security, Nexus)
+- Bug fixes: login UUIDs, KPI query, enum casts, startup call
+- Backend routes: audit, committee, admin
+- Frontend pages: Roadmaps, SaaS Lifecycle, Audits, Committees, Admin
+- All 143 tests passing (14.61s)
 
 ## Default Credentials
 
@@ -35,3 +43,5 @@
 - Directory name `&` breaks npm script resolution on Windows (use full paths)
 - `npm audit`: 1 low (esbuild in vitest, Windows only) ; 1 high (xlsx, client-side only)
 - Git push may require retry on intermittent timeout
+- Seed counts may be tripled (migrations 010-012 lack dedup for re-runs)
+- Backend cannot spawn child processes (`uv_spawn EPERM`)

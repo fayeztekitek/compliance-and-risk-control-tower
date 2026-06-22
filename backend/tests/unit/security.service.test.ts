@@ -4,24 +4,26 @@ import { NotFoundError, ValidationError } from "../../src/core/errors";
 
 vi.mock("../../src/repositories/security.repo", () => ({
   securityRepo: {
-    listVulnerabilities: vi.fn().mockResolvedValue({ data: [{ id: "v1", title: "Test Vuln", status: "OPEN" }], total: 1, page: 1, limit: 20 }),
-    getVulnerability: vi.fn().mockImplementation((id: string) =>
-      id === "known" ? { id: "known", title: "Known Vuln", status: "OPEN", severity: "HIGH", sourceScanner: "VERACODE", slaDueDate: "2026-12-31", targetProduct: "App", owner: "dev" } : null
-    ),
-    createVulnerability: vi.fn().mockImplementation((d: any) => ({ id: "new", ...d, status: "OPEN" })),
-    updateVulnerability: vi.fn().mockImplementation((id: string, d: any) => ({ id, ...d })),
-    setFalsePositive: vi.fn().mockImplementation((id: string, exp: string) => ({ id, status: "FALSE_POSITIVE", isFalsePositive: true, explanationFalsePositive: exp })),
     listWaivers: vi.fn().mockResolvedValue([]),
     createWaiver: vi.fn().mockImplementation((d: any) => ({ id: "w1", ...d, status: "PENDING" })),
-    updateWaiverStatus: vi.fn().mockImplementation((id: string, status: string) => ({ id, status })),
+    updateWaiverStatus: vi.fn().mockImplementation((id: string, status: string) => ({ id, status, vulnerability_id: "v1" })),
     listRiskAcceptances: vi.fn().mockResolvedValue([]),
     createRiskAcceptance: vi.fn().mockImplementation((d: any) => ({ id: "ra1", ...d, status: "PENDING" })),
-    updateRiskAcceptanceStatus: vi.fn().mockImplementation((id: string, status: string) => ({ id, status })),
+    updateRiskAcceptanceStatus: vi.fn().mockImplementation((id: string, status: string) => ({ id, status, vulnerability_id: "v1" })),
     listSlaIncidents: vi.fn().mockResolvedValue([{ id: "sla1", title: "Breach", status: "OPEN" }]),
     createSlaIncident: vi.fn().mockImplementation((d: any) => ({ id: "sla-new", ...d })),
-    batchImportVulnerabilities: vi.fn().mockResolvedValue(["imported-1", "imported-2"]),
-    linkWaiver: vi.fn().mockResolvedValue(undefined),
-    linkRiskAcceptance: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
+vi.mock("../../src/repositories/unifiedFinding.repo", () => ({
+  unifiedFindingRepo: {
+    listFindings: vi.fn().mockResolvedValue({ data: [{ id: "v1", title: "Test Vuln", status: "OPEN", unifiedSeverity: "HIGH" }], total: 1, page: 1, limit: 20 }),
+    getFinding: vi.fn().mockImplementation((id: string) =>
+      id === "known" ? { id: "known", title: "Known Vuln", status: "OPEN", unifiedSeverity: "HIGH", sourceTool: "VERACODE", slaDueDate: "2026-12-31", targetProduct: "App" } : null
+    ),
+    createFinding: vi.fn().mockImplementation((d: any) => ({ id: "new", ...d, status: "OPEN" })),
+    updateFinding: vi.fn().mockImplementation((id: string, d: any) => ({ id, ...d })),
+    bulkUpsertFindings: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -58,13 +60,15 @@ describe("Security Service (unit)", () => {
   });
 
   it("should enforce status transitions", async () => {
-    const result = await securityService.updateVulnerability("known", { status: "REMEDIATED" });
+    const { unifiedFindingRepo } = await import("../../src/repositories/unifiedFinding.repo");
+    (unifiedFindingRepo.getFinding as any).mockResolvedValueOnce({
+      id: "known", title: "Known Vuln", status: "OPEN", unifiedSeverity: "HIGH", slaDueDate: "2026-12-31", targetProduct: "App",
+    });
+    const result = await securityService.updateVulnerability("known", { status: "FIXED" });
     expect(result.id).toBe("known");
 
-    const { securityRepo } = await import("../../src/repositories/security.repo");
-    (securityRepo.getVulnerability as any).mockResolvedValueOnce({
-      id: "known", title: "Known Vuln", status: "REMEDIATED", severity: "HIGH",
-      sourceScanner: "VERACODE", slaDueDate: "2026-12-31", targetProduct: "App", owner: "dev",
+    (unifiedFindingRepo.getFinding as any).mockResolvedValueOnce({
+      id: "known", title: "Known Vuln", status: "FIXED", unifiedSeverity: "HIGH", slaDueDate: "2026-12-31", targetProduct: "App",
     });
     await expect(securityService.updateVulnerability("known", { status: "FALSE_POSITIVE" })).rejects.toThrow(/cannot transition/i);
   });
@@ -72,7 +76,7 @@ describe("Security Service (unit)", () => {
   it("should set false positive with explanation", async () => {
     const result = await securityService.setFalsePositive("known", "This is a false positive because the code is not reachable");
     expect(result.status).toBe("FALSE_POSITIVE");
-    expect(result.isFalsePositive).toBe(true);
+    expect(result.metadata?.explanation_false_positive).toBe("This is a false positive because the code is not reachable");
   });
 
   it("should create waiver and link to vuln", async () => {
@@ -83,12 +87,13 @@ describe("Security Service (unit)", () => {
 
   it("should approve waiver and update vuln status to WAIVED", async () => {
     const { securityRepo } = await import("../../src/repositories/security.repo");
+    const { unifiedFindingRepo } = await import("../../src/repositories/unifiedFinding.repo");
     (securityRepo.listWaivers as any).mockResolvedValueOnce([{ id: "w1", vulnerability_id: "known" }]);
     (securityRepo.updateWaiverStatus as any).mockResolvedValueOnce({ id: "w1", vulnerability_id: "known", status: "APPROVED" });
 
     const result = await securityService.approveWaiver("w1");
     expect(result.status).toBe("APPROVED");
-    expect(securityRepo.updateVulnerability).toHaveBeenCalledWith("known", { status: "WAIVED" });
+    expect(unifiedFindingRepo.updateFinding).toHaveBeenCalledWith("known", { status: "WAIVED" });
   });
 
   it("should create risk acceptance and link to vuln", async () => {
@@ -98,14 +103,15 @@ describe("Security Service (unit)", () => {
     expect(result.id).toBe("ra1");
   });
 
-  it("should approve risk acceptance and update vuln status to REMEDIATED", async () => {
+  it("should approve risk acceptance and update vuln status to FIXED", async () => {
     const { securityRepo } = await import("../../src/repositories/security.repo");
+    const { unifiedFindingRepo } = await import("../../src/repositories/unifiedFinding.repo");
     (securityRepo.listRiskAcceptances as any).mockResolvedValueOnce([]);
     (securityRepo.updateRiskAcceptanceStatus as any).mockResolvedValueOnce({ id: "ra1", vulnerability_id: "known", status: "APPROVED" });
 
     const result = await securityService.approveRiskAcceptance("ra1");
     expect(result.status).toBe("APPROVED");
-    expect(securityRepo.updateVulnerability).toHaveBeenCalledWith("known", { status: "REMEDIATED" });
+    expect(unifiedFindingRepo.updateFinding).toHaveBeenCalledWith("known", { status: "FIXED" });
   });
 
   it("should list SLA incidents", async () => {
@@ -116,8 +122,9 @@ describe("Security Service (unit)", () => {
 
   it("should detect SLA breaches for overdue OPEN vulns", async () => {
     const { securityRepo } = await import("../../src/repositories/security.repo");
+    const { unifiedFindingRepo } = await import("../../src/repositories/unifiedFinding.repo");
     const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
-    (securityRepo.listVulnerabilities as any).mockResolvedValueOnce({
+    (unifiedFindingRepo.listFindings as any).mockResolvedValueOnce({
       data: [{ id: "v-overdue", title: "Overdue Vuln", status: "OPEN", slaDueDate: yesterday.toISOString().split("T")[0], targetProduct: "App" }],
       total: 1, page: 1, limit: 1000,
     });
@@ -131,11 +138,12 @@ describe("Security Service (unit)", () => {
       { title: "XSS", severity: "HIGH", scanner: "VERACODE", slaDueDate: "2026-09-01", product: "App" },
     ];
     const result = await securityService.importScan(raw);
-    expect(result.imported).toBe(2);
+    expect(result.imported).toBe(1);
   });
 
   it("should check waiver expiry and auto-expire", async () => {
     const { securityRepo } = await import("../../src/repositories/security.repo");
+    const { unifiedFindingRepo } = await import("../../src/repositories/unifiedFinding.repo");
     vi.mocked(securityRepo.listWaivers).mockReset();
     vi.mocked(securityRepo.listWaivers).mockResolvedValue([]);
     const past = new Date(); past.setDate(past.getDate() - 1);
@@ -147,5 +155,6 @@ describe("Security Service (unit)", () => {
 
     await securityService.checkWaiverExpiry();
     expect(securityRepo.updateWaiverStatus).toHaveBeenCalledWith("w-expired", "EXPIRED");
+    expect(unifiedFindingRepo.updateFinding).toHaveBeenCalledWith("v1", { status: "OPEN" });
   });
 });

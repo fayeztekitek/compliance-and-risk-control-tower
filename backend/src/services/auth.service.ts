@@ -168,14 +168,16 @@ export const authService = {
     const existing = await query<{ count: string }>("SELECT COUNT(*) as count FROM users");
     if (parseInt(existing.rows[0].count, 10) > 0) return;
 
+    const { randomUUID } = await import("crypto");
+
     const defaultUsers = [
-      { id: "usr-001", name: "Fayez Tekitek", email: "fayez.tekitek@vermeg.com", role: "ADMIN", password: "admin123!" },
-      { id: "usr-002", name: "Amandine Rousset", email: "amandine.rousset@vermeg.com", role: "COMPLIANCE_OFFICER", password: "compliance123!" },
-      { id: "usr-003", name: "Marc-Antoine Dubois", email: "m.dubois@vermeg.com", role: "RISK_MANAGER", password: "risk123!" },
-      { id: "usr-004", name: "Thomas Lemaire", email: "t.lemaire@vermeg.com", role: "SECURITY_MANAGER", password: "security123!" },
-      { id: "usr-005", name: "Sarah Laroche", email: "s.laroche@vermeg.com", role: "PRODUCT_OWNER", password: "product123!" },
-      { id: "usr-006", name: "Julien Mercer", email: "j.mercer@vermeg.com", role: "AUDITOR", password: "auditor123!" },
-      { id: "usr-007", name: "Jean-Pierre Vermeg", email: "jp.v@vermeg.com", role: "EXECUTIVE_READ_ONLY", password: "exec123!" },
+      { name: "Fayez Tekitek", email: "fayez.tekitek@vermeg.com", role: "ADMIN", password: "admin123!" },
+      { name: "Amandine Rousset", email: "amandine.rousset@vermeg.com", role: "COMPLIANCE_OFFICER", password: "compliance123!" },
+      { name: "Marc-Antoine Dubois", email: "m.dubois@vermeg.com", role: "RISK_MANAGER", password: "risk123!" },
+      { name: "Thomas Lemaire", email: "t.lemaire@vermeg.com", role: "SECURITY_MANAGER", password: "security123!" },
+      { name: "Sarah Laroche", email: "s.laroche@vermeg.com", role: "PRODUCT_OWNER", password: "product123!" },
+      { name: "Julien Mercer", email: "j.mercer@vermeg.com", role: "AUDITOR", password: "auditor123!" },
+      { name: "Jean-Pierre Vermeg", email: "jp.v@vermeg.com", role: "EXECUTIVE_READ_ONLY", password: "exec123!" },
     ];
 
     const client = await pool.connect();
@@ -184,8 +186,8 @@ export const authService = {
       for (const u of defaultUsers) {
         const hash = await bcrypt.hash(u.password, BCRYPT_ROUNDS);
         await client.query(
-          `INSERT INTO users (id, name, email, password_hash, role) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO NOTHING`,
-          [u.id, u.name, u.email, hash, u.role]
+          `INSERT INTO users (id, name, email, password_hash, role) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (email) DO NOTHING`,
+          [randomUUID(), u.name, u.email, hash, u.role]
         );
       }
       await client.query("COMMIT");

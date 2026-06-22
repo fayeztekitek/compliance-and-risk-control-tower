@@ -2,6 +2,7 @@ import { query, getClient } from "../config/database.js";
 
 // ========== Products ==========
 const PRODUCT_COLS = ["id","created_at","updated_at","source_system","sync_batch_id","product_id","name","status","business_criticality","security_owner","product_owner"];
+const PRODUCT_COLS_EXT = [...PRODUCT_COLS, "business_owner", "technical_owner", "organization_id"];
 
 function productRow(r: any) {
   return {
@@ -10,11 +11,13 @@ function productRow(r: any) {
     productId: r.product_id, name: r.name, status: r.status,
     businessCriticality: r.business_criticality,
     securityOwner: r.security_owner, productOwner: r.product_owner,
+    businessOwner: r.business_owner ?? null, technicalOwner: r.technical_owner ?? null,
+    organizationId: r.organization_id ?? null,
   };
 }
 
 // ========== Applications ==========
-const APP_COLS = ["id","created_at","updated_at","source_system","sync_batch_id","application_id","application_public_id","application_name","organization_id","tags","categories","business_criticality","security_owner","product_owner"];
+const APP_COLS = ["id","created_at","updated_at","source_system","sync_batch_id","application_id","application_public_id","application_name","organization_id","tags","categories","business_criticality","security_owner","product_owner","business_owner","technical_owner"];
 
 function appRow(r: any) {
   return {
@@ -25,6 +28,7 @@ function appRow(r: any) {
     tags: r.tags || [], categories: r.categories || [],
     businessCriticality: r.business_criticality,
     securityOwner: r.security_owner, productOwner: r.product_owner,
+    businessOwner: r.business_owner, technicalOwner: r.technical_owner,
   };
 }
 
@@ -77,6 +81,19 @@ function syncLogRow(r: any) {
   };
 }
 
+// ========== Organizations ==========
+const ORG_COLS = ["id","created_at","updated_at","source_system","sync_batch_id","organization_id","organization_name","parent_organization_id","description","compliance_officer"];
+
+function orgRow(r: any) {
+  return {
+    id: r.id, createdAt: r.created_at, updatedAt: r.updated_at,
+    sourceSystem: r.source_system, syncBatchId: r.sync_batch_id,
+    organizationId: r.organization_id, organizationName: r.organization_name,
+    parentOrganizationId: r.parent_organization_id,
+    description: r.description, complianceOfficer: r.compliance_officer,
+  };
+}
+
 // ========== Config ==========
 const CONFIG_COLS = ["id","created_at","updated_at","url","username","token_encrypted","timeout_ms","max_retries","is_active"];
 
@@ -93,11 +110,12 @@ function configRow(r: any) {
 export const nexusRepo = {
   // ---- Products ----
   async listProducts(search?: string) {
+    const cols = PRODUCT_COLS;
     if (search) {
-      const r = await query(`SELECT ${PRODUCT_COLS.join(",")} FROM nexus_products WHERE name ILIKE $1 ORDER BY name`, [`%${search}%`]);
+      const r = await query(`SELECT ${cols.join(",")} FROM nexus_products WHERE name ILIKE $1 ORDER BY name`, [`%${search}%`]);
       return r.rows.map(productRow);
     }
-    const r = await query(`SELECT ${PRODUCT_COLS.join(",")} FROM nexus_products ORDER BY name`);
+    const r = await query(`SELECT ${cols.join(",")} FROM nexus_products ORDER BY name`);
     return r.rows.map(productRow);
   },
 
@@ -108,11 +126,11 @@ export const nexusRepo = {
 
   async upsertProduct(data: any) {
     const r = await query(
-      `INSERT INTO nexus_products (product_id, name, status, business_criticality, security_owner, product_owner, sync_batch_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       ON CONFLICT (product_id) DO UPDATE SET name=$2, status=$3, business_criticality=$4, security_owner=$5, product_owner=$6, sync_batch_id=$7
-       RETURNING ${PRODUCT_COLS.join(",")}`,
-      [data.productId, data.name, data.status, data.businessCriticality, data.securityOwner, data.productOwner, data.syncBatchId]
+      `INSERT INTO nexus_products (product_id, name, status, business_criticality, security_owner, product_owner, sync_batch_id, business_owner, technical_owner, organization_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       ON CONFLICT (product_id) DO UPDATE SET name=$2, status=$3, business_criticality=$4, security_owner=$5, product_owner=$6, sync_batch_id=$7, business_owner=$8, technical_owner=$9, organization_id=$10
+       RETURNING ${PRODUCT_COLS_EXT.join(",")}`,
+      [data.productId, data.name, data.status, data.businessCriticality, data.securityOwner, data.productOwner, data.syncBatchId, data.businessOwner, data.technicalOwner, data.organizationId]
     );
     return productRow(r.rows[0]);
   },
@@ -293,6 +311,92 @@ export const nexusRepo = {
   },
 
   // ---- Alerts ----
+  // ---- Organizations ----
+  async listOrganizations() {
+    const r = await query(`SELECT ${ORG_COLS.join(",")} FROM nexus_organizations ORDER BY organization_name`);
+    return r.rows.map(orgRow);
+  },
+
+  async getOrganization(organizationId: string) {
+    const r = await query(`SELECT ${ORG_COLS.join(",")} FROM nexus_organizations WHERE organization_id = $1`, [organizationId]);
+    return r.rows.length ? orgRow(r.rows[0]) : null;
+  },
+
+  async upsertOrganization(data: any) {
+    const r = await query(
+      `INSERT INTO nexus_organizations (organization_id, organization_name, parent_organization_id, description, compliance_officer, sync_batch_id)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (organization_id) DO UPDATE SET organization_name=$2, parent_organization_id=$3, description=$4, compliance_officer=$5, sync_batch_id=$6
+       RETURNING ${ORG_COLS.join(",")}`,
+      [data.organizationId, data.organizationName, data.parentOrganizationId, data.description, data.complianceOfficer, data.syncBatchId]
+    );
+    return orgRow(r.rows[0]);
+  },
+
+  async updateOrganization(organizationId: string, data: any) {
+    const fields: string[] = []; const params: any[] = []; let idx = 1;
+    if (data.organizationName !== undefined) { fields.push(`organization_name = $${idx++}`); params.push(data.organizationName); }
+    if (data.description !== undefined) { fields.push(`description = $${idx++}`); params.push(data.description); }
+    if (data.complianceOfficer !== undefined) { fields.push(`compliance_officer = $${idx++}`); params.push(data.complianceOfficer); }
+    if (data.parentOrganizationId !== undefined) { fields.push(`parent_organization_id = $${idx++}`); params.push(data.parentOrganizationId); }
+    if (!fields.length) return null;
+    params.push(organizationId);
+    const r = await query(`UPDATE nexus_organizations SET ${fields.join(", ")} WHERE organization_id = $${idx} RETURNING ${ORG_COLS.join(",")}`, params);
+    return r.rows.length ? orgRow(r.rows[0]) : null;
+  },
+
+  // ---- Compliance Posture ----
+  async getCompliancePosture(organizationId: string) {
+    const r = await query(`SELECT * FROM org_compliance_posture WHERE organization_id = $1`, [organizationId]);
+    if (!r.rows.length) return null;
+    const p = r.rows[0];
+    return {
+      id: p.id, createdAt: p.created_at, updatedAt: p.updated_at,
+      organizationId: p.organization_id, snapshotDate: p.snapshot_date,
+      totalFindings: p.total_findings, criticalFindings: p.critical_findings,
+      highFindings: p.high_findings, openFindings: p.open_findings,
+      acceptedRisks: p.accepted_risks, overdueFindings: p.overdue_findings,
+      avgRiskScore: Number(p.avg_risk_score), fixVelocityPct: Number(p.fix_velocity_pct),
+      slaBreachPct: Number(p.sla_breach_pct), complianceScore: Number(p.compliance_score),
+      postureGrade: p.posture_grade, metadata: p.metadata,
+    };
+  },
+
+  async upsertCompliancePosture(organizationId: string, data: any) {
+    const r = await query(
+      `INSERT INTO org_compliance_posture (organization_id, snapshot_date, total_findings, critical_findings, high_findings, open_findings, accepted_risks, overdue_findings, avg_risk_score, fix_velocity_pct, sla_breach_pct, compliance_score, posture_grade)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (organization_id) DO UPDATE SET
+         snapshot_date = EXCLUDED.snapshot_date,
+         total_findings = EXCLUDED.total_findings,
+         critical_findings = EXCLUDED.critical_findings,
+         high_findings = EXCLUDED.high_findings,
+         open_findings = EXCLUDED.open_findings,
+         accepted_risks = EXCLUDED.accepted_risks,
+         overdue_findings = EXCLUDED.overdue_findings,
+         avg_risk_score = EXCLUDED.avg_risk_score,
+         fix_velocity_pct = EXCLUDED.fix_velocity_pct,
+         sla_breach_pct = EXCLUDED.sla_breach_pct,
+         compliance_score = EXCLUDED.compliance_score,
+         posture_grade = EXCLUDED.posture_grade`,
+      [organizationId, data.snapshotDate || new Date().toISOString().split("T")[0], data.totalFindings || 0, data.criticalFindings || 0, data.highFindings || 0, data.openFindings || 0, data.acceptedRisks || 0, data.overdueFindings || 0, data.avgRiskScore || 0, data.fixVelocityPct || 0, data.slaBreachPct || 0, data.complianceScore || 100, data.postureGrade || "GREEN"]
+    );
+    return r.rows[0];
+  },
+
+  async listAllCompliancePostures() {
+    const r = await query("SELECT * FROM org_compliance_posture ORDER BY posture_grade, organization_id");
+    return r.rows.map((p: any) => ({
+      organizationId: p.organization_id, snapshotDate: p.snapshot_date,
+      totalFindings: p.total_findings, criticalFindings: p.critical_findings,
+      highFindings: p.high_findings, openFindings: p.open_findings,
+      acceptedRisks: p.accepted_risks, overdueFindings: p.overdue_findings,
+      avgRiskScore: Number(p.avg_risk_score), fixVelocityPct: Number(p.fix_velocity_pct),
+      slaBreachPct: Number(p.sla_breach_pct), complianceScore: Number(p.compliance_score),
+      postureGrade: p.posture_grade,
+    }));
+  },
+
   async listAlerts(limit = 10) {
     const r = await query("SELECT * FROM nexus_alerts WHERE archived = FALSE ORDER BY timestamp DESC LIMIT $1", [limit]);
     return r.rows.map((a: any) => ({

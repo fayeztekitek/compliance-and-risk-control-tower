@@ -45,22 +45,30 @@ export const projectService = {
 
   // Audits
   async listAudits() { return projectRepo.listAudits(); },
+  async getAudit(id: string) { const a = await projectRepo.getAudit(id); if (!a) throw new NotFoundError("Audit", id); return a; },
   async createAudit(data: any) { return projectRepo.createAudit(data); },
   async updateAudit(id: string, data: any) { const a = await projectRepo.updateAudit(id, data); if (!a) throw new NotFoundError("Audit", id); return a; },
   async deleteAudit(id: string) { return projectRepo.deleteAudit(id); },
   async listFindings(auditId: string) { return projectRepo.listFindings(auditId); },
   async createFinding(auditId: string, data: any) { return projectRepo.createFinding(auditId, data); },
+  async updateFinding(findingId: string, data: any) { const f = await projectRepo.updateFinding(findingId, data); if (!f) throw new NotFoundError("Finding", findingId); return f; },
   async listCorrectiveActions(findingId: string) { return projectRepo.listCorrectiveActions(findingId); },
   async createCorrectiveAction(findingId: string, data: any) { return projectRepo.createCorrectiveAction(findingId, data); },
   async closeCorrectiveAction(id: string, evidence: string) { const ca = await projectRepo.closeCorrectiveAction(id, evidence); if (!ca) throw new NotFoundError("Corrective action", id); return ca; },
+  async listCapa(auditId: string) { return projectRepo.listCapa(auditId); },
+  async createCapa(auditId: string, data: any) { return projectRepo.createCapa(auditId, data); },
 
   // Committees
   async listCommittees() { return projectRepo.listCommittees(); },
+  async getCommittee(id: string) { const c = await projectRepo.getCommittee(id); if (!c) throw new NotFoundError("Committee", id); return c; },
   async createCommittee(data: any) { return projectRepo.createCommittee(data); },
   async updateCommittee(id: string, data: any) { const c = await projectRepo.updateCommittee(id, data); if (!c) throw new NotFoundError("Committee", id); return c; },
   async deleteCommittee(id: string) { return projectRepo.deleteCommittee(id); },
   async listDecisions(committeeId: string) { return projectRepo.listDecisions(committeeId); },
   async recordDecision(committeeId: string, data: any) { return projectRepo.recordDecision(committeeId, data); },
+  async listCommitteeObligations(committeeId: string) { return projectRepo.listCommitteeObligations(committeeId); },
+  async createCommitteeObligation(committeeId: string, data: any) { return projectRepo.createCommitteeObligation(committeeId, data); },
+  async updateObligation(obligationId: string, data: any) { const o = await projectRepo.updateObligation(obligationId, data); if (!o) throw new NotFoundError("Obligation", obligationId); return o; },
 
   // Contractual Obligations
   async listObligations() { return projectRepo.listObligations(); },

@@ -110,4 +110,71 @@ router.get("/trends", async (req: Request, res: Response, next: NextFunction) =>
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /dashboard/mttr:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: MTTR by severity
+ */
+router.get("/mttr", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await kpiService.getMTTR();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/sla-breach:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: SLA breach rate
+ */
+router.get("/sla-breach", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await kpiService.getSLABreachRate();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/distinct-vs-occurrences:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Distinct vs occurrence count
+ */
+router.get("/distinct-vs-occurrences", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await kpiService.getDistinctVsOccurrences();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/compliance-posture:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Compliance posture per organization
+ */
+router.get("/compliance-posture", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const kpis = await kpiService.get16Kpis();
+    const posture = {
+      complianceScore: kpis.complianceScore,
+      slaBreachRate: kpis.slaBreachRate,
+      mttrDays: kpis.mttrDays,
+      totalVulnerabilities: kpis.totalVulnerabilities,
+      openVulnerabilities: kpis.openVulnerabilities,
+      fixedRate: kpis.totalVulnerabilities > 0
+        ? Math.round((kpis.fixedVulnerabilities / kpis.totalVulnerabilities) * 100)
+        : 0,
+      grade: kpis.complianceScore >= 90 ? "GREEN" : kpis.complianceScore >= 70 ? "AMBER" : "RED",
+    };
+    res.json({ data: posture });
+  } catch (err) { next(err); }
+});
+
 export default router;

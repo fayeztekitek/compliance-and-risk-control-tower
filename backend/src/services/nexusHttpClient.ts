@@ -36,7 +36,7 @@ export class NexusHttpClient {
     const targetUrl = `${this.config.url.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
     this.log(`Initiating ${method} request to ${targetUrl}`);
 
-    const isMock = this.config.url.includes("mock-nexus-server") || this.config.url.includes("soft-security");
+    const isMock = this.config.url.includes("mock-nexus-server");
 
     let attempt = 0;
     while (attempt < this.config.maxRetries) {

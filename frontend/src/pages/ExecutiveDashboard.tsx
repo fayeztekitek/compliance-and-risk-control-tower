@@ -8,7 +8,10 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, CartesianGrid,
 } from "recharts";
-import { useExecutiveDashboard, useDashboardTrends } from "../hooks/useDashboard";
+import {
+  useExecutiveDashboard, useDashboardTrends,
+  useMttr, useSlaBreach, useDistinctVsOccurrences, useCompliancePosture,
+} from "../hooks/useDashboard";
 import { useUIStore } from "../store/ui.store";
 import { exportApi } from "../api/export.api";
 import { SkeletonPage } from "../components/ui/Skeleton";
@@ -52,6 +55,10 @@ function downloadBlob(blob: Blob, filename: string) {
 export default function ExecutiveDashboard() {
   const { data: dash, isLoading, error } = useExecutiveDashboard();
   const { data: trends } = useDashboardTrends();
+  const { data: mttr } = useMttr();
+  const { data: sla } = useSlaBreach();
+  const { data: distinctOcc } = useDistinctVsOccurrences();
+  const { data: compliance } = useCompliancePosture();
   const addToast = useUIStore((s) => s.addToast);
   const [chartView, setChartView] = useState<"risk" | "vulns">("risk");
 
@@ -122,6 +129,60 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Enhanced KPI Row (MTTR, SLA, Distinct/Occurrence) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="w-4 h-4 text-indigo-500" />
+            <p className="text-xs font-medium text-slate-500">MTTR (days)</p>
+          </div>
+          <p className="text-xl font-bold text-slate-800">{mttr?.overall ?? "—"}</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Critical: {mttr?.bySeverity?.CRITICAL ?? "—"}d &middot; High: {mttr?.bySeverity?.HIGH ?? "—"}d
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertTriangle className="w-4 h-4 text-rose-500" />
+            <p className="text-xs font-medium text-slate-500">SLA Breach Rate</p>
+          </div>
+          <p className={`text-xl font-bold ${(sla?.breachRate ?? 0) > 20 ? "text-red-600" : (sla?.breachRate ?? 0) > 10 ? "text-amber-600" : "text-emerald-600"}`}>
+            {sla ? `${sla.breachRate}%` : "—"}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">{sla?.breached ?? 0} / {sla?.total ?? 0} overdue</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <BarChart3 className="w-4 h-4 text-blue-500" />
+            <p className="text-xs font-medium text-slate-500">Distinct vs Occurrences</p>
+          </div>
+          <p className="text-xl font-bold text-slate-800">
+            {distinctOcc?.distinctFindings?.toLocaleString() ?? "—"}
+            <span className="text-sm font-normal text-slate-400"> / {distinctOcc?.totalOccurrences?.toLocaleString() ?? "—"}</span>
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            Ratio: {distinctOcc && distinctOcc.totalOccurrences > 0
+              ? (distinctOcc.distinctFindings / distinctOcc.totalOccurrences * 100).toFixed(1)
+              : "—"}%
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Shield className={`w-4 h-4 ${compliance?.grade === "GREEN" ? "text-emerald-500" : compliance?.grade === "AMBER" ? "text-amber-500" : "text-red-500"}`} />
+            <p className="text-xs font-medium text-slate-500">Compliance Posture</p>
+          </div>
+          <p className={`text-xl font-bold ${compliance?.grade === "GREEN" ? "text-emerald-600" : compliance?.grade === "AMBER" ? "text-amber-600" : "text-red-600"}`}>
+            {compliance?.grade ?? "—"}
+          </p>
+          <p className="text-xs text-slate-400 mt-1">
+            Fix rate: {compliance?.fixedRate ?? 0}% &middot; Score: {compliance?.complianceScore ?? 0}
+          </p>
+        </div>
       </div>
 
       {/* KRI Thresholds */}

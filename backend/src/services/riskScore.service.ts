@@ -1,33 +1,38 @@
 export const riskScoreService = {
   calculate(vuln: any, productCriticality: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"): number {
     let score = 0;
-    score += (vuln.cvssScore ?? 0) * 4;
 
-    if (vuln.severity === "CRITICAL") score += 15;
-    else if (vuln.severity === "HIGH") score += 10;
-    else if (vuln.severity === "MEDIUM") score += 5;
-    else score += 2;
+    // CVSS (weight ×2.5, max 25)
+    score += Math.min(25, (vuln.cvssScore ?? 0) * 2.5);
 
-    if (vuln.reachable === "REACHABLE") score += 15;
-    else if (vuln.reachable === "UNKNOWN") score += 5;
+    // EPSS (weight ×30, max 30) — placeholder until enrichment is wired
+    score += Math.min(30, (vuln.epssScore ?? 0) * 30);
 
-    if (vuln.exploitability === "EASY") score += 10;
-    else if (vuln.exploitability === "MEDIUM") score += 6;
-    else if (vuln.exploitability === "HARD") score += 3;
+    // CISA KEV (binary 15)
+    if (vuln.cisaKev) score += 15;
 
-    if ((vuln.ageInDays ?? 0) > 90) score += 10;
-    else if ((vuln.ageInDays ?? 0) > 30) score += 5;
-    else score += 2;
+    // Severity-based floor
+    if (vuln.unifiedSeverity === "CRITICAL") score += 5;
+    else if (vuln.unifiedSeverity === "HIGH") score += 3;
+    else if (vuln.unifiedSeverity === "MEDIUM") score += 1;
 
-    if (productCriticality === "CRITICAL") score += 10;
-    else if (productCriticality === "HIGH") score += 7;
-    else if (productCriticality === "MEDIUM") score += 4;
-    else score += 1;
+    // Reachability (max 10)
+    if (vuln.reachability === "REACHABLE") score += 10;
+    else if (vuln.reachability === "UNKNOWN") score += 3;
 
-    if (vuln.status === "Waived") score -= 15;
-    else if (vuln.status === "Accepted") score -= 10;
+    // Business criticality (max 8)
+    if (productCriticality === "CRITICAL") score += 8;
+    else if (productCriticality === "HIGH") score += 5;
+    else if (productCriticality === "MEDIUM") score += 2;
 
-    if (vuln.fixAvailable && vuln.status === "Open") score += 10;
+    // Age linear gradient (capped at 7)
+    score += Math.min(7, Math.floor((vuln.ageInDays ?? 0) / 10));
+
+    // Fix available = small rebate (max -5)
+    if (vuln.fixAvailable) score -= 5;
+
+    // Waived/Accepted discount
+    if (vuln.status === "WAIVED" || vuln.status === "ACCEPTED") score -= 15;
 
     return Math.min(100, Math.max(0, Math.round(score)));
   },
@@ -45,17 +50,21 @@ export const riskScoreService = {
     return {
       riskScore: avgScore,
       grade,
-      criticalCount: vulnerabilities.filter(v => v.severity === "CRITICAL").length,
-      highCount: vulnerabilities.filter(v => v.severity === "HIGH").length,
-      mediumCount: vulnerabilities.filter(v => v.severity === "MEDIUM").length,
-      lowCount: vulnerabilities.filter(v => v.severity === "LOW").length,
-      securityDebt: vulnerabilities.filter(v => v.status !== "Fixed" && v.status !== "False Positive").length * 4,
-      compliancePercentage: vulnerabilities.length ? Math.round((vulnerabilities.filter(v => v.status === "Fixed" || v.status === "False Positive").length / vulnerabilities.length) * 100) : 100,
-      mttrDays: vulnerabilities.filter(v => v.status === "Fixed").length
-        ? Math.round(vulnerabilities.filter(v => v.status === "Fixed").reduce((sum, v) => sum + (v.ageInDays ?? 0), 0) / vulnerabilities.filter(v => v.status === "Fixed").length)
+      criticalCount: vulnerabilities.filter(v => v.unifiedSeverity === "CRITICAL").length,
+      highCount: vulnerabilities.filter(v => v.unifiedSeverity === "HIGH").length,
+      mediumCount: vulnerabilities.filter(v => v.unifiedSeverity === "MEDIUM").length,
+      lowCount: vulnerabilities.filter(v => v.unifiedSeverity === "LOW").length,
+      securityDebt: vulnerabilities.filter(v => v.status !== "FIXED" && v.status !== "FALSE_POSITIVE").length * 4,
+      compliancePercentage: vulnerabilities.length
+        ? Math.round((vulnerabilities.filter(v => v.status === "FIXED" || v.status === "FALSE_POSITIVE").length / vulnerabilities.length) * 100)
+        : 100,
+      mttrDays: vulnerabilities.filter(v => v.status === "FIXED").length
+        ? Math.round(vulnerabilities.filter(v => v.status === "FIXED").reduce((sum, v) => sum + (v.ageInDays ?? 0), 0) / vulnerabilities.filter(v => v.status === "FIXED").length)
         : 0,
-      fixVelocityPercentage: vulnerabilities.length ? Math.round((vulnerabilities.filter(v => v.fixAvailable).length / vulnerabilities.length) * 100) : 0,
-      activeWaiversCount: vulnerabilities.filter(v => v.status === "Waived").length,
+      fixVelocityPercentage: vulnerabilities.length
+        ? Math.round((vulnerabilities.filter(v => v.fixAvailable).length / vulnerabilities.length) * 100)
+        : 0,
+      activeWaiversCount: vulnerabilities.filter(v => v.status === "WAIVED").length,
       agingStats: {
         under30: vulnerabilities.filter(v => (v.ageInDays ?? 0) <= 30).length,
         "30to60": vulnerabilities.filter(v => (v.ageInDays ?? 0) > 30 && (v.ageInDays ?? 0) <= 60).length,

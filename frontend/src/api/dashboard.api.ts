@@ -52,6 +52,32 @@ export interface ExecutiveDashboard {
   lastUpdated: string;
 }
 
+export interface MttrData {
+  overall: number;
+  bySeverity: Record<string, number>;
+}
+
+export interface SlaBreachData {
+  total: number;
+  breached: number;
+  breachRate: number;
+}
+
+export interface DistinctVsOccurrencesData {
+  distinctFindings: number;
+  totalOccurrences: number;
+}
+
+export interface CompliancePostureData {
+  complianceScore: number;
+  slaBreachRate: number;
+  mttrDays: number;
+  totalVulnerabilities: number;
+  openVulnerabilities: number;
+  fixedRate: number;
+  grade: "GREEN" | "AMBER" | "RED";
+}
+
 export const dashboardApi = {
   executive() {
     return apiClient.get<{ data: ExecutiveDashboard }>("/api/dashboard/executive");
@@ -67,5 +93,17 @@ export const dashboardApi = {
   },
   trends(months = 12) {
     return apiClient.get<{ data: TrendsData }>("/api/dashboard/trends", { params: { months } });
+  },
+  mttr() {
+    return apiClient.get<{ data: MttrData }>("/api/dashboard/mttr");
+  },
+  slaBreach() {
+    return apiClient.get<{ data: SlaBreachData }>("/api/dashboard/sla-breach");
+  },
+  distinctVsOccurrences() {
+    return apiClient.get<{ data: DistinctVsOccurrencesData }>("/api/dashboard/distinct-vs-occurrences");
+  },
+  compliancePosture() {
+    return apiClient.get<{ data: CompliancePostureData }>("/api/dashboard/compliance-posture");
   },
 };
