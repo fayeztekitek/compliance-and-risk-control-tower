@@ -3,6 +3,7 @@ import { vegDealService } from "../services/veg-deal.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { ValidationError } from "../core/errors.js";
+import { vegEventBus } from "../services/veg-events.service.js";
 import { createVegDealSchema, updateVegDealSchema, listVegDealQuerySchema } from "../validation/veg.schema.js";
 
 const router = Router();
@@ -212,6 +213,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = createVegDealSchema.parse(req.body);
     const result = await vegDealService.create(parsed);
+    vegEventBus.emitVegEvent({ type: "veg:deal:created", dealId: result.id, userId: (req as any).user?.id, timestamp: new Date().toISOString() });
     res.status(201).json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));
@@ -254,6 +256,7 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
   try {
     const parsed = updateVegDealSchema.parse(req.body);
     const result = await vegDealService.update(req.params.id, parsed);
+    vegEventBus.emitVegEvent({ type: "veg:deal:updated", dealId: req.params.id, userId: (req as any).user?.id, timestamp: new Date().toISOString() });
     res.json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));

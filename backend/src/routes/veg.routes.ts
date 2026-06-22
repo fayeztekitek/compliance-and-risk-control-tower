@@ -3,6 +3,7 @@ import { vegService } from "../services/veg.service.js";
 import { authMiddleware, AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { ValidationError } from "../core/errors.js";
+import { vegEventBus } from "../services/veg-events.service.js";
 import {
   createVegSchema, updateVegSchema, listVegQuerySchema,
   departmentSignoffSchema, bidDecisionSchema, goNogoSchema,
@@ -93,6 +94,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = createVegSchema.parse(req.body);
     const result = await vegService.create(parsed);
+    vegEventBus.emitVegEvent({ type: "veg:request:created", requestId: result.id, userId: (req as any).user?.id, timestamp: new Date().toISOString() });
     res.status(201).json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));
@@ -121,6 +123,9 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
   try {
     const parsed = updateVegSchema.parse(req.body);
     const result = await vegService.update(req.params.id, parsed);
+    if (parsed.status === "SUBMITTED") {
+      vegEventBus.emitVegEvent({ type: "veg:request:submitted", requestId: req.params.id, userId: (req as any).user?.id, timestamp: new Date().toISOString() });
+    }
     res.json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));
@@ -177,6 +182,13 @@ router.patch("/:id/signoff/:department", async (req: Request, res: Response, nex
   try {
     const parsed = departmentSignoffSchema.parse({ department: req.params.department, ...req.body });
     const result = await vegService.updateDepartmentSignoff(req.params.id, parsed.department, parsed.state);
+    vegEventBus.emitVegEvent({
+      type: "veg:request:signed-off", requestId: req.params.id, userId: (req as any).user?.id,
+      timestamp: new Date().toISOString(), metadata: { department: parsed.department, state: parsed.state },
+    });
+    if (result?.status === "APPROVED") {
+      vegEventBus.emitVegEvent({ type: "veg:request:approved", requestId: req.params.id, userId: (req as any).user?.id, timestamp: new Date().toISOString() });
+    }
     res.json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));
@@ -200,6 +212,7 @@ router.patch("/:id/bid", async (req: Request, res: Response, next: NextFunction)
   try {
     const parsed = bidDecisionSchema.parse(req.body);
     const result = await vegService.updateBidDecision(req.params.id, parsed.decision);
+    vegEventBus.emitVegEvent({ type: "veg:request:bid-decision", requestId: req.params.id, userId: (req as any).user?.id, timestamp: new Date().toISOString(), metadata: { decision: parsed.decision } });
     res.json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));
@@ -223,6 +236,7 @@ router.patch("/:id/gonogo", async (req: Request, res: Response, next: NextFuncti
   try {
     const parsed = goNogoSchema.parse(req.body);
     const result = await vegService.updateGoNoGo(req.params.id, parsed.decision);
+    vegEventBus.emitVegEvent({ type: "veg:request:go-nogo", requestId: req.params.id, userId: (req as any).user?.id, timestamp: new Date().toISOString(), metadata: { decision: parsed.decision } });
     res.json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));

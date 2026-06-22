@@ -28,10 +28,10 @@ These items were deferred from Sprint 7 and are prioritized for Sprint 10:
 - [x] Filename includes date and filter context
 
 ### Backend — VEG Event Bus
-- [ ] Create `veg-events.service.ts` (EventEmitter pattern)
-- [ ] Emit events on: request created/submitted/signed-off/approved/rejected
-- [ ] Emit events on: bid decision, go/nogo decision
-- [ ] Emit events on: deal created/updated
+- [x] Create `veg-events.service.ts` (EventEmitter pattern)
+- [x] Emit events on: request created/submitted/signed-off/approved/rejected
+- [x] Emit events on: bid decision, go/nogo decision
+- [x] Emit events on: deal created/updated
 
 ### Backend — VEG SLA Tracking
 - [ ] Migration 024: add `due_date` to `veg_requests` table
