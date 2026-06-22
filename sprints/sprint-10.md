@@ -10,13 +10,13 @@
 
 These items were deferred from Sprint 7 and are prioritized for Sprint 10:
 
-| # | Item | Effort |
-|---|------|--------|
-| CF-1 | Redis caching for dashboard endpoint (TTL: 60s) | ~2h |
-| CF-2 | API response pagination for all list endpoints | ~4h |
-| CF-3 | DB index review (query plans for slow queries) | ~1h |
-| CF-4 | README.md production setup instructions | ~1h |
-| CF-5 | `.env.example` with ALL required vars documented | ~1h |
+| # | Item | Status | Effort |
+|---|------|--------|--------|
+| CF-1 | Redis caching for dashboard endpoint (TTL: 60s) | ✅ Done | ~2h |
+| CF-2 | API response pagination for all list endpoints | ✅ Done (committees) | ~4h |
+| CF-3 | DB index review (query plans for slow queries) | ✅ Done | ~1h |
+| CF-4 | README.md production setup instructions | ✅ Done | ~1h |
+| CF-5 | `.env.example` with ALL required vars documented | ✅ Done | ~1h |
 
 ---
 

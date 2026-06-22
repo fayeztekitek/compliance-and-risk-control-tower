@@ -5,6 +5,7 @@ import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { ValidationError } from "../core/errors.js";
 import {
   createCommitteeSchema, updateCommitteeSchema, recordDecisionSchema, createContractObligationSchema,
+  listCommitteeQuerySchema,
 } from "../validation/project.schema.js";
 
 const router = Router();
@@ -33,9 +34,13 @@ function zodHandler(fn: (req: Request) => any) {
  */
 router.get("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await projectService.listCommittees();
-    res.json({ data: result });
-  } catch (err) { next(err); }
+    const query = listCommitteeQuerySchema.parse(req.query);
+    const result = await projectService.listCommittees(query);
+    res.json({ data: result.data, total: result.total, page: result.page, limit: result.limit });
+  } catch (err: any) {
+    if (err.name === "ZodError") return next(new ValidationError("Invalid query", err.flatten().fieldErrors));
+    next(err);
+  }
 });
 
 /**

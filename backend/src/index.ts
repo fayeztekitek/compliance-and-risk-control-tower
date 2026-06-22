@@ -66,6 +66,8 @@ authService.seedDefaultUsers().then(() => seedReferenceData()).catch((err) => {
   logger.warn({ err }, "Failed to seed default users");
 });
 
+import("./services/redis.js").then(({ connectRedis }) => connectRedis()).catch(() => {});
+
 import("./services/enrichmentWorker.js").then(({ startEnrichmentWorker }) => {
   startEnrichmentWorker();
 }).catch((err) => {

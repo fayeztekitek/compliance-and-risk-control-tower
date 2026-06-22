@@ -233,8 +233,15 @@ export const projectRepo = {
   },
 
   // ========== Committees ==========
-  async listCommittees() {
-    return (await query("SELECT id,created_at,updated_at,name,date,time,type,status,participants,agenda,minutes FROM committees WHERE deleted_at IS NULL ORDER BY created_at DESC")).rows;
+  async listCommittees(filters: { page: number; limit: number }) {
+    const offset = (filters.page - 1) * filters.limit;
+    const countResult = await query<{ count: string }>("SELECT COUNT(*) as count FROM committees WHERE deleted_at IS NULL");
+    const total = parseInt(countResult.rows[0].count, 10);
+    const dataResult = await query(
+      "SELECT id,created_at,updated_at,name,date,time,type,status,participants,agenda,minutes FROM committees WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+      [filters.limit, offset]
+    );
+    return { data: dataResult.rows, total, page: filters.page, limit: filters.limit };
   },
 
   async createCommittee(data: any) {

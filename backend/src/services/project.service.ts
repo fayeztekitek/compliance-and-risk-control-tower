@@ -59,7 +59,7 @@ export const projectService = {
   async createCapa(auditId: string, data: any) { return projectRepo.createCapa(auditId, data); },
 
   // Committees
-  async listCommittees() { return projectRepo.listCommittees(); },
+  async listCommittees(filters: { page: number; limit: number }) { return projectRepo.listCommittees(filters); },
   async getCommittee(id: string) { const c = await projectRepo.getCommittee(id); if (!c) throw new NotFoundError("Committee", id); return c; },
   async createCommittee(data: any) { return projectRepo.createCommittee(data); },
   async updateCommittee(id: string, data: any) { const c = await projectRepo.updateCommittee(id, data); if (!c) throw new NotFoundError("Committee", id); return c; },
