@@ -6,12 +6,14 @@ import NexusReportDetail from "./NexusReportDetail";
 
 interface Props {
   applicationId: string;
+  applicationName?: string;
   onBack: () => void;
+  onBackToOverview?: () => void;
 }
 
 type AppView = "detail" | "report" | "comparison";
 
-export default function NexusApplicationDetail({ applicationId, onBack }: Props) {
+export default function NexusApplicationDetail({ applicationId, applicationName, onBack, onBackToOverview }: Props) {
   const [appView, setAppView] = useState<AppView>("detail");
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
   const { data: products } = useProducts();
@@ -24,13 +26,17 @@ export default function NexusApplicationDetail({ applicationId, onBack }: Props)
 
   const app = applications?.find((a: any) => a.id === applicationId);
   const product = products?.find((p: any) => p.id === applicationId);
+  const appName = applicationName || app?.name || product?.name || applicationId;
 
   if (appView === "report" && selectedReportId) {
     return (
       <NexusReportDetail
         reportId={selectedReportId}
         applicationId={applicationId}
+        applicationName={appName}
         onBack={() => { setAppView("detail"); setSelectedReportId(null); }}
+        onBackToApp={() => { setAppView("detail"); setSelectedReportId(null); }}
+        onBackToOverview={onBackToOverview}
       />
     );
   }
@@ -50,6 +56,12 @@ export default function NexusApplicationDetail({ applicationId, onBack }: Props)
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-slate-500">
+        {onBackToOverview && <><button onClick={onBackToOverview} className="hover:text-indigo-600">Nexus IQ</button><span>/</span></>}
+        <span className="text-slate-800 font-medium">{appName}</span>
+      </nav>
+
       {/* Header */}
       <div className="flex items-center space-x-4">
         <button onClick={onBack} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
@@ -60,7 +72,7 @@ export default function NexusApplicationDetail({ applicationId, onBack }: Props)
             <Radar className="w-5 h-5 text-indigo-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">{app?.name || product?.name || applicationId}</h1>
+            <h1 className="text-2xl font-bold text-slate-800">{appName}</h1>
             <p className="text-sm text-slate-500">{product?.name || "Application"} Vulnerability Details</p>
           </div>
         </div>

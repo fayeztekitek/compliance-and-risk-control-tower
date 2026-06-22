@@ -382,4 +382,44 @@ router.get("/jobs", async (_req: Request, res: Response, next: NextFunction) => 
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /nexus/findings/{id}/detail:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get finding with all components, occurrences, mitigations, and waivers
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Finding detail with all related data
+ */
+router.get("/findings/:id/detail", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { findingDetailService } = await import("../services/findingDetail.service.js");
+    const result = await findingDetailService.getFindingDetail(req.params.id);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/occurrences/{id}/detail:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get occurrence with component, finding, mitigations, and waivers
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Occurrence detail with all related data
+ */
+router.get("/occurrences/:id/detail", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { findingDetailService } = await import("../services/findingDetail.service.js");
+    const result = await findingDetailService.getOccurrenceDetail(req.params.id);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
 export default router;

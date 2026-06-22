@@ -17,10 +17,13 @@ export default function NexusOverview() {
   const { data: totalOccurrences } = useTotalOccurrences();
 
   if (nexusView === "application" && selectedAppId) {
+    const app = (products || []).find((p: any) => p.id === selectedAppId);
     return (
       <NexusApplicationDetail
         applicationId={selectedAppId}
+        applicationName={app?.name}
         onBack={() => { setNexusView("overview"); setSelectedAppId(null); }}
+        onBackToOverview={() => { setNexusView("overview"); setSelectedAppId(null); }}
       />
     );
   }

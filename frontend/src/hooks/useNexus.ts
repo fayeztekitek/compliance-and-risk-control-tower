@@ -212,3 +212,27 @@ export function useCrossToolSummary() {
     staleTime: 60_000,
   });
 }
+
+export function useFindingDetail(id: string | null) {
+  return useQuery({
+    queryKey: ["nexus", "findingDetail", id],
+    queryFn: async () => {
+      const { data } = await nexusApi.getFindingDetail(id!);
+      return data.data;
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
+export function useOccurrenceDetail(id: string | null) {
+  return useQuery({
+    queryKey: ["nexus", "occurrenceDetail", id],
+    queryFn: async () => {
+      const { data } = await nexusApi.getOccurrenceDetail(id!);
+      return data.data;
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}

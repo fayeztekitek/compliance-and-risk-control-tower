@@ -85,6 +85,50 @@ export interface FindingOccurrence {
   module?: string;
   scope?: string;
   occurrenceStatus: string;
+  firstDetectedDate?: string;
+  lastDetectedDate?: string;
+}
+
+export interface FindingComponent {
+  id: string;
+  groupId?: string;
+  artifactId?: string;
+  version: string;
+  packageUrl?: string;
+  hash?: string;
+  licenseType?: string;
+  componentName?: string;
+}
+
+export interface Mitigation {
+  id: string;
+  findingId: string;
+  mitigationType: string;
+  targetComponentVersion?: string;
+  targetRelease?: string;
+  owner?: string;
+  dueDate?: string;
+  status: string;
+  evidence?: string;
+  verifiedBy?: string;
+  verifiedDate?: string;
+  notes?: string;
+}
+
+export interface FindingDetailResponse {
+  finding: UnifiedFinding;
+  components: FindingComponent[];
+  occurrences: FindingOccurrence[];
+  mitigations: Mitigation[];
+  waivers: any[];
+}
+
+export interface OccurrenceDetailResponse {
+  occurrence: FindingOccurrence;
+  component: FindingComponent | null;
+  finding: UnifiedFinding | null;
+  mitigations: Mitigation[];
+  waivers: any[];
 }
 
 export interface ReportComparison {
@@ -250,5 +294,13 @@ export const nexusApi = {
     return apiClient.get<{
       weekStart: string; newCount: number; fixedCount: number; recurringCount: number;
     }[]>("/api/trends/velocity", { params });
+  },
+
+  // Finding Detail (aggregated)
+  getFindingDetail(id: string) {
+    return apiClient.get<{ data: FindingDetailResponse }>(`/api/nexus/findings/${id}/detail`);
+  },
+  getOccurrenceDetail(id: string) {
+    return apiClient.get<{ data: OccurrenceDetailResponse }>(`/api/nexus/occurrences/${id}/detail`);
   },
 };

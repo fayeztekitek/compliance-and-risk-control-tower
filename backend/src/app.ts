@@ -10,6 +10,7 @@ import { logger } from "./core/logger.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import vegRoutes from "./routes/veg.routes.js";
+import vegDealRoutes from "./routes/veg-deal.routes.js";
 import securityRoutes from "./routes/security.routes.js";
 import projectRoutes from "./routes/project.routes.js";
 import nexusRoutes from "./routes/nexus.routes.js";
@@ -66,6 +67,7 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
 // Routes
 app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/veg", vegRoutes);
+app.use("/api/veg-deals", vegDealRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api", projectRoutes);
 app.use("/api/nexus", nexusRoutes);

@@ -131,3 +131,78 @@ export function useCreateContract() {
     onError: () => addToast({ type: "error", message: "Failed to create contract" }),
   });
 }
+
+// === VEG DEAL hooks ===
+
+import { vegDealApi, VegDealListParams, VegDealStats } from "../api/veg.api";
+
+export function useVegDealList(params?: VegDealListParams) {
+  return useQuery({
+    queryKey: ["veg-deals", "list", params],
+    queryFn: async () => {
+      const { data } = await vegDealApi.list(params);
+      return data;
+    },
+  });
+}
+
+export function useVegDealById(id: string | null) {
+  return useQuery({
+    queryKey: ["veg-deals", id],
+    queryFn: async () => {
+      const { data } = await vegDealApi.getById(id!);
+      return data.data;
+    },
+    enabled: !!id,
+  });
+}
+
+export function useVegDealStats() {
+  return useQuery({
+    queryKey: ["veg-deals", "stats"],
+    queryFn: async () => {
+      const { data } = await vegDealApi.getStats();
+      return data.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useCreateVegDeal() {
+  const qc = useQueryClient();
+  const addToast = useUIStore((s) => s.addToast);
+  return useMutation({
+    mutationFn: (payload: any) => vegDealApi.create(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["veg-deals"] });
+      addToast({ type: "success", message: "VEG deal created" });
+    },
+    onError: () => addToast({ type: "error", message: "Failed to create VEG deal" }),
+  });
+}
+
+export function useUpdateVegDeal() {
+  const qc = useQueryClient();
+  const addToast = useUIStore((s) => s.addToast);
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => vegDealApi.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["veg-deals"] });
+      addToast({ type: "success", message: "VEG deal updated" });
+    },
+    onError: () => addToast({ type: "error", message: "Failed to update VEG deal" }),
+  });
+}
+
+export function useDeleteVegDeal() {
+  const qc = useQueryClient();
+  const addToast = useUIStore((s) => s.addToast);
+  return useMutation({
+    mutationFn: (id: string) => vegDealApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["veg-deals"] });
+      addToast({ type: "success", message: "VEG deal deleted" });
+    },
+    onError: () => addToast({ type: "error", message: "Failed to delete VEG deal" }),
+  });
+}

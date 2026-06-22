@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, AlertTriangle, Bug, ChevronRight, Download, FileText, Filter, Search } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Bug, ChevronRight, FileText, Search } from "lucide-react";
 import { useFindings } from "../hooks/useNexus";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import NexusVulnerabilityDetail from "./NexusVulnerabilityDetail";
@@ -8,7 +8,10 @@ import NexusReportComparison from "./NexusReportComparison";
 interface Props {
   reportId: string;
   applicationId: string;
+  applicationName?: string;
   onBack: () => void;
+  onBackToApp?: () => void;
+  onBackToOverview?: () => void;
 }
 
 type ReportView = "list" | "vulnerability" | "comparison";
@@ -20,7 +23,7 @@ const SEVERITY_COLORS: Record<string, string> = {
   LOW: "text-slate-600 bg-slate-100",
 };
 
-export default function NexusReportDetail({ reportId, applicationId, onBack }: Props) {
+export default function NexusReportDetail({ reportId, applicationId, applicationName, onBack, onBackToApp, onBackToOverview }: Props) {
   const [reportView, setReportView] = useState<ReportView>("list");
   const [selectedVulnId, setSelectedVulnId] = useState<string | null>(null);
   const [severityFilter, setSeverityFilter] = useState<string>("");
@@ -32,7 +35,11 @@ export default function NexusReportDetail({ reportId, applicationId, onBack }: P
     return (
       <NexusVulnerabilityDetail
         findingId={selectedVulnId}
+        reportId={reportId}
         onBack={() => { setReportView("list"); setSelectedVulnId(null); }}
+        onBackToReport={() => { setReportView("list"); setSelectedVulnId(null); }}
+        onBackToApp={onBackToApp}
+        onBackToOverview={onBackToOverview}
       />
     );
   }
@@ -63,6 +70,13 @@ export default function NexusReportDetail({ reportId, applicationId, onBack }: P
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-slate-500">
+        {onBackToOverview && <><button onClick={onBackToOverview} className="hover:text-indigo-600">Nexus IQ</button><span>/</span></>}
+        {onBackToApp && <><button onClick={onBackToApp} className="hover:text-indigo-600">{applicationName || "Application"}</button><span>/</span></>}
+        <span className="text-slate-800 font-medium">Report</span>
+      </nav>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
