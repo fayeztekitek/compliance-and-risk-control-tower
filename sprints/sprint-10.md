@@ -1,8 +1,22 @@
-# Sprint 10: VEG Deal Enhancement + VEG Notifications
+# Sprint 10: VEG Deal Enhancement + VEG Notifications + Platform Catch-up
 
 **Status:** 📋 Planned  
 **Branch:** `sprint-10-veg-enhancements`  
-**Goal:** Improve VEG Deal Register with CSV export, advanced charts, and Executive Dashboard KPIs. Add VEG event bus, SLA tracking, and deadline management.
+**Goal:** Improve VEG Deal Register with CSV export, advanced charts, and Executive Dashboard KPIs. Add VEG event bus, SLA tracking, and deadline management. Also catch up Sprint 7 deferred items (CF-1 through CF-5).
+
+---
+
+## Carried Forward from Sprint 7
+
+These items were deferred from Sprint 7 and are prioritized for Sprint 10:
+
+| # | Item | Effort |
+|---|------|--------|
+| CF-1 | Redis caching for dashboard endpoint (TTL: 60s) | ~2h |
+| CF-2 | API response pagination for all list endpoints | ~4h |
+| CF-3 | DB index review (query plans for slow queries) | ~1h |
+| CF-4 | README.md production setup instructions | ~1h |
+| CF-5 | `.env.example` with ALL required vars documented | ~1h |
 
 ---
 
