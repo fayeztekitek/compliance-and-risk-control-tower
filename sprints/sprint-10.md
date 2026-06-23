@@ -39,8 +39,8 @@ These items were deferred from Sprint 7 and are prioritized for Sprint 10:
 - [x] SLA breach notification event (emitted via vegEventBus)
 
 ### Backend — VEG Deal Enhanced Stats
-- [ ] Year-over-year comparison data in `getStats()`
-- [ ] Monthly TCV trend data endpoint
+- [x] Year-over-year comparison data endpoint
+- [x] Monthly TCV trend data endpoint
 
 ### Backend — Executive Dashboard VEG KPIs
 - [ ] `GET /api/dashboard/veg-kpis` — total deals, total TCV, won count, avg deal size, won rate
@@ -50,16 +50,16 @@ These items were deferred from Sprint 7 and are prioritized for Sprint 10:
 - [ ] Download progress indicator (deferred — window.open approach sufficient)
 
 ### Frontend — Advanced Charts (Dashboard Mode)
-- [ ] TCV trend line chart (Recharts)
-- [ ] Decision distribution pie chart
-- [ ] Regional heatmap
-- [ ] Year-over-year comparison bar chart
+- [x] TCV trend line chart (Recharts)
+- [x] Decision distribution pie chart
+- [x] Regional heatmap
+- [x] Year-over-year comparison bar chart
 
 ### Frontend — Executive Dashboard VEG KPIs
-- [ ] Add VEG Deal KPI card row to ExecutiveDashboard
+- [ ] Add VEG Deal KPI card row to ExecutiveDashboard (deferred)
 
 ### Frontend — VEG SLA Warning
-- [ ] Overdue/due-soon indicators on VEG request detail
+- [ ] Overdue/due-soon indicators on VEG request detail (deferred)
 
 ---
 

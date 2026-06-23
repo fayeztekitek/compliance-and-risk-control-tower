@@ -131,6 +131,44 @@ router.get("/regions", async (_req: Request, res: Response, next: NextFunction) 
 
 /**
  * @openapi
+ * /veg-deals/trends/monthly:
+ *   get:
+ *     tags: [VEG Deals]
+ *     summary: Monthly TCV trend data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Monthly TCV and count by month
+ */
+router.get("/trends/monthly", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await vegDealService.getMonthlyTCVTrend();
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /veg-deals/trends/year-over-year:
+ *   get:
+ *     tags: [VEG Deals]
+ *     summary: Year-over-year comparison
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: YOY TCV and count by year
+ */
+router.get("/trends/year-over-year", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await vegDealService.getYearOverYear();
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
  * /veg-deals/export:
  *   get:
  *     tags: [VEG Deals]

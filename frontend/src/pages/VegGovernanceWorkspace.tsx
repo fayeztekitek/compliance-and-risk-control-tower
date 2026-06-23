@@ -6,11 +6,15 @@ import {
 } from "lucide-react";
 import {
   useVegDealList, useVegDealById, useVegDealStats,
+  useVegDealMonthlyTrend, useVegDealYearOverYear,
   useCreateVegDeal, useUpdateVegDeal, useDeleteVegDeal,
   useVegList, useVegById, useCreateVeg, useUpdateVeg, useDeleteVeg,
   useSignoffVeg, useBidDecision, useGoNoGo,
   useCreateOpportunity, useCreateContract,
 } from "../hooks/useVegRequests";
+import {
+  TcvTrendChart, DecisionPieChart, RegionalHeatmap, YoyBarChart,
+} from "../components/charts/VegDealCharts";
 import type { VegDeal, VegDealListParams, VegRequest, Opportunity, Contract } from "../api/veg.api";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonTable } from "../components/ui/Skeleton";
@@ -157,6 +161,8 @@ export default function VegGovernanceWorkspace({ initialTab = "deals" }: { initi
   const { data: listData, isLoading: listLoading } = useVegDealList(filters);
   const { data: detail } = useVegDealById(selectedId);
   const { data: stats, isLoading: statsLoading } = useVegDealStats();
+  const { data: monthlyTrend } = useVegDealMonthlyTrend();
+  const { data: yoyData } = useVegDealYearOverYear();
   const createDeal = useCreateVegDeal();
   const updateDeal = useUpdateVegDeal();
   const deleteDeal = useDeleteVegDeal();
@@ -345,6 +351,15 @@ export default function VegGovernanceWorkspace({ initialTab = "deals" }: { initi
                 </div>
               </div>
             </div>
+
+            {(monthlyTrend || yoyData) && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {monthlyTrend && <TcvTrendChart data={monthlyTrend} />}
+                {yoyData && <YoyBarChart data={yoyData} />}
+                {stats?.decisions && <DecisionPieChart data={stats.decisions} />}
+                {stats?.regions && <RegionalHeatmap data={stats.regions} />}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl border border-slate-200 p-5">

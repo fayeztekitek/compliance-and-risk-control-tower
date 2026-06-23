@@ -286,6 +286,21 @@ export const vegDealRepo = {
     return result.rows;
   },
 
+  async getMonthlyTCVTrend() {
+    return query<{ month: string; tcv: string; count: string }>(`
+      SELECT TO_CHAR(veg_date, 'YYYY-MM') as month, COALESCE(SUM(tcv), 0)::text as tcv, COUNT(*)::text as count
+      FROM veg_deals GROUP BY month ORDER BY month
+    `);
+  },
+
+  async getYearOverYear() {
+    return query<{ year: string; tcv: string; count: string; won_tcv: string }>(`
+      SELECT veg_year::text as year, COALESCE(SUM(tcv), 0)::text as tcv, COUNT(*)::text as count,
+        COALESCE(SUM(CASE WHEN sales_status = 'Won' THEN tcv ELSE 0 END), 0)::text as won_tcv
+      FROM veg_deals GROUP BY veg_year ORDER BY veg_year
+    `);
+  },
+
   async getTopClients(limit: number = 10) {
     return query<{ client: string; count: string; total_tcv: string }>(`
       SELECT client, COUNT(*)::text as count, COALESCE(SUM(tcv), 0)::text as total_tcv

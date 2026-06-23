@@ -60,6 +60,14 @@ export const vegDealService = {
     return vegDealRepo.getRegionOverview();
   },
 
+  async getMonthlyTCVTrend() {
+    return vegDealRepo.getMonthlyTCVTrend();
+  },
+
+  async getYearOverYear() {
+    return vegDealRepo.getYearOverYear();
+  },
+
   async exportCsv(filters: Omit<VegDealFilters, "page" | "limit">) {
     const rows = await vegDealRepo.exportAll(filters);
     const headers = [
