@@ -104,7 +104,7 @@ export const unifiedFindingRepo = {
 
   async createFinding(data: any) {
     if (!(await checkTableExists())) {
-      return { id: "offline", title: data.title, unifiedSeverity: data.unifiedSeverity, sourceTool: data.sourceTool, status: "OPEN" };
+      return { id: "00000000-0000-0000-0000-000000000001", title: data.title, unifiedSeverity: data.unifiedSeverity, sourceTool: data.sourceTool, status: "OPEN" };
     }
     const cols = ["source_tool", "title", "unified_severity", "detected_date"];
     const vals = ["$1::finding_source", "$2", "$3::severity", "$4"];

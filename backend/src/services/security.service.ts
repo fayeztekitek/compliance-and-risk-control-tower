@@ -66,7 +66,7 @@ export const securityService = {
       metadata: { ...(existing.metadata || {}), explanation_false_positive: explanation },
     });
     if (!result) throw new NotFoundError("Vulnerability", id);
-    return result;
+    return { ...result, isFalsePositive: true };
   },
 
   // ----- Waivers (via legacy security.repo) -----
