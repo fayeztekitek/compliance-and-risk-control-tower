@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/auth.store";
 import Sidebar from "./components/layout/Sidebar";
@@ -17,16 +17,32 @@ const AuditWorkspace = lazy(() => import("./pages/AuditWorkspace"));
 const CommitteeWorkspace = lazy(() => import("./pages/CommitteeWorkspace"));
 const AdminWorkspace = lazy(() => import("./pages/AdminWorkspace"));
 const NexusOverview = lazy(() => import("./pages/NexusOverview"));
+const NexusAppDetail = lazy(() => import("./pages/NexusApplicationDetail"));
+const NexusReportDetail = lazy(() => import("./pages/NexusReportDetail"));
+const NexusVulnerabilityDetail = lazy(() => import("./pages/NexusVulnerabilityDetail"));
+const NexusOccurrenceDetail = lazy(() => import("./pages/NexusOccurrenceDetail"));
 const PolicyRuleWorkspace = lazy(() => import("./pages/PolicyRuleWorkspace"));
 const ComplianceWorkspace = lazy(() => import("./pages/ComplianceWorkspace"));
 
+function AuthLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-screen w-screen bg-slate-50 overflow-hidden font-sans">
+      <Sidebar />
+      <div className="flex-1 flex flex-col h-screen min-w-0">
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-8">
+          <div className="max-w-7xl mx-auto w-full pb-12">
+            <Suspense fallback={<SkeletonPage />}>
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </Suspense>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const { initialize, isAuthenticated, isLoading } = useAuthStore();
-  const [currentView, setCurrentView] = useState("dashboard");
-
-  useEffect(() => {
-    initialize();
-  }, []);
 
   if (isLoading) {
     return (
@@ -52,84 +68,27 @@ export default function App() {
     <>
       <Routes>
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/404" element={<NotFoundPage />} />
-        <Route
-          path="/*"
-          element={
-            <div className="flex h-screen w-screen bg-slate-50 overflow-hidden font-sans">
-              <Sidebar currentView={currentView} onSetView={setCurrentView} />
-              <div className="flex-1 flex flex-col h-screen min-w-0">
-                <main className="flex-1 overflow-y-auto bg-slate-50 p-6 md:p-8">
-                  <div className="max-w-7xl mx-auto w-full pb-12">
-                    <Suspense fallback={<SkeletonPage />}>
-                      {currentView === "dashboard" && (
-                        <ErrorBoundary>
-                          <ExecutiveDashboard />
-                        </ErrorBoundary>
-                      )}
-                      {(currentView === "veg" || currentView === "veg-workflow") && (
-                        <ErrorBoundary>
-                          <VegGovernanceWorkspace initialTab={currentView === "veg-workflow" ? "workflow" : "deals"} />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "security" && (
-                        <ErrorBoundary>
-                          <SecurityGovernanceWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "roadmaps" && (
-                        <ErrorBoundary>
-                          <RoadmapWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "saas" && (
-                        <ErrorBoundary>
-                          <SaaSGovernanceWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "audits" && (
-                        <ErrorBoundary>
-                          <AuditWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "committees" && (
-                        <ErrorBoundary>
-                          <CommitteeWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "admin" && (
-                        <ErrorBoundary>
-                          <AdminWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "nexus" && (
-                        <ErrorBoundary>
-                          <NexusOverview />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "policy-rules" && (
-                        <ErrorBoundary>
-                          <PolicyRuleWorkspace />
-                        </ErrorBoundary>
-                      )}
-                      {currentView === "compliance" && (
-                        <ErrorBoundary>
-                          <ComplianceWorkspace />
-                        </ErrorBoundary>
-                      )}
-                    </Suspense>
-                    {currentView !== "dashboard" && currentView !== "veg" && currentView !== "security" && currentView !== "nexus" && currentView !== "roadmaps" && currentView !== "saas" && currentView !== "audits" && currentView !== "committees" && currentView !== "admin" && currentView !== "policy-rules" && currentView !== "compliance" && (
-                      <div className="text-center py-16 text-slate-500">
-                        <p className="text-lg font-medium">Workspace not found</p>
-                        <p className="text-sm mt-1">The requested view does not exist.</p>
-                      </div>
-                    )}
-                  </div>
-                </main>
-              </div>
-            </div>
-          }
-        />
+        <Route path="/404" element={<AuthLayout><NotFoundPage /></AuthLayout>} />
+        <Route path="/dashboard" element={<AuthLayout><ExecutiveDashboard /></AuthLayout>} />
+        <Route path="/security" element={<AuthLayout><SecurityGovernanceWorkspace /></AuthLayout>} />
+        <Route path="/roadmaps" element={<AuthLayout><RoadmapWorkspace /></AuthLayout>} />
+        <Route path="/saas" element={<AuthLayout><SaaSGovernanceWorkspace /></AuthLayout>} />
+        <Route path="/audits" element={<AuthLayout><AuditWorkspace /></AuthLayout>} />
+        <Route path="/committees" element={<AuthLayout><CommitteeWorkspace /></AuthLayout>} />
+        <Route path="/admin" element={<AuthLayout><AdminWorkspace /></AuthLayout>} />
+        <Route path="/policy-rules" element={<AuthLayout><PolicyRuleWorkspace /></AuthLayout>} />
+        <Route path="/compliance" element={<AuthLayout><ComplianceWorkspace /></AuthLayout>} />
+        <Route path="/veg" element={<AuthLayout><VegGovernanceWorkspace /></AuthLayout>} />
+        <Route path="/veg/list" element={<AuthLayout><VegGovernanceWorkspace /></AuthLayout>} />
+        <Route path="/veg/deal/:dealId" element={<AuthLayout><VegGovernanceWorkspace /></AuthLayout>} />
+        <Route path="/veg/workflow" element={<AuthLayout><VegGovernanceWorkspace /></AuthLayout>} />
+        <Route path="/nexus" element={<AuthLayout><NexusOverview /></AuthLayout>} />
+        <Route path="/nexus/app/:appId" element={<AuthLayout><NexusAppDetail /></AuthLayout>} />
+        <Route path="/nexus/report/:reportId" element={<AuthLayout><NexusReportDetail /></AuthLayout>} />
+        <Route path="/nexus/vuln/:vulnId" element={<AuthLayout><NexusVulnerabilityDetail /></AuthLayout>} />
+        <Route path="/nexus/occurrence/:occId" element={<AuthLayout><NexusOccurrenceDetail /></AuthLayout>} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<AuthLayout><NotFoundPage /></AuthLayout>} />
       </Routes>
       <ToastContainer />
     </>

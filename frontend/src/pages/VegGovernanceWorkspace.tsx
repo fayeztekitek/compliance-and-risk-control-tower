@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import {
   Plus, Search, ChevronLeft, Briefcase, DollarSign, TrendingUp, AlertTriangle,
   BarChart3, Users, Globe, CheckCircle, Clock, XCircle, ExternalLink, FileText, Activity,
@@ -144,10 +145,13 @@ function TabBar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (t
   );
 }
 
-export default function VegGovernanceWorkspace({ initialTab = "deals" }: { initialTab?: string }) {
-  const [mode, setMode] = useState<VSubMode>(initialTab === "workflow" ? "workflow" : "dashboard");
-  const [tab, setTab] = useState(initialTab);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+export default function VegGovernanceWorkspace({ initialTab: propTab }: { initialTab?: string } = {}) {
+  const params = useParams();
+  const location = useLocation();
+  const effectiveTab = propTab || (location.pathname.includes("/workflow") ? "workflow" : params.dealId ? "deals" : "deals");
+  const [mode, setMode] = useState<VSubMode>(effectiveTab === "workflow" ? "workflow" : "dashboard");
+  const [tab, setTab] = useState(effectiveTab);
+  const [selectedId, setSelectedId] = useState<string | null>(params.dealId || null);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [filters, setFilters] = useState<VegDealListParams>({ page: 1, limit: 25 });
   const [search, setSearch] = useState("");
