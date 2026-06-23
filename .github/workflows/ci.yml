@@ -6,8 +6,20 @@ on:
   pull_request:
     branches: [main]
 
+env:
+  DB_HOST: localhost
+  DB_PORT: 5432
+  DB_NAME: compliance_tower
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  REDIS_HOST: localhost
+  REDIS_PORT: 6379
+  NODE_ENV: test
+  JWT_SECRET: ci-test-secret
+  CORS_ORIGIN: http://localhost:5173
+
 jobs:
-  lint-backend:
+  test-backend:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -43,19 +55,12 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci
+      - run: npx tsx src/scripts/runMigrations.ts
       - run: npx tsc --noEmit
         continue-on-error: true
       - run: npx vitest run --reporter=verbose
-        env:
-          DB_HOST: localhost
-          DB_PORT: 5432
-          DB_NAME: compliance_tower
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-          REDIS_URL: redis://localhost:6379
-          NODE_ENV: test
 
-  lint-frontend:
+  test-frontend:
     runs-on: ubuntu-latest
     defaults:
       run:
