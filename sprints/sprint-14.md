@@ -1,6 +1,6 @@
 # Sprint 14: Notifications + UX Polish + CI/CD
 
-**Status:** 📋 Planned  
+**Status:** 🔄 In Progress  
 **Branch:** `sprint-14-notifications-ux-cicd`  
 **Goal:** Wire real notifications (Slack/email), add monitoring and alerting UIs, polish UX across all pages (react-hook-form, pagination, bulk ops, dark mode), set up GitHub Actions CI/CD pipeline.
 

@@ -31,6 +31,8 @@ import mitigationRoutes from "./routes/mitigation.routes.js";
 import policyRuleRoutes from "./routes/policyRule.routes.js";
 import complianceRoutes from "./routes/compliance.routes.js";
 import archiveRoutes from "./routes/archive.routes.js";
+import alertRoutes from "./routes/alert.routes.js";
+import queueRoutes from "./routes/queue.routes.js";
 import fortifyRoutes from "./routes/fortify.routes.js";
 import sonarqubeRoutes from "./routes/sonarqube.routes.js";
 import veracodeRoutes from "./routes/veracode.routes.js";
@@ -97,6 +99,8 @@ app.use("/api/fortify", fortifyRoutes);
 app.use("/api/sonarqube", sonarqubeRoutes);
 app.use("/api/veracode", veracodeRoutes);
 app.use("/api/archive", archiveRoutes);
+app.use("/api/alert-rules", alertRoutes);
+app.use("/api/admin/queues", queueRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);
