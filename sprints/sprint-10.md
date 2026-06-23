@@ -1,7 +1,7 @@
 # Sprint 10: VEG Deal Enhancement + VEG Notifications + Platform Catch-up
 
-**Status:** 📋 Planned  
-**Branch:** `sprint-10-veg-enhancements`  
+**Status:** ✅ Completed  
+**Branch:** `sprint-10-veg-enhancements` → `main`  
 **Goal:** Improve VEG Deal Register with CSV export, advanced charts, and Executive Dashboard KPIs. Add VEG event bus, SLA tracking, and deadline management. Also catch up Sprint 7 deferred items (CF-1 through CF-5).
 
 ---
