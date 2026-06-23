@@ -168,6 +168,28 @@ export function useVegDealStats() {
   });
 }
 
+export function useVegDealMonthlyTrend() {
+  return useQuery({
+    queryKey: ["veg-deals", "trends", "monthly"],
+    queryFn: async () => {
+      const { data } = await vegDealApi.getMonthlyTrend();
+      return data.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useVegDealYearOverYear() {
+  return useQuery({
+    queryKey: ["veg-deals", "trends", "yoy"],
+    queryFn: async () => {
+      const { data } = await vegDealApi.getYearOverYear();
+      return data.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useCreateVegDeal() {
   const qc = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);

@@ -66,10 +66,19 @@ authService.seedDefaultUsers().then(() => seedReferenceData()).catch((err) => {
   logger.warn({ err }, "Failed to seed default users");
 });
 
+import("./services/redis.js").then(({ connectRedis }) => connectRedis()).catch(() => {});
+
 import("./services/enrichmentWorker.js").then(({ startEnrichmentWorker }) => {
   startEnrichmentWorker();
 }).catch((err) => {
   logger.warn({ err }, "Failed to start enrichment worker (Redis may be unavailable)");
+});
+
+import("./services/vegSlaWorker.js").then(({ startVegSlaWorker, scheduleVegSlaDaily }) => {
+  startVegSlaWorker();
+  scheduleVegSlaDaily();
+}).catch((err) => {
+  logger.warn({ err }, "Failed to start VEG SLA worker (Redis may be unavailable)");
 });
 
 app.listen(env.PORT, "0.0.0.0", () => {

@@ -3,6 +3,7 @@ import { dashboardService } from "../services/dashboard.service.js";
 import { kpiService } from "../services/kpi.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
+import { getCached, setCache } from "../services/redis.js";
 
 const router = Router();
 
@@ -21,9 +22,18 @@ router.use(rbacMiddleware(["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECUR
  *       200:
  *         description: Consolidated KPIs, KRIs, heatmap, trends
  */
+const CACHE_KEY = "dashboard:executive";
+const CACHE_TTL = 60;
+
 router.get("/executive", async (_req: Request, res: Response, next: NextFunction) => {
   try {
+    const cached = await getCached<object>(CACHE_KEY);
+    if (cached) {
+      res.json({ data: cached, cached: true });
+      return;
+    }
     const result = await dashboardService.getExecutiveDashboard();
+    await setCache(CACHE_KEY, result, CACHE_TTL);
     res.json({ data: result });
   } catch (err) { next(err); }
 });

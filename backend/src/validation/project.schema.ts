@@ -123,6 +123,11 @@ export const committeeTypeEnum = z.enum(["VEG_COMMITTEE", "VULNERABILITY_COMMITT
 export const committeeStatusEnum = z.enum(["PLANNED", "HELD", "CANCELLED"]);
 export const decisionOutcomeEnum = z.enum(["APPROVED", "REJECTED", "DEFERRED"]);
 
+export const listCommitteeQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+});
+
 export const createCommitteeSchema = z.object({
   name: z.string().min(1).max(255),
   date: z.string(),

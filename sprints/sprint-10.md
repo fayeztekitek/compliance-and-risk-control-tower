@@ -10,56 +10,56 @@
 
 These items were deferred from Sprint 7 and are prioritized for Sprint 10:
 
-| # | Item | Effort |
-|---|------|--------|
-| CF-1 | Redis caching for dashboard endpoint (TTL: 60s) | ~2h |
-| CF-2 | API response pagination for all list endpoints | ~4h |
-| CF-3 | DB index review (query plans for slow queries) | ~1h |
-| CF-4 | README.md production setup instructions | ~1h |
-| CF-5 | `.env.example` with ALL required vars documented | ~1h |
+| # | Item | Status | Effort |
+|---|------|--------|--------|
+| CF-1 | Redis caching for dashboard endpoint (TTL: 60s) | ✅ Done | ~2h |
+| CF-2 | API response pagination for all list endpoints | ✅ Done (committees) | ~4h |
+| CF-3 | DB index review (query plans for slow queries) | ✅ Done | ~1h |
+| CF-4 | README.md production setup instructions | ✅ Done | ~1h |
+| CF-5 | `.env.example` with ALL required vars documented | ✅ Done | ~1h |
 
 ---
 
 ## Tasks
 
 ### Backend — VEG Deal Export
-- [ ] `GET /api/veg-deals/export?format=csv` endpoint with same filters as list
-- [ ] Stream CSV with all 38 columns
-- [ ] Filename includes date and filter context
+- [x] `GET /api/veg-deals/export?format=csv` endpoint with same filters as list
+- [x] Stream CSV with all 38 columns
+- [x] Filename includes date and filter context
 
 ### Backend — VEG Event Bus
-- [ ] Create `veg-events.service.ts` (EventEmitter pattern)
-- [ ] Emit events on: request created/submitted/signed-off/approved/rejected
-- [ ] Emit events on: bid decision, go/nogo decision
-- [ ] Emit events on: deal created/updated
+- [x] Create `veg-events.service.ts` (EventEmitter pattern)
+- [x] Emit events on: request created/submitted/signed-off/approved/rejected
+- [x] Emit events on: bid decision, go/nogo decision
+- [x] Emit events on: deal created/updated
 
 ### Backend — VEG SLA Tracking
-- [ ] Migration 024: add `due_date` to `veg_requests` table
-- [ ] BullMQ worker `veg-sla-check` for daily overdue detection
-- [ ] SLA breach notification event
+- [x] Migration 024: add `due_date` to `veg_requests` table
+- [x] BullMQ worker `veg-sla-check` for daily overdue detection
+- [x] SLA breach notification event (emitted via vegEventBus)
 
 ### Backend — VEG Deal Enhanced Stats
-- [ ] Year-over-year comparison data in `getStats()`
-- [ ] Monthly TCV trend data endpoint
+- [x] Year-over-year comparison data endpoint
+- [x] Monthly TCV trend data endpoint
 
 ### Backend — Executive Dashboard VEG KPIs
 - [ ] `GET /api/dashboard/veg-kpis` — total deals, total TCV, won count, avg deal size, won rate
 
 ### Frontend — VEG Deal Export
-- [ ] Export button on VEG Deal list (filter-aware)
-- [ ] Download progress indicator
+- [x] Export button on VEG Deal list (filter-aware)
+- [ ] Download progress indicator (deferred — window.open approach sufficient)
 
 ### Frontend — Advanced Charts (Dashboard Mode)
-- [ ] TCV trend line chart (Recharts)
-- [ ] Decision distribution pie chart
-- [ ] Regional heatmap
-- [ ] Year-over-year comparison bar chart
+- [x] TCV trend line chart (Recharts)
+- [x] Decision distribution pie chart
+- [x] Regional heatmap
+- [x] Year-over-year comparison bar chart
 
 ### Frontend — Executive Dashboard VEG KPIs
-- [ ] Add VEG Deal KPI card row to ExecutiveDashboard
+- [ ] Add VEG Deal KPI card row to ExecutiveDashboard (deferred)
 
 ### Frontend — VEG SLA Warning
-- [ ] Overdue/due-soon indicators on VEG request detail
+- [ ] Overdue/due-soon indicators on VEG request detail (deferred)
 
 ---
 

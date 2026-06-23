@@ -3,6 +3,7 @@ import { vegDealService } from "../services/veg-deal.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { ValidationError } from "../core/errors.js";
+import { vegEventBus } from "../services/veg-events.service.js";
 import { createVegDealSchema, updateVegDealSchema, listVegDealQuerySchema } from "../validation/veg.schema.js";
 
 const router = Router();
@@ -130,6 +131,88 @@ router.get("/regions", async (_req: Request, res: Response, next: NextFunction) 
 
 /**
  * @openapi
+ * /veg-deals/trends/monthly:
+ *   get:
+ *     tags: [VEG Deals]
+ *     summary: Monthly TCV trend data
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Monthly TCV and count by month
+ */
+router.get("/trends/monthly", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await vegDealService.getMonthlyTCVTrend();
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /veg-deals/trends/year-over-year:
+ *   get:
+ *     tags: [VEG Deals]
+ *     summary: Year-over-year comparison
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: YOY TCV and count by year
+ */
+router.get("/trends/year-over-year", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await vegDealService.getYearOverYear();
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /veg-deals/export:
+ *   get:
+ *     tags: [VEG Deals]
+ *     summary: Export VEG deals as CSV
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: region
+ *         schema: { type: string }
+ *       - in: query
+ *         name: businessLine
+ *         schema: { type: string }
+ *       - in: query
+ *         name: decision
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: CSV file download
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ */
+router.get("/export", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filters = listVegDealQuerySchema.parse(req.query);
+    const csv = await vegDealService.exportCsv(filters);
+    const date = new Date().toISOString().slice(0, 10);
+    const filtersLabel = filters.search ? `-${filters.search.slice(0, 20)}` : "";
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="veg-deals-${date}${filtersLabel}.csv"`);
+    res.send(csv);
+  } catch (err: any) {
+    if (err.name === "ZodError") return next(new ValidationError("Invalid query", err.flatten().fieldErrors));
+    next(err);
+  }
+});
+
+/**
+ * @openapi
  * /veg-deals/{id}:
  *   get:
  *     tags: [VEG Deals]
@@ -168,6 +251,7 @@ router.post("/", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parsed = createVegDealSchema.parse(req.body);
     const result = await vegDealService.create(parsed);
+    vegEventBus.emitVegEvent({ type: "veg:deal:created", dealId: result.id, userId: (req as any).user?.id, timestamp: new Date().toISOString() });
     res.status(201).json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));
@@ -210,6 +294,7 @@ router.patch("/:id", async (req: Request, res: Response, next: NextFunction) => 
   try {
     const parsed = updateVegDealSchema.parse(req.body);
     const result = await vegDealService.update(req.params.id, parsed);
+    vegEventBus.emitVegEvent({ type: "veg:deal:updated", dealId: req.params.id, userId: (req as any).user?.id, timestamp: new Date().toISOString() });
     res.json({ data: result });
   } catch (err: any) {
     if (err.name === "ZodError") return next(new ValidationError("Invalid input", err.flatten().fieldErrors));

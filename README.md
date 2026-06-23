@@ -6,19 +6,52 @@ A centralized governance platform for managing compliance, risk, security vulner
 
 ## Quick Start
 
-```bash
-# Start all services
-docker compose up
+### Prerequisites
 
-# Or manually:
-cd backend && npm install && npm run migrate:up && npm run dev
-cd frontend && npm install && npm run dev
+- Node.js 20+
+- Docker (PostgreSQL 16 + Redis 7 containers)
+- npm or yarn
+
+### Start Services
+
+```bash
+# 1. Start database and cache
+docker run -d --name ct-postgres -e POSTGRES_DB=compliance_tower -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
+docker run -d --name ct-redis -p 6379:6379 redis:7
+
+# 2. Backend
+cd backend
+npm install
+npm run migrate:up
+npm run dev          # http://localhost:3000 — Swagger at /api/docs
+
+# 3. Frontend (new terminal)
+cd frontend
+npm install
+npm run dev          # http://localhost:5173
 ```
 
-Then open http://localhost:5173 and log in with:
+### Seed Data
 
-> **Email:** `fayez.tekitek@vermeg.com`  
-> **Password:** `admin123!`
+The backend auto-seeds on first startup:
+- **7 RBAC users** — default admin: `fayez.tekitek@vermeg.com` / `admin123!`
+- **VEG deal register** — 2037 committee-reviewed deals
+- **Security findings** — sample vulnerabilities with waivers and risk acceptances
+- **Roadmaps & projects** — reference data for dashboard KPIs
+
+### Production Deployment
+
+```bash
+# Build frontend
+cd frontend && npm run build  # output: dist/
+
+# Start backend in production mode
+cd backend && NODE_ENV=production node node_modules/tsx/dist/cli.mjs src/index.ts
+
+# Or use PM2:
+npm install -g pm2
+pm2 start node node_modules/tsx/dist/cli.mjs --name ctrl-tower -- src/index.ts
+```
 
 ---
 
@@ -62,14 +95,16 @@ Frontend (React) ── HTTP ──▶ Backend (Express) ──▶ PostgreSQL + 
 
 ## Test Results
 
-**143 tests passing** across 22 files:
+**~192 tests passing** across 28 backend + 4 frontend files:
 
-| Category | Tests |
-|----------|-------|
-| Unit tests | ~110 |
-| Integration tests | ~28 |
-| Functional tests | ~8 |
-| E2E tests | 4 |
+| Category | Tests | Location |
+|----------|-------|----------|
+| Backend Unit | ~120 | `backend/tests/unit/` (17 files) |
+| Backend Integration | ~38 | `backend/tests/integration/` (7 files) |
+| Backend Functional | ~10 | `backend/tests/functional/` (5 files) |
+| Frontend | 24 | `frontend/tests/` (4 files) |
+
+> **Note:** 2 pre-existing test failures in `security.functional.test.ts` (use old `vulnerabilities` table — bypasses unified_findings).
 
 ---
 

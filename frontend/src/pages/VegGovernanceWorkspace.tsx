@@ -6,11 +6,15 @@ import {
 } from "lucide-react";
 import {
   useVegDealList, useVegDealById, useVegDealStats,
+  useVegDealMonthlyTrend, useVegDealYearOverYear,
   useCreateVegDeal, useUpdateVegDeal, useDeleteVegDeal,
   useVegList, useVegById, useCreateVeg, useUpdateVeg, useDeleteVeg,
   useSignoffVeg, useBidDecision, useGoNoGo,
   useCreateOpportunity, useCreateContract,
 } from "../hooks/useVegRequests";
+import {
+  TcvTrendChart, DecisionPieChart, RegionalHeatmap, YoyBarChart,
+} from "../components/charts/VegDealCharts";
 import type { VegDeal, VegDealListParams, VegRequest, Opportunity, Contract } from "../api/veg.api";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonTable } from "../components/ui/Skeleton";
@@ -157,6 +161,8 @@ export default function VegGovernanceWorkspace({ initialTab = "deals" }: { initi
   const { data: listData, isLoading: listLoading } = useVegDealList(filters);
   const { data: detail } = useVegDealById(selectedId);
   const { data: stats, isLoading: statsLoading } = useVegDealStats();
+  const { data: monthlyTrend } = useVegDealMonthlyTrend();
+  const { data: yoyData } = useVegDealYearOverYear();
   const createDeal = useCreateVegDeal();
   const updateDeal = useUpdateVegDeal();
   const deleteDeal = useDeleteVegDeal();
@@ -346,6 +352,15 @@ export default function VegGovernanceWorkspace({ initialTab = "deals" }: { initi
               </div>
             </div>
 
+            {(monthlyTrend || yoyData) && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {monthlyTrend && <TcvTrendChart data={monthlyTrend} />}
+                {yoyData && <YoyBarChart data={yoyData} />}
+                {stats?.decisions && <DecisionPieChart data={stats.decisions} />}
+                {stats?.regions && <RegionalHeatmap data={stats.regions} />}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-white rounded-xl border border-slate-200 p-5">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">Top Clients</h3>
@@ -389,6 +404,18 @@ export default function VegGovernanceWorkspace({ initialTab = "deals" }: { initi
           <div className="flex gap-2">
             <button onClick={() => setMode("dashboard")} className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">
               Dashboard
+            </button>
+            <button onClick={() => {
+              const params = new URLSearchParams();
+              if (filters.search) params.set("search", filters.search);
+              if (filters.region) params.set("region", filters.region);
+              if (filters.businessLine) params.set("businessLine", filters.businessLine);
+              if (filters.decision) params.set("decision", filters.decision);
+              if (filters.salesStatus) params.set("salesStatus", filters.salesStatus);
+              if (filters.year) params.set("year", String(filters.year));
+              window.open(`/api/veg-deals/export?${params.toString()}`, "_blank");
+            }} className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">
+              <FileText className="w-4 h-4" /> Export CSV
             </button>
             <button onClick={() => { setForm({ vegId: "", client: "", businessOwner: "", region: "EU", businessLine: "Colline", products: "", committeeType: "Go n Go", vegDate: "", decision: "GO FINAL", tcv: 0, ipMaintenance: 0, saas: 0, ps: 0, wlPsMd: 0, wlInvestmentMd: 0, vegYear: new Date().getFullYear() }); setMode("create"); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
               <Plus className="w-4 h-4" /> New Deal

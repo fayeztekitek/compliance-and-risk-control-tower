@@ -210,4 +210,10 @@ export const vegDealApi = {
   getRegions() {
     return apiClient.get<{ data: { region: string; count: string; total_tcv: string }[] }>("/api/veg-deals/regions");
   },
+  getMonthlyTrend() {
+    return apiClient.get<{ data: { month: string; tcv: string; count: string }[] }>("/api/veg-deals/trends/monthly");
+  },
+  getYearOverYear() {
+    return apiClient.get<{ data: { year: string; tcv: string; count: string; won_tcv: string }[] }>("/api/veg-deals/trends/year-over-year");
+  },
 };
