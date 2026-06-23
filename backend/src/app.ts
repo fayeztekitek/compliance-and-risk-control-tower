@@ -8,6 +8,15 @@ import { errorMiddleware } from "./middleware/error.middleware.js";
 import { generalLimiter, authLimiter } from "./middleware/rateLimit.middleware.js";
 import { logger } from "./core/logger.js";
 
+// Patch Express to forward async route rejections to error middleware
+import Layer from "express/lib/router/layer.js";
+const origHandle = Layer.prototype.handle_request;
+Layer.prototype.handle_request = function (this: any, req: any, res: any, next: any) {
+  const result = origHandle.call(this, req, res, next);
+  if (result instanceof Promise) result.catch(next);
+  return result;
+};
+
 import authRoutes from "./routes/auth.routes.js";
 import vegRoutes from "./routes/veg.routes.js";
 import vegDealRoutes from "./routes/veg-deal.routes.js";

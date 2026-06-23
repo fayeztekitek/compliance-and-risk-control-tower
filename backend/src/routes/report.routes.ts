@@ -3,13 +3,14 @@ import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { scanReportService } from "../services/scanReport.service.js";
 import { reportComparisonService } from "../services/reportComparison.service.js";
+import { wrapAsync } from "../utils/wrapAsync.js";
 
 const router = Router();
 
 router.use(authMiddleware);
 router.use(rbacMiddleware(["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"]));
 
-router.get("/:applicationId", async (req: Request, res: Response) => {
+router.get("/:applicationId", wrapAsync(async (req: Request, res: Response) => {
   const { page = "1", limit = "20", scannerSource, fromDate, toDate } = req.query;
   const result = await scanReportService.listScanReports({
     page: parseInt(page as string, 10),
@@ -20,15 +21,15 @@ router.get("/:applicationId", async (req: Request, res: Response) => {
     toDate: toDate as string,
   });
   res.json(result);
-});
+}));
 
-router.get("/:applicationId/latest", async (req: Request, res: Response) => {
+router.get("/:applicationId/latest", wrapAsync(async (req: Request, res: Response) => {
   const { scannerSource } = req.query;
   const report = await scanReportService.getLatestByApp(req.params.applicationId, scannerSource as string);
   res.json(report);
-});
+}));
 
-router.get("/:applicationId/compare", async (req: Request, res: Response) => {
+router.get("/:applicationId/compare", wrapAsync(async (req: Request, res: Response) => {
   const { latest: latestId, previous: previousId } = req.query;
   const applicationId = req.params.applicationId;
 
@@ -39,6 +40,6 @@ router.get("/:applicationId/compare", async (req: Request, res: Response) => {
     const result = await reportComparisonService.getLatestComparison(applicationId);
     res.json(result);
   }
-});
+}));
 
 export default router;

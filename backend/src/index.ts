@@ -19,6 +19,10 @@ async function gracefulShutdown(signal: string) {
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 
+process.on("unhandledRejection", (reason) => {
+  logger.warn({ err: reason }, "Unhandled rejection — preventing crash");
+});
+
 async function seedReferenceData() {
   const existing = await query<{ count: string }>("SELECT COUNT(*) as count FROM roadmaps");
   if (parseInt(existing.rows[0].count, 10) > 0) return;
