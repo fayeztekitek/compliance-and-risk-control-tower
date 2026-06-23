@@ -4,12 +4,9 @@
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | >= 18 | Runtime |
+| Node.js | >= 20 | Runtime |
 | npm | >= 9 | Package manager |
-| PostgreSQL | >= 14 | Database |
-| Redis | >= 7 | BullMQ queues & caching |
-| Docker (optional) | >= 24 | Containerized deployment |
-| Docker Compose (optional) | >= 2.24 | Multi-service orchestration |
+| Docker | >= 24 | PostgreSQL & Redis containers |
 
 ---
 
@@ -41,14 +38,26 @@ Visit http://localhost:5173 and log in with `fayez.tekitek@vermeg.com` / `admin1
 
 ## Manual Setup
 
-### 1. Clone & Install
+### 1. Start PostgreSQL & Redis (Docker)
+
+```powershell
+# Create & start containers (first time)
+docker run -d --name ct-postgres -e POSTGRES_DB=compliance_tower -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
+docker run -d --name ct-redis -p 6379:6379 redis:7
+
+# After first time, just start them:
+docker start ct-postgres ct-redis
+```
+
+### 2. Clone & Install
 
 ```bash
 git clone https://github.com/fayeztekitek/compliance-and-risk-control-tower.git
 cd compliance-and-risk-control-tower
-```
 
-### 2. Environment Variables
+### 3. Environment Variables
+
+Copy the example env file:
 
 Copy the example env file and adjust as needed:
 
@@ -72,55 +81,40 @@ Key variables:
 | `CORS_ORIGIN` | `http://localhost:5173` | Allowed CORS origin |
 | `VITE_API_URL` | `http://localhost:3000` | Frontend API target |
 
-### 3. Database Setup
-
-Ensure PostgreSQL is running, then create the database:
-
-```bash
-createdb compliance_tower
-```
-
 ### 4. Install Backend Dependencies
 
-```bash
+```powershell
 cd backend
 npm install
 ```
 
 ### 5. Run Database Migrations
 
-```bash
-npm run migrate:up
+> **Important:** The project uses raw `.sql` migration files, not `node-pg-migrate`. There is no `npm run migrate:up` script.
+
+```powershell
+node node_modules/tsx/dist/cli.mjs src/scripts/runMigrations.ts
 ```
 
-This applies all migrations in sequence:
+This applies all `.sql` files from `backend/migrations/` in alphabetical order, tracking already-run files in the `pgmigrations` table.
 
-| Migration | Description |
-|-----------|-------------|
-| `000_init.sql` | Base tables, enums, extensions |
-| `001_users_and_roles.sql` | Users table, roles enum, seed users |
-| `002_veg_governance.sql` | VEG requests, opportunities, contracts |
-| `003_security_vulnerabilities.sql` | Vulnerabilities, waivers, risk acceptances, SLA |
-| `004_projects_roadmaps.sql` | Projects, roadmaps, RTD submissions |
-| `005_saas_privacy.sql` | SaaS applications, data processing inventory |
-| `006_audits_committees.sql` | Audits, findings, CAPA, obligations, committees |
-| `007_kpi_snapshots.sql` | KPI snapshot archive table |
-| `008_nexus_ingestion.sql` | Nexus IQ products, vulns, waivers, sync logs |
-| `009_seed_data.sql` | Seed data for demo and testing |
+| Migration | File | Description |
+|-----------|------|-------------|
+| 000–009 | `00*_*.sql` | Base tables, users, VEG, security, projects, SaaS, audits, KPI, Nexus, seeds |
+| 010–019 | `01*_*.sql` | Unified findings, SLA tracking, roadmaps, compliance frameworks, RBAC |
+| 020–029 | `02*_*.sql` | VEG deals, multi-scanner, archive, alert rules |
 
-Each migration has a corresponding `_down.sql` for rollback:
-
-```bash
-npm run migrate:down
-```
+The database `compliance_tower` is created automatically by Docker — no manual `createdb` needed.
 
 ### 6. Start the Backend
 
-```bash
-npm run dev
+> **Windows note:** The `&` in the project directory name (`compliance-&-risk-control-tower`) breaks `npm run dev`. Use the direct path:
+
+```powershell
+node node_modules/tsx/dist/cli.mjs src/index.ts
 ```
 
-The API starts at http://localhost:3000.
+The API starts at http://localhost:3000. Seed data (users, deals, vulnerabilities) is inserted automatically on first startup.
 
 - Health check: http://localhost:3000/api/health
 - API docs (Swagger UI): http://localhost:3000/api/docs
@@ -129,45 +123,41 @@ The API starts at http://localhost:3000.
 
 In a separate terminal:
 
-```bash
+```powershell
 cd frontend
 npm install
-npm run dev
+node node_modules/vite/bin/vite.js --port 5173
 ```
 
 The frontend starts at http://localhost:5173.
+
+> The Vite dev server proxies `/api` requests to `http://localhost:3000` (configured in `vite.config.ts`), so the frontend works without CORS issues.
 
 ---
 
 ## Production Deployment
 
-### Using Docker Compose (Production)
+### Using Docker Compose
 
-```bash
-# Set required environment variables
-export DB_PASSWORD=your-strong-password
-export JWT_SECRET=your-long-random-secret
-export CORS_ORIGIN=https://your-domain.com
-export API_URL=https://api.your-domain.com
+```powershell
+# Start all services
+docker compose up -d
 
-# Start with production config
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Stop
+docker compose down
 ```
 
 ### Manual Production Build
 
-```bash
-# Build backend
-cd backend
-npm run build
-NODE_ENV=production node dist/index.js
-```
-
-```bash
+```powershell
 # Build frontend
 cd frontend
-npm run build
-# Serve the dist/ folder via nginx or similar
+node node_modules/vite/bin/vite.js build
+
+# Serve backend in production mode
+cd backend
+$env:NODE_ENV="production"
+node node_modules/tsx/dist/cli.mjs src/index.ts
 ```
 
 ### Environment Variables for Production
@@ -200,23 +190,32 @@ VITE_API_URL=https://api.your-domain.com
 
 ## Running Tests
 
-### Backend Tests
+### Backend Tests (227 tests)
 
-```bash
+```powershell
 cd backend
-npm test                    # All tests
-npm run test:unit           # Unit tests only
-npm run test:integration    # Integration tests only
+node node_modules/vitest/vitest.mjs run
+
+# Run a specific test file:
+node node_modules/vitest/vitest.mjs run tests/unit/auth.service.test.ts
 ```
 
-Tests that require a live database are automatically skipped via the `healthCheck()` guard.
+Tests that require a live database are automatically guarded by a `healthCheck()`.
 
-### Frontend Tests
+### Frontend Tests (24 tests)
 
-```bash
+```powershell
 cd frontend
-npm test                    # Vitest unit tests
-npm run test:e2e            # Playwright E2E tests (requires running server)
+node node_modules/vitest/vitest.mjs run
+```
+
+### E2E Tests (Playwright)
+
+Requires both backend (`:3000`) and frontend (`:5173`) running:
+
+```powershell
+cd frontend
+node node_modules/playwright/cli.mjs test
 ```
 
 ### Generate API Types from OpenAPI Spec
@@ -252,22 +251,40 @@ npm run generate-api-types
 
 ## Troubleshooting
 
-### "Cannot find module" errors
-The `&` character in the project directory name (`compliance-&-risk-control-tower`) can break npm script resolution on Windows PowerShell. Use direct paths instead:
+### "Cannot find module" or npm scripts fail
+The `&` character in `compliance-&-risk-control-tower` breaks npm script resolution on Windows PowerShell. Use direct paths:
 
 ```powershell
 # Instead of: npm test
 node node_modules\vitest\vitest.mjs run
+
+# Instead of: npm run dev
+node node_modules\tsx\dist\cli.mjs src\index.ts
 ```
 
+### Port already in use (3000, 5173, 5432, 6379)
+```powershell
+# Find what's using the port
+netstat -ano | Select-String ":3000"
+
+# Kill the process (replace PID)
+Stop-Process -Id <PID> -Force
+```
+
+### Login page shows infinite spinner
+1. Check the browser console (F12) for API errors
+2. Verify the backend is running: `curl http://localhost:3000/api/health`
+3. Check the Vite proxy: frontend on 5173 proxies `/api` to `:3000`
+4. If Vite started on a port other than 5173 (e.g., 5174, 5175), use `--port 5173` explicitly
+
 ### Database connection refused
-Ensure PostgreSQL is running and the credentials in `.env` are correct.
+```powershell
+docker ps                    # Check containers are running
+docker logs ct-postgres      # Check PostgreSQL logs
+```
 
 ### Redis connection refused
-Ensure Redis is running. If you don't need BullMQ functionality, queue operations will log errors but the API will still function.
-
-### Port already in use
-Change `PORT` in `.env` or stop the process occupying the port.
-
-### Git push timeout
-If `git push` times out on port 443, retry — the connection is intermittent on some networks.
+BullMQ queues will log errors but the API still works. Verify:
+```powershell
+docker ps | Select-String redis
+```

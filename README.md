@@ -10,47 +10,60 @@ A centralized governance platform for managing compliance, risk, security vulner
 
 - Node.js 20+
 - Docker (PostgreSQL 16 + Redis 7 containers)
-- npm or yarn
+- npm
 
-### Start Services
+### Step 1 — Start Database & Cache
 
-```bash
-# 1. Start database and cache
+```powershell
+docker start ct-postgres ct-redis 2>$null
+# If containers don't exist, create them:
 docker run -d --name ct-postgres -e POSTGRES_DB=compliance_tower -e POSTGRES_PASSWORD=postgres -p 5432:5432 postgres:16
 docker run -d --name ct-redis -p 6379:6379 redis:7
-
-# 2. Backend
-cd backend
-npm install
-npm run migrate:up
-npm run dev          # http://localhost:3000 — Swagger at /api/docs
-
-# 3. Frontend (new terminal)
-cd frontend
-npm install
-npm run dev          # http://localhost:5173
 ```
+
+### Step 2 — Backend
+
+```powershell
+cd backend
+copy .env.example .env              # or: cp .env.example .env
+npm install
+node node_modules/tsx/dist/cli.mjs src/scripts/runMigrations.ts   # Apply SQL migrations
+node node_modules/tsx/dist/cli.mjs src/index.ts                    # Start API server
+```
+
+API runs at **http://localhost:3000** — Swagger at `/api/docs`.
+
+> **Note:** The `&` in the project directory name breaks `npm run dev` on Windows. Use the `node node_modules/tsx/dist/cli.mjs` path directly.
+
+### Step 3 — Frontend (new terminal)
+
+```powershell
+cd frontend
+copy .env.example .env
+npm install
+node node_modules/vite/bin/vite.js --port 5173
+```
+
+App runs at **http://localhost:5173**.
 
 ### Seed Data
 
 The backend auto-seeds on first startup:
-- **7 RBAC users** — default admin: `fayez.tekitek@vermeg.com` / `admin123!`
+- **7 RBAC users** — admin: `fayez.tekitek@vermeg.com` / `admin123!`
 - **VEG deal register** — 2037 committee-reviewed deals
 - **Security findings** — sample vulnerabilities with waivers and risk acceptances
 - **Roadmaps & projects** — reference data for dashboard KPIs
 
-### Production Deployment
+### Running Tests
 
-```bash
-# Build frontend
-cd frontend && npm run build  # output: dist/
+```powershell
+# Backend (227 tests)
+cd backend
+node node_modules/vitest/vitest.mjs run
 
-# Start backend in production mode
-cd backend && NODE_ENV=production node node_modules/tsx/dist/cli.mjs src/index.ts
-
-# Or use PM2:
-npm install -g pm2
-pm2 start node node_modules/tsx/dist/cli.mjs --name ctrl-tower -- src/index.ts
+# Frontend (24 tests)
+cd frontend
+node node_modules/vitest/vitest.mjs run
 ```
 
 ---
@@ -95,16 +108,14 @@ Frontend (React) ── HTTP ──▶ Backend (Express) ──▶ PostgreSQL + 
 
 ## Test Results
 
-**~192 tests passing** across 28 backend + 4 frontend files:
+**251 tests passing — 0 failures:**
 
 | Category | Tests | Location |
 |----------|-------|----------|
-| Backend Unit | ~120 | `backend/tests/unit/` (17 files) |
-| Backend Integration | ~38 | `backend/tests/integration/` (7 files) |
-| Backend Functional | ~10 | `backend/tests/functional/` (5 files) |
+| Backend Unit | ~130 | `backend/tests/unit/` (17 files) |
+| Backend Integration | ~37 | `backend/tests/integration/` (7 files) |
+| Backend Functional | ~11 | `backend/tests/functional/` (5 files) |
 | Frontend | 24 | `frontend/tests/` (4 files) |
-
-> **Note:** 2 pre-existing test failures in `security.functional.test.ts` (use old `vulnerabilities` table — bypasses unified_findings).
 
 ---
 
