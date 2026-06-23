@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuthStore } from "./store/auth.store";
 import Sidebar from "./components/layout/Sidebar";
@@ -43,6 +43,8 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const { initialize, isAuthenticated, isLoading } = useAuthStore();
+
+  useEffect(() => { initialize(); }, [initialize]);
 
   if (isLoading) {
     return (

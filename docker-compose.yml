@@ -67,6 +67,7 @@ services:
     volumes:
       - ./frontend/src:/app/src
     environment:
+      API_PROXY_TARGET: http://api:3000
       VITE_API_URL: ""
     depends_on:
       - api
