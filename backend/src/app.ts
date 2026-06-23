@@ -28,6 +28,8 @@ import scanReportRoutes from "./routes/scanReport.routes.js";
 import reportRoutes from "./routes/report.routes.js";
 import trendRoutes from "./routes/trend.routes.js";
 import mitigationRoutes from "./routes/mitigation.routes.js";
+import policyRuleRoutes from "./routes/policyRule.routes.js";
+import complianceRoutes from "./routes/compliance.routes.js";
 
 const app = express();
 
@@ -85,6 +87,8 @@ app.use("/api/scan-reports", scanReportRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/trends", trendRoutes);
 app.use("/api/mitigations", mitigationRoutes);
+app.use("/api/policy-rules", policyRuleRoutes);
+app.use("/api/compliance", complianceRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);

@@ -11,6 +11,8 @@ import {
   Settings,
   LogOut,
   FileSignature,
+  Scale,
+  Shield,
 } from "lucide-react";
 
 interface NavItem {
@@ -30,6 +32,8 @@ const NAV_ITEMS: NavItem[] = [
   { id: "saas", label: "SaaS Governance", icon: Cloud, allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "PRODUCT_OWNER", "SECURITY_MANAGER", "EXECUTIVE_READ_ONLY"] },
   { id: "audits", label: "Audits", icon: FileCheck, allowedRoles: ["ADMIN", "AUDITOR", "COMPLIANCE_OFFICER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
   { id: "committees", label: "Committees", icon: Users, allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "PRODUCT_OWNER", "EXECUTIVE_READ_ONLY"] },
+  { id: "policy-rules", label: "Policy Rules", icon: Shield, allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
+  { id: "compliance", label: "Compliance", icon: Scale, allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
   { id: "admin", label: "Administration", icon: Settings, allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER"] },
 ];
 

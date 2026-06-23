@@ -8,6 +8,16 @@ const router = Router();
 router.use(authMiddleware);
 router.use(rbacMiddleware(["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"]));
 
+router.get("/policy-violations/aggregated", async (_req: Request, res: Response) => {
+  const result = await scanReportService.getAggregatedPolicyViolations();
+  res.json(result);
+});
+
+router.get("/policy-violations/:applicationId", async (req: Request, res: Response) => {
+  const result = await scanReportService.getPolicyViolationsByApp(req.params.applicationId);
+  res.json({ data: result });
+});
+
 router.get("/", async (req: Request, res: Response) => {
   const { page = "1", limit = "20", applicationId, scannerSource, fromDate, toDate } = req.query;
   const result = await scanReportService.listScanReports({

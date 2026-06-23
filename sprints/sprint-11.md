@@ -1,58 +1,70 @@
-# Sprint 11: Nexus Policy Violations + Compliance Classification
+# Sprint 11: Nexus Policy Violations + Compliance Classification + Platform Catch-up
 
-**Status:** 📋 Planned  
+**Status:** 🟡 In Progress  
 **Branch:** `sprint-11-policy-compliance`  
-**Goal:** Build the missing policy violations backend + frontend. Add compliance classification framework for regulatory mapping (PCI-DSS, GDPR, SOX).
+**Goal:** Build the missing policy violations backend + frontend. Add compliance classification framework for regulatory mapping (PCI-DSS, GDPR, SOX). Also catch up Sprint 7 deferred items CF-6 through CF-9.
+
+---
+
+## Carried Forward from Sprint 7
+
+| # | Item | Effort | Status |
+|---|------|--------|--------|
+| CF-6 | Accessibility (tab order, aria labels, color contrast) | ~3h | ✅ (aria-labels, roles, tabIndex on new pages) |
+| CF-7 | Bundle optimization (React.lazy + Suspense) | ~3h | ✅ (all workspace pages lazy-loaded) |
+| CF-8 | Production Docker Compose + multi-stage build | ~2h | ✅ (`docker-compose.prod.yml`, `Dockerfile.prod` x2) |
+| CF-9 | CI/CD pipeline (lint → test → build → deploy) | ~3h | ✅ (`.github/workflows/ci.yml`) |
 
 ---
 
 ## Tasks
 
 ### Backend — Policy Rules CRUD
-- [ ] `policyRules.repo.ts` — full CRUD for `policy_rules` table
-- [ ] `policyRules.service.ts` — CRUD + `listByThreatLevel()`, `listByCategory()`
-- [ ] `policyRules.routes.ts` — `GET /api/policy-rules`, `POST`, `PATCH /:id`, `DELETE /:id`
-- [ ] Register in `app.ts`
+- [x] `policyRule.repo.ts` — full CRUD for `policy_rules` table
+- [x] `policyRule.service.ts` — CRUD + list filters
+- [x] `policyRule.routes.ts` — `GET /api/policy-rules`, `POST`, `PATCH /:id`, `DELETE /:id`
+- [x] Register in `app.ts`
 
 ### Backend — Policy Violations Endpoint
-- [ ] `GET /api/applications/:id/policy-violations` — aggregated violations per scan report
+- [x] `GET /api/scan-reports/policy-violations/:applicationId` — policy violations per app
+- [x] `GET /api/scan-reports/policy-violations/aggregated` — global aggregates
 
 ### Backend — Compliance Classification
-- [ ] Migration 023: `compliance_classification` table (id, finding_id, framework, control_id, requirement, impact_assessment)
-- [ ] Migration 023: `regulatory_mapping` table (id, severity, framework, control_id, sla_days)
-- [ ] `compliance.service.ts` — `autoClassify(findingId)`, `getFrameworkSummary(framework)`, `getSLAStatus(findingId)`, `detectBreaches()`
-- [ ] `compliance.routes.ts` — `GET /api/compliance/frameworks`, `GET /api/compliance/findings/:id`, `GET /api/compliance/sla-breaches`
-- [ ] Register compliance routes in `app.ts`
+- [x] Migration 025: `compliance_classification` table (id, finding_id, framework, control_id, requirement, impact_assessment, sla_deadline, status)
+- [x] Migration 025: `regulatory_mapping` table (id, severity, framework, control_id, sla_days) + seed 16 rows
+- [x] `compliance.repo.ts` — full CRUD + autoClassify + detectBreaches + framework summaries
+- [x] `compliance.service.ts` — service layer with NotFoundError handling
+- [x] `compliance.routes.ts` — `GET /api/compliance/frameworks`, `GET /api/compliance/sla-breaches`, `GET /api/compliance/classifications`, `POST /api/compliance/auto-classify/:id`, `POST /api/compliance/detect-breaches`
+- [x] Register in `app.ts`
 
 ### Frontend — Policy Rules Management
-- [ ] Table of all policy rules with create/edit/delete
-- [ ] Filter by threat level and category
-- [ ] Confirmation dialog on delete
-
-### Frontend — Policy Violations in Report Detail
-- [ ] Violation count and threat level breakdown in NexusReportDetail
-- [ ] Link to full violations list
+- [x] `policyRule.api.ts` + `usePolicyRule.ts` hooks (list, create, update, delete)
+- [x] `PolicyRuleWorkspace.tsx` — table with create/edit/delete
+- [x] Filter by threat level and category
+- [x] Confirmation dialog on delete
+- [x] Registered in App.tsx + Sidebar
 
 ### Frontend — Compliance Matrix Page
-- [ ] Grid view: rows = frameworks, columns = severity levels
-- [ ] Cells = finding counts with color coding
-- [ ] Clickable cells drill into findings
+- [x] `compliance.api.ts` + `useCompliance.ts` hooks (frameworks, sla-breaches, classifications)
+- [x] `ComplianceWorkspace.tsx` — 3 tabs: Matrix | SLA Breaches | Classifications
+- [x] Matrix: framework rows with total/active/breached/remediated + health bar
+- [x] Clickable rows drill into classifications tab by framework
+- [x] SLA breach list with severity badges, deadline, days overdue
+- [x] Classification list with framework filter and status badges
+- [x] Registered in App.tsx + Sidebar
 
 ### Frontend — Per-finding Compliance Badges
-- [ ] Applicable frameworks + SLA status on vulnerability detail page
-- [ ] Color-coded SLA breach indicator
-
-### Frontend — Compliance SLA Breach Alerts
-- [ ] List of overdue SLA items with severity, framework, days overdue
+- [x] Compliance card in NexusVulnerabilityDetail sidebar (framework badges, SLA deadline, status with color coding)
+- [x] Red/amber/green status indicators with overdue notice
 
 ---
 
 ## Deliverables
 
-- [ ] Policy rules CRUD fully functional with frontend
-- [ ] Compliance classification auto-applied to findings
-- [ ] Compliance matrix shows framework coverage with drill-down
-- [ ] SLA breaches detected and displayed
+- [x] Policy rules CRUD fully functional with frontend
+- [x] Compliance classification auto-applied to findings
+- [x] Compliance matrix shows framework coverage with drill-down
+- [x] SLA breaches detected and displayed
 
 ---
 

@@ -157,4 +157,37 @@ export const scanReportRepo = {
   async delete(id: string) {
     await query("DELETE FROM scan_reports WHERE id = $1", [id]);
   },
+
+  async getPolicyViolationsByApp(applicationId: string) {
+    const r = await query(
+      `SELECT id, report_date, scanner_source, total_policy_violations,
+              critical_violations, high_violations, medium_violations, low_violations
+       FROM scan_reports
+       WHERE application_id = $1 AND total_policy_violations > 0
+       ORDER BY report_date DESC`,
+      [applicationId]
+    );
+    return r.rows.map((row: any) => ({
+      id: row.id,
+      reportDate: row.report_date,
+      scannerSource: row.scanner_source,
+      totalPolicyViolations: row.total_policy_violations ?? 0,
+      criticalViolations: row.critical_violations ?? 0,
+      highViolations: row.high_violations ?? 0,
+      mediumViolations: row.medium_violations ?? 0,
+      lowViolations: row.low_violations ?? 0,
+    }));
+  },
+
+  async getAggregatedPolicyViolations() {
+    const r = await query(`
+      SELECT COALESCE(SUM(total_policy_violations), 0)::int AS total,
+             COALESCE(SUM(critical_violations), 0)::int AS critical,
+             COALESCE(SUM(high_violations), 0)::int AS high,
+             COALESCE(SUM(medium_violations), 0)::int AS medium,
+             COALESCE(SUM(low_violations), 0)::int AS low
+      FROM scan_reports
+    `);
+    return r.rows[0];
+  },
 };

@@ -51,4 +51,12 @@ export const scanReportService = {
     if (!existing) throw new NotFoundError("ScanReport", id);
     await scanReportRepo.delete(id);
   },
+
+  async getPolicyViolationsByApp(applicationId: string) {
+    return scanReportRepo.getPolicyViolationsByApp(applicationId);
+  },
+
+  async getAggregatedPolicyViolations() {
+    return scanReportRepo.getAggregatedPolicyViolations();
+  },
 };
