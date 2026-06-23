@@ -3,9 +3,10 @@ import { useAuthStore, UserRole } from "../../store/auth.store";
 import {
   LayoutDashboard, Briefcase, ShieldAlert, Radar, Map, Cloud,
   FileCheck, Users, Settings, LogOut, FileSignature, Scale, Shield,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, Sun, Moon,
 } from "lucide-react";
 import { useState } from "react";
+import { useDarkMode } from "../../hooks/useDarkMode";
 
 interface NavItem {
   id: string;
@@ -52,6 +53,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [expanded, setExpanded] = useState<Set<string>>(new Set(["nexus", "veg"]));
+  const { dark, toggle: toggleDark } = useDarkMode();
 
   if (!user) return null;
 
@@ -70,12 +72,17 @@ export default function Sidebar() {
   return (
     <aside className="w-64 bg-slate-900 text-white flex flex-col shrink-0" role="navigation" aria-label="Main navigation">
       <div className="px-5 py-5 border-b border-slate-800">
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold text-sm">RC</div>
-          <div>
-            <p className="font-bold text-sm tracking-tight">RiskTower</p>
-            <p className="text-[10px] text-slate-400 font-medium">Compliance Control</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold text-sm">RC</div>
+            <div>
+              <p className="font-bold text-sm tracking-tight">RiskTower</p>
+              <p className="text-[10px] text-slate-400 font-medium">Compliance Control</p>
+            </div>
           </div>
+          <button onClick={toggleDark} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" title={dark ? "Light mode" : "Dark mode"}>
+            {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 

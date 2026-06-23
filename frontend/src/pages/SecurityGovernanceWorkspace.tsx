@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { waiverSchema, vulnFormSchema, riskAcceptanceSchema } from "../schemas/forms";
+import type { WaiverForm, VulnForm, RiskAcceptanceForm } from "../schemas/forms";
+import { FormInput, FormSelect, FormTextarea } from "../components/ui/FormField";
 import {
   ShieldAlert, Search, AlertTriangle, CheckCircle, XCircle,
   Clock, Upload, RefreshCw, ChevronLeft, Plus, FileText,
@@ -12,6 +17,8 @@ import {
 import type { Vulnerability } from "../api/security.api";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonTable } from "../components/ui/Skeleton";
+import Pagination from "../components/ui/Pagination";
+import BulkActionsToolbar from "../components/ui/BulkActionsToolbar";
 
 type ViewMode = "list" | "detail" | "create" | "waivers" | "risk-acceptances" | "sla" | "scan-import";
 
@@ -37,9 +44,17 @@ export default function SecurityGovernanceWorkspace() {
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(1);
   const [fpModal, setFpModal] = useState<{ vulnId: string; explanation: string } | null>(null);
-  const [waiverForm, setWaiverForm] = useState({ vulnerabilityId: "", title: "", rationale: "", expiryDate: "" });
-  const [raForm, setRaForm] = useState({ vulnerabilityId: "", title: "", businessImpact: "", mitigationPlan: "", expiryDate: "" });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [scanData, setScanData] = useState("");
+
+  const waiverFormHook = useForm<WaiverForm>({ resolver: zodResolver(waiverSchema) });
+  const { register: waiverReg, handleSubmit: waiverHandleSubmit, formState: { errors: waiverErrors }, reset: waiverReset } = waiverFormHook;
+
+  const raFormHook = useForm<RiskAcceptanceForm>({ resolver: zodResolver(riskAcceptanceSchema) });
+  const { register: raReg, handleSubmit: raHandleSubmit, formState: { errors: raErrors }, reset: raReset } = raFormHook;
+
+  const vulnFormHook = useForm<VulnForm>({ resolver: zodResolver(vulnFormSchema), defaultValues: { severity: "MEDIUM", sourceScanner: "VERACODE" } });
+  const { register: vulnReg, handleSubmit: vulnHandleSubmit, formState: { errors: vulnErrors }, reset: vulnReset } = vulnFormHook;
 
   const { data: vulnData, isLoading } = useVulnerabilityList({ page, limit: 20, search, severity: sevFilter || undefined, status: statusFilter || undefined });
   const { data: waivers } = useWaivers();
@@ -57,10 +72,6 @@ export default function SecurityGovernanceWorkspace() {
   const checkExpiry = useCheckWaiverExpiry();
   const importScan = useImportScan();
 
-  const [vulnForm, setVulnForm] = useState({ title: "", severity: "MEDIUM" as string, sourceScanner: "VERACODE" as string, slaDueDate: "", targetProduct: "", owner: "" });
-
-  function resetVulnForm() { setVulnForm({ title: "", severity: "MEDIUM", sourceScanner: "VERACODE", slaDueDate: "", targetProduct: "", owner: "" }); }
-
   // ----- LIST VIEW -----
   if (mode === "list") {
     return (
@@ -74,7 +85,7 @@ export default function SecurityGovernanceWorkspace() {
             <button onClick={() => setMode("scan-import")} className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50">
               <Upload className="w-4 h-4" /> Import Scan
             </button>
-            <button onClick={() => { resetVulnForm(); setMode("create"); }} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+            <button onClick={() => { vulnReset(); setMode("create"); }} className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
               <Plus className="w-4 h-4" /> New Vuln
             </button>
           </div>
@@ -138,10 +149,26 @@ export default function SecurityGovernanceWorkspace() {
                 action={{ label: "Import Scan", onClick: () => setMode("scan-import") }}
               />
             ) : (
+              <>
+              <BulkActionsToolbar
+                selectedCount={selectedIds.size}
+                onClear={() => setSelectedIds(new Set())}
+                actions={[{ label: "Mark as False Positive", onClick: () => {
+                  const first = [...selectedIds][0];
+                  if (first) setFpModal({ vulnId: first, explanation: "" });
+                }}]}
+              />
               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-slate-50 border-b border-slate-200">
+                      <th className="w-8 px-2 py-3">
+                        <input type="checkbox" onChange={e => {
+                          if (e.target.checked) setSelectedIds(new Set((vulnData?.data ?? []).map(v => v.id)));
+                          else setSelectedIds(new Set());
+                        }} checked={selectedIds.size === (vulnData?.data ?? []).length && (vulnData?.data ?? []).length > 0}
+                          className="rounded border-slate-300" />
+                      </th>
                       <th className="text-left px-4 py-3 font-medium text-slate-600">Title</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-600">Severity</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
@@ -156,7 +183,14 @@ export default function SecurityGovernanceWorkspace() {
                       const isOverdue = v.status === "OPEN" && new Date(v.slaDueDate) <= new Date();
                       return (
                         <tr key={v.id} className={`border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition-colors ${isOverdue ? "bg-red-50" : ""}`}>
-                          <td className="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">{v.title}</td>
+                          <td className="px-4 py-3">
+                        <input type="checkbox" checked={selectedIds.has(v.id)} onChange={e => {
+                          const next = new Set(selectedIds);
+                          if (e.target.checked) next.add(v.id); else next.delete(v.id);
+                          setSelectedIds(next);
+                        }} className="rounded border-slate-300" onClick={e => e.stopPropagation()} />
+                      </td>
+                      <td className="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">{v.title}</td>
                           <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${SEVERITY_BADGE[v.severity]}`}>{v.severity}</span></td>
                           <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[v.status]}`}>{v.status.replace(/_/g, " ")}</span></td>
                           <td className="px-4 py-3 text-slate-600 text-xs">{v.sourceScanner}</td>
@@ -181,16 +215,8 @@ export default function SecurityGovernanceWorkspace() {
                   </tbody>
                 </table>
               </div>
-            )}
-            {vulnData && vulnData.total > vulnData.limit && (
-              <div className="flex items-center justify-between text-sm text-slate-600">
-                <span>{((vulnData.page - 1) * vulnData.limit) + 1}–{Math.min(vulnData.page * vulnData.limit, vulnData.total)} of {vulnData.total}</span>
-                <div className="flex gap-2">
-                  <button disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1 rounded border border-slate-300 disabled:opacity-50">Prev</button>
-                  <button disabled={page >= Math.ceil(vulnData.total / vulnData.limit)} onClick={() => setPage(p => p + 1)} className="px-3 py-1 rounded border border-slate-300 disabled:opacity-50">Next</button>
-                </div>
-              </div>
-            )}
+            </>)}
+            {vulnData && <Pagination page={vulnData.page} limit={vulnData.limit} total={vulnData.total} onPageChange={p => setPage(p)} />}
           </>
         )}
 
@@ -221,50 +247,23 @@ export default function SecurityGovernanceWorkspace() {
       <div className="space-y-6 max-w-2xl">
         <button onClick={() => setMode("list")} className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"><ChevronLeft className="w-4 h-4" /> Back</button>
         <h2 className="text-2xl font-bold text-slate-800">New Vulnerability</h2>
-        <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
-            <input type="text" value={vulnForm.title} onChange={e => setVulnForm(f => ({ ...f, title: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" required />
+        <form onSubmit={vulnHandleSubmit(async (data) => { await createVuln.mutateAsync(data); setMode("list"); })} className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+          <FormInput label="Title" registration={vulnReg("title")} error={vulnErrors.title} />
+          <div className="grid grid-cols-2 gap-4">
+            <FormSelect label="Severity" registration={vulnReg("severity")} error={vulnErrors.severity} options={[{ value: "CRITICAL", label: "Critical" }, { value: "HIGH", label: "High" }, { value: "MEDIUM", label: "Medium" }, { value: "LOW", label: "Low" }]} />
+            <FormSelect label="Scanner" registration={vulnReg("sourceScanner")} error={vulnErrors.sourceScanner} options={[{ value: "VERACODE", label: "Veracode" }, { value: "NEXPOSE", label: "Nexpose" }, { value: "PEN_TEST", label: "Pen Test" }]} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Severity</label>
-              <select value={vulnForm.severity} onChange={e => setVulnForm(f => ({ ...f, severity: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                <option value="CRITICAL">Critical</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Scanner</label>
-              <select value={vulnForm.sourceScanner} onChange={e => setVulnForm(f => ({ ...f, sourceScanner: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                <option value="VERACODE">Veracode</option>
-                <option value="NEXPOSE">Nexpose</option>
-                <option value="PEN_TEST">Pen Test</option>
-              </select>
-            </div>
+            <FormInput label="SLA Due Date" registration={vulnReg("slaDueDate")} error={vulnErrors.slaDueDate} type="date" />
+            <FormInput label="Target Product" registration={vulnReg("targetProduct")} error={vulnErrors.targetProduct} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">SLA Due Date</label>
-              <input type="date" value={vulnForm.slaDueDate} onChange={e => setVulnForm(f => ({ ...f, slaDueDate: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Target Product</label>
-              <input type="text" value={vulnForm.targetProduct} onChange={e => setVulnForm(f => ({ ...f, targetProduct: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Owner</label>
-            <input type="text" value={vulnForm.owner} onChange={e => setVulnForm(f => ({ ...f, owner: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-          </div>
+          <FormInput label="Owner" registration={vulnReg("owner")} error={vulnErrors.owner} />
           <div className="flex gap-3 pt-2">
-            <button onClick={async () => { await createVuln.mutateAsync(vulnForm as any); setMode("list"); }} disabled={createVuln.isPending}
+            <button type="submit" disabled={createVuln.isPending}
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium disabled:opacity-50">Create</button>
-            <button onClick={() => setMode("list")} className="px-4 py-2 border border-slate-300 rounded-lg text-sm">Cancel</button>
+            <button type="button" onClick={() => setMode("list")} className="px-4 py-2 border border-slate-300 rounded-lg text-sm">Cancel</button>
           </div>
-        </div>
+        </form>
       </div>
     );
   }
@@ -278,17 +277,19 @@ export default function SecurityGovernanceWorkspace() {
           <button onClick={() => setMode("list")} className="text-sm text-indigo-600 hover:text-indigo-800">Back to Vulns</button>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+          <form onSubmit={waiverHandleSubmit(async (data) => { await createWaiver.mutateAsync(data); waiverReset(); })} className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
             <h3 className="text-sm font-semibold text-slate-700">New Waiver Request</h3>
             <div className="grid grid-cols-2 gap-3">
-              <input type="text" placeholder="Vulnerability ID" value={waiverForm.vulnerabilityId} onChange={e => setWaiverForm(f => ({ ...f, vulnerabilityId: e.target.value }))} className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <input type="text" placeholder="Title" value={waiverForm.title} onChange={e => setWaiverForm(f => ({ ...f, title: e.target.value }))} className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <textarea placeholder="Rationale" value={waiverForm.rationale} onChange={e => setWaiverForm(f => ({ ...f, rationale: e.target.value }))} className="col-span-2 px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <input type="date" value={waiverForm.expiryDate} onChange={e => setWaiverForm(f => ({ ...f, expiryDate: e.target.value }))} className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <button onClick={async () => { await createWaiver.mutateAsync(waiverForm); setWaiverForm({ vulnerabilityId: "", title: "", rationale: "", expiryDate: "" }); }}
-                className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm disabled:opacity-50" disabled={createWaiver.isPending}>Request Waiver</button>
+              <FormInput label="Vulnerability ID" registration={waiverReg("vulnerabilityId")} error={waiverErrors.vulnerabilityId} />
+              <FormInput label="Title" registration={waiverReg("title")} error={waiverErrors.title} />
+              <div className="col-span-2">
+                <FormTextarea label="Rationale" registration={waiverReg("rationale")} error={waiverErrors.rationale} />
+              </div>
+              <FormInput label="Expiry Date" registration={waiverReg("expiryDate")} error={waiverErrors.expiryDate} type="date" />
+              <button type="submit" disabled={createWaiver.isPending}
+                className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm disabled:opacity-50">Request Waiver</button>
             </div>
-          </div>
+          </form>
           <table className="w-full text-sm">
             <thead><tr className="border-b border-slate-200">
               <th className="text-left px-3 py-2 font-medium text-slate-600">Title</th>
@@ -329,18 +330,22 @@ export default function SecurityGovernanceWorkspace() {
           <button onClick={() => setMode("list")} className="text-sm text-indigo-600 hover:text-indigo-800">Back to Vulns</button>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <div className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+          <form onSubmit={raHandleSubmit(async (data) => { await createRA.mutateAsync(data); raReset(); })} className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
             <h3 className="text-sm font-semibold text-slate-700">New Risk Acceptance</h3>
             <div className="grid grid-cols-2 gap-3">
-              <input type="text" placeholder="Vulnerability ID" value={raForm.vulnerabilityId} onChange={e => setRaForm(f => ({ ...f, vulnerabilityId: e.target.value }))} className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <input type="text" placeholder="Title" value={raForm.title} onChange={e => setRaForm(f => ({ ...f, title: e.target.value }))} className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <textarea placeholder="Business Impact" value={raForm.businessImpact} onChange={e => setRaForm(f => ({ ...f, businessImpact: e.target.value }))} className="col-span-2 px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <textarea placeholder="Mitigation Plan" value={raForm.mitigationPlan} onChange={e => setRaForm(f => ({ ...f, mitigationPlan: e.target.value }))} className="col-span-2 px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <input type="date" value={raForm.expiryDate} onChange={e => setRaForm(f => ({ ...f, expiryDate: e.target.value }))} className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-              <button onClick={async () => { await createRA.mutateAsync(raForm); setRaForm({ vulnerabilityId: "", title: "", businessImpact: "", mitigationPlan: "", expiryDate: "" }); }}
-                className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm disabled:opacity-50" disabled={createRA.isPending}>Submit</button>
+              <FormInput label="Vulnerability ID" registration={raReg("vulnerabilityId")} error={raErrors.vulnerabilityId} />
+              <FormInput label="Title" registration={raReg("title")} error={raErrors.title} />
+              <div className="col-span-2">
+                <FormTextarea label="Business Impact" registration={raReg("businessImpact")} error={raErrors.businessImpact} />
+              </div>
+              <div className="col-span-2">
+                <FormTextarea label="Mitigation Plan" registration={raReg("mitigationPlan")} error={raErrors.mitigationPlan} />
+              </div>
+              <FormInput label="Expiry Date" registration={raReg("expiryDate")} error={raErrors.expiryDate} type="date" />
+              <button type="submit" disabled={createRA.isPending}
+                className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm disabled:opacity-50">Submit</button>
             </div>
-          </div>
+          </form>
           <table className="w-full text-sm">
             <thead><tr className="border-b border-slate-200">
               <th className="text-left px-3 py-2 font-medium text-slate-600">Title</th>

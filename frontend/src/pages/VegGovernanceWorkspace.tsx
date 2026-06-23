@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { vegDealSchema, vegWfSchema, oppFormSchema, contractFormSchema } from "../schemas/forms";
+import type { VegDealForm, VegWfForm, OppForm, ContractForm } from "../schemas/forms";
+import { FormInput, FormSelect, FormTextarea } from "../components/ui/FormField";
 import { useParams, useLocation } from "react-router-dom";
 import {
   Plus, Search, ChevronLeft, Briefcase, DollarSign, TrendingUp, AlertTriangle,
@@ -19,6 +24,7 @@ import {
 import type { VegDeal, VegDealListParams, VegRequest, Opportunity, Contract } from "../api/veg.api";
 import EmptyState from "../components/ui/EmptyState";
 import { SkeletonTable } from "../components/ui/Skeleton";
+import Pagination from "../components/ui/Pagination";
 
 type VSubMode = "dashboard" | "list" | "detail" | "create" | "edit"
   | "workflow" | "workflowDetail" | "workflowCreate";
@@ -157,9 +163,7 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
   const [search, setSearch] = useState("");
   const [wfFilters, setWfFilters] = useState<{ page: number; limit: number; status?: string; type?: string; search?: string }>({ page: 1, limit: 25 });
   const [wfSearch, setWfSearch] = useState("");
-  const [wfForm, setWfForm] = useState({ title: "", client: "", type: "RFI", description: "", ownerId: "" });
-  const [oppForm, setOppForm] = useState({ name: "", value: 0, salesStage: "PROSPECTING" });
-  const [contractForm, setContractForm] = useState({ title: "", startDate: "", endDate: "", slaCommitments: "", complianceStatus: "COMPLIANT", maintenanceSaaS: false });
+
   const [expandedOpp, setExpandedOpp] = useState<string | null>(null);
 
   const { data: listData, isLoading: listLoading } = useVegDealList(filters);
@@ -182,13 +186,20 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
   const createOpp = useCreateOpportunity();
   const createContract = useCreateContract();
 
-  const [form, setForm] = useState<Record<string, any>>({
-    vegId: "", client: "", businessOwner: "", region: "EU",
-    businessLine: "Colline", products: "", committeeType: "Go n Go",
-    vegDate: "", decision: "GO FINAL", tcv: 0, ipMaintenance: 0,
-    saas: 0, ps: 0, wlPsMd: 0, wlInvestmentMd: 0,
-    vegYear: new Date().getFullYear(),
+  const dealFormHook = useForm<VegDealForm>({
+    resolver: zodResolver(vegDealSchema),
+    defaultValues: { vegId: "", client: "", businessOwner: "", region: "EU", businessLine: "Colline", products: "", committeeType: "Go n Go", vegDate: "", decision: "GO FINAL", tcv: 0, ipMaintenance: 0, saas: 0, ps: 0, wlPsMd: 0, wlInvestmentMd: 0, vegYear: new Date().getFullYear() },
   });
+  const { register: dealReg, handleSubmit: dealHandleSubmit, formState: { errors: dealErrors }, reset: dealReset, setValue: dealSetValue } = dealFormHook;
+
+  const wfFormHook = useForm<VegWfForm>({ resolver: zodResolver(vegWfSchema), defaultValues: { title: "", client: "", type: "RFI", description: "", ownerId: "" } });
+  const { register: wfReg, handleSubmit: wfHandleSubmit, formState: { errors: wfErrors }, reset: wfReset } = wfFormHook;
+
+  const oppFormHook = useForm<OppForm>({ resolver: zodResolver(oppFormSchema), defaultValues: { name: "", value: 0, salesStage: "PROSPECTING" } });
+  const { register: oppReg, handleSubmit: oppHandleSubmit, formState: { errors: oppErrors }, reset: oppReset } = oppFormHook;
+
+  const contractFormHook = useForm<ContractForm>({ resolver: zodResolver(contractFormSchema), defaultValues: { title: "", startDate: "", endDate: "", slaCommitments: "", complianceStatus: "COMPLIANT", maintenanceSaaS: false } });
+  const { register: contractReg, handleSubmit: contractHandleSubmit, formState: { errors: contractErrors }, reset: contractReset } = contractFormHook;
 
   function handleSelect(id: string) { setSelectedId(id); setMode("detail"); }
   function handleBack() { setMode("list"); setSelectedId(null); }
@@ -201,14 +212,14 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
     setFilters((f: VegDealListParams) => ({ ...f, [key]: val || undefined, page: 1 }));
   }
 
-  async function handleCreate() {
-    await createDeal.mutateAsync({ ...form, vegDate: form.vegDate || new Date().toISOString().split("T")[0] });
+  async function handleCreate(data: VegDealForm) {
+    await createDeal.mutateAsync({ ...data, vegDate: data.vegDate || new Date().toISOString().split("T")[0] });
     setMode("list");
   }
 
-  async function handleUpdate() {
+  async function handleUpdate(data: VegDealForm) {
     if (!selectedId) return;
-    await updateDeal.mutateAsync({ id: selectedId, data: form });
+    await updateDeal.mutateAsync({ id: selectedId, data });
     setMode("detail");
   }
 
@@ -225,9 +236,9 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
     setWfFilters((f: any) => ({ ...f, [key]: val || undefined, page: 1 }));
   }
 
-  async function handleWfCreate() {
-    await createWf.mutateAsync(wfForm as unknown as Partial<VegRequest>);
-    setWfForm({ title: "", client: "", type: "RFI", description: "", ownerId: "" });
+  async function handleWfCreate(data: VegWfForm) {
+    await createWf.mutateAsync(data as unknown as Partial<VegRequest>);
+    wfReset();
     setMode("workflow");
   }
 
@@ -246,15 +257,15 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
     await gonogoWf.mutateAsync({ id: selectedWorkflowId, decision });
   }
 
-  async function handleCreateOpp() {
+  async function handleCreateOpp(data: OppForm) {
     if (!selectedWorkflowId) return;
-    await createOpp.mutateAsync({ vegId: selectedWorkflowId, data: oppForm });
-    setOppForm({ name: "", value: 0, salesStage: "PROSPECTING" });
+    await createOpp.mutateAsync({ vegId: selectedWorkflowId, data });
+    oppReset();
   }
 
-  async function handleCreateContract(opportunityId: string) {
-    await createContract.mutateAsync({ opportunityId, data: contractForm });
-    setContractForm({ title: "", startDate: "", endDate: "", slaCommitments: "", complianceStatus: "COMPLIANT", maintenanceSaaS: false });
+  async function handleCreateContract(opportunityId: string, data: ContractForm) {
+    await createContract.mutateAsync({ opportunityId, data });
+    contractReset();
     setExpandedOpp(null);
   }
 
@@ -421,7 +432,7 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
             }} className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">
               <FileText className="w-4 h-4" /> Export CSV
             </button>
-            <button onClick={() => { setForm({ vegId: "", client: "", businessOwner: "", region: "EU", businessLine: "Colline", products: "", committeeType: "Go n Go", vegDate: "", decision: "GO FINAL", tcv: 0, ipMaintenance: 0, saas: 0, ps: 0, wlPsMd: 0, wlInvestmentMd: 0, vegYear: new Date().getFullYear() }); setMode("create"); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
+            <button onClick={() => { dealReset(); setMode("create"); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium">
               <Plus className="w-4 h-4" /> New Deal
             </button>
           </div>
@@ -513,17 +524,7 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
               </div>
             </div>
 
-            {listData && listData.total > listData.limit && (
-              <div className="flex items-center justify-between text-sm text-slate-600">
-                <span>Showing {((listData.page - 1) * listData.limit) + 1}–{Math.min(listData.page * listData.limit, listData.total)} of {listData.total}</span>
-                <div className="flex gap-2">
-                  <button disabled={(listData.page || 1) <= 1} onClick={() => setFilters(f => ({ ...f, page: (f.page || 1) - 1 }))}
-                    className="px-3 py-1 rounded border border-slate-300 disabled:opacity-50 text-sm">Prev</button>
-                  <button disabled={(listData.page || 1) >= Math.ceil(listData.total / listData.limit)} onClick={() => setFilters(f => ({ ...f, page: (f.page || 1) + 1 }))}
-                    className="px-3 py-1 rounded border border-slate-300 disabled:opacity-50 text-sm">Next</button>
-                </div>
-              </div>
-            )}
+            {listData && <Pagination page={listData.page} limit={listData.limit} total={listData.total} onPageChange={p => setFilters(f => ({ ...f, page: p }))} onLimitChange={l => setFilters(f => ({ ...f, limit: l, page: 1 }))} />}
           </>
         )}
       </div>
@@ -540,117 +541,50 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
         </button>
         <h2 className="text-2xl font-bold text-slate-800">{mode === "create" ? "New VEG Deal" : "Edit VEG Deal"}</h2>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">VEG ID</label>
-              <input type="text" value={form.vegId} onChange={e => setForm((f: any) => ({ ...f, vegId: e.target.value }))}
-                placeholder="e.g. 21-2023-001" className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono" required />
+        <form onSubmit={dealHandleSubmit(mode === "create" ? handleCreate : handleUpdate)}>
+          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput label="VEG ID" registration={dealReg("vegId")} placeholder="e.g. 21-2023-001" />
+              <FormInput label="VEG Date" registration={dealReg("vegDate")} type="date" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">VEG Date</label>
-              <input type="date" value={form.vegDate} onChange={e => setForm((f: any) => ({ ...f, vegDate: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput label="Client" registration={dealReg("client")} />
+              <FormInput label="Business Owner" registration={dealReg("businessOwner")} />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Client</label>
-              <input type="text" value={form.client} onChange={e => setForm((f: any) => ({ ...f, client: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" required />
+            <div className="grid grid-cols-3 gap-4">
+              <FormSelect label="Region" registration={dealReg("region")} options={REGIONS.map(r => ({ value: r, label: r }))} />
+              <FormSelect label="Business Line" registration={dealReg("businessLine")} options={BUSINESS_LINES.map(b => ({ value: b, label: b }))} />
+              <FormSelect label="Committee Type" registration={dealReg("committeeType")} options={[{ value: "Go n Go", label: "Go n Go" }, { value: "Bid n Bid", label: "Bid n Bid" }]} />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Business Owner</label>
-              <input type="text" value={form.businessOwner} onChange={e => setForm((f: any) => ({ ...f, businessOwner: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+            <FormInput label="Products" registration={dealReg("products")} placeholder="e.g. Colline, Megara" />
+            <div className="grid grid-cols-2 gap-4">
+              <FormSelect label="Decision" registration={dealReg("decision")} options={DECISIONS.map(d => ({ value: d, label: d }))} />
+              <FormInput label="Year" registration={dealReg("vegYear")} type="number" />
             </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Region</label>
-              <select value={form.region} onChange={e => setForm((f: any) => ({ ...f, region: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Business Line</label>
-              <select value={form.businessLine} onChange={e => setForm((f: any) => ({ ...f, businessLine: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                {BUSINESS_LINES.map(b => <option key={b} value={b}>{b}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Committee Type</label>
-              <select value={form.committeeType} onChange={e => setForm((f: any) => ({ ...f, committeeType: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                <option value="Go n Go">Go n Go</option>
-                <option value="Bid n Bid">Bid n Bid</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Products</label>
-            <input type="text" value={form.products} onChange={e => setForm((f: any) => ({ ...f, products: e.target.value }))}
-              placeholder="e.g. Colline, Megara" className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Decision</label>
-              <select value={form.decision} onChange={e => setForm((f: any) => ({ ...f, decision: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                {DECISIONS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Year</label>
-              <input type="number" value={form.vegYear} onChange={e => setForm((f: any) => ({ ...f, vegYear: parseInt(e.target.value) || 2023 }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            </div>
-          </div>
 
-          <h3 className="text-lg font-semibold text-slate-700 pt-2 border-t">Financial Breakdown (K€)</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">TCV</label>
-              <input type="number" value={form.tcv} onChange={e => setForm((f: any) => ({ ...f, tcv: parseFloat(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+            <h3 className="text-lg font-semibold text-slate-700 pt-2 border-t">Financial Breakdown (K€)</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <FormInput label="TCV" registration={dealReg("tcv")} type="number" />
+              <FormInput label="IP + Maintenance" registration={dealReg("ipMaintenance")} type="number" />
+              <FormInput label="SaaS" registration={dealReg("saas")} type="number" />
+              <FormInput label="PS" registration={dealReg("ps")} type="number" />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">IP + Maintenance</label>
-              <input type="number" value={form.ipMaintenance} onChange={e => setForm((f: any) => ({ ...f, ipMaintenance: parseFloat(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+            <div className="grid grid-cols-2 gap-4">
+              <FormInput label="Workload PS (man-days)" registration={dealReg("wlPsMd")} type="number" />
+              <FormInput label="Investment (man-days)" registration={dealReg("wlInvestmentMd")} type="number" />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">SaaS</label>
-              <input type="number" value={form.saas} onChange={e => setForm((f: any) => ({ ...f, saas: parseFloat(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">PS</label>
-              <input type="number" value={form.ps} onChange={e => setForm((f: any) => ({ ...f, ps: parseFloat(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Workload PS (man-days)</label>
-              <input type="number" value={form.wlPsMd} onChange={e => setForm((f: any) => ({ ...f, wlPsMd: parseFloat(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Investment (man-days)</label>
-              <input type="number" value={form.wlInvestmentMd} onChange={e => setForm((f: any) => ({ ...f, wlInvestmentMd: parseFloat(e.target.value) || 0 }))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            </div>
-          </div>
 
-          <div className="flex gap-3 pt-2">
-            <button onClick={mode === "create" ? handleCreate : handleUpdate}
-              disabled={createDeal.isPending || updateDeal.isPending || !form.vegId || !form.client}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-50">
-              {mode === "create" ? "Create Deal" : "Update Deal"}
-            </button>
-            <button onClick={() => { mode === "edit" ? setMode("detail") : setMode("list"); }}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
+            <div className="flex gap-3 pt-2">
+              <button type="submit"
+                disabled={createDeal.isPending || updateDeal.isPending}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-50">
+                {mode === "create" ? "Create Deal" : "Update Deal"}
+              </button>
+              <button onClick={() => { mode === "edit" ? setMode("detail") : setMode("list"); }}
+                className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
+            </div>
           </div>
-        </div>
+        </form>
       </div>
     );
   }
@@ -679,7 +613,7 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
               </p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => { setForm({ vegId: detail.veg_id, client: detail.client, businessOwner: detail.business_owner, region: detail.region, businessLine: detail.business_line, products: detail.products, committeeType: detail.committee_type, vegDate: detail.veg_date, decision: detail.decision, tcv: detail.tcv, ipMaintenance: detail.ip_maintenance, saas: detail.saas, ps: detail.ps, wlPsMd: detail.wl_ps_md, wlInvestmentMd: detail.wl_investment_md, vegYear: detail.veg_year }); setMode("edit"); }}
+              <button onClick={() => { dealReset({ vegId: detail.veg_id, client: detail.client, businessOwner: detail.business_owner, region: detail.region, businessLine: detail.business_line, products: detail.products, committeeType: detail.committee_type, vegDate: detail.veg_date, decision: detail.decision, tcv: detail.tcv, ipMaintenance: detail.ip_maintenance, saas: detail.saas, ps: detail.ps, wlPsMd: detail.wl_ps_md, wlInvestmentMd: detail.wl_investment_md, vegYear: detail.veg_year }); setMode("edit"); }}
                 className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">Edit</button>
               <button onClick={() => handleDelete(detail.id)} className="px-3 py-1.5 border border-red-300 text-red-600 rounded-lg text-sm hover:bg-red-50">Delete</button>
             </div>
@@ -895,17 +829,7 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
                 </div>
               </div>
 
-              {wfList && wfList.total > wfList.limit && (
-                <div className="flex items-center justify-between text-sm text-slate-600">
-                  <span>Showing {((wfList.page - 1) * wfList.limit) + 1}–{Math.min(wfList.page * wfList.limit, wfList.total)} of {wfList.total}</span>
-                  <div className="flex gap-2">
-                    <button disabled={(wfList.page || 1) <= 1} onClick={() => setWfFilters(f => ({ ...f, page: (f.page || 1) - 1 }))}
-                      className="px-3 py-1 rounded border border-slate-300 disabled:opacity-50 text-sm">Prev</button>
-                    <button disabled={(wfList.page || 1) >= Math.ceil(wfList.total / wfList.limit)} onClick={() => setWfFilters(f => ({ ...f, page: (f.page || 1) + 1 }))}
-                      className="px-3 py-1 rounded border border-slate-300 disabled:opacity-50 text-sm">Next</button>
-                  </div>
-                </div>
-              )}
+              {wfList && <Pagination page={wfList.page} limit={wfList.limit} total={wfList.total} onPageChange={p => setWfFilters(f => ({ ...f, page: p }))} onLimitChange={l => setWfFilters(f => ({ ...f, limit: l, page: 1 }))} />}
             </>
           )}
         </div>
@@ -1092,7 +1016,7 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
                 <TrendingUp className="w-4 h-4 text-indigo-500" /> Opportunities ({opportunities.length})
               </h3>
               {wfDetail.status !== "DRAFT" && (
-                <button onClick={handleCreateOpp} disabled={createOpp.isPending || !oppForm.name}
+                <button onClick={() => {}} disabled={createOpp.isPending}
                   className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm disabled:opacity-50">
                   <Plus className="w-4 h-4" /> Add Opportunity
                 </button>
@@ -1101,25 +1025,23 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
 
             {/* Create opportunity form */}
             {wfDetail.status !== "DRAFT" && (
-              <div className="grid grid-cols-4 gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
-                <input type="text" placeholder="Opportunity name" value={oppForm.name}
-                  onChange={e => setOppForm(f => ({ ...f, name: e.target.value }))}
+              <form onSubmit={oppHandleSubmit(handleCreateOpp)} className="grid grid-cols-4 gap-3 mb-4 p-3 bg-slate-50 rounded-lg">
+                <input type="text" placeholder="Opportunity name" {...oppReg("name")}
                   className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-                <input type="number" placeholder="Value (K€)" value={oppForm.value || ""}
-                  onChange={e => setOppForm(f => ({ ...f, value: parseFloat(e.target.value) || 0 }))}
+                <input type="number" placeholder="Value (K€)" {...oppReg("value")}
                   className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-                <select value={oppForm.salesStage} onChange={e => setOppForm(f => ({ ...f, salesStage: e.target.value }))}
+                <select {...oppReg("salesStage")}
                   className="px-3 py-1.5 rounded border border-slate-300 text-sm">
                   <option value="PROSPECTING">Prospecting</option>
                   <option value="NEGOTIATION">Negotiation</option>
                   <option value="CLOSED_WON">Closed Won</option>
                   <option value="CLOSED_LOST">Closed Lost</option>
                 </select>
-                <button onClick={handleCreateOpp} disabled={createOpp.isPending || !oppForm.name}
+                <button type="submit" disabled={createOpp.isPending}
                   className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm disabled:opacity-50">
                   Save
                 </button>
-              </div>
+              </form>
             )}
 
             {/* Opportunities table */}
@@ -1184,24 +1106,22 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
                         )}
 
                         {/* Add contract form */}
-                        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
-                          <input type="text" placeholder="Contract title"
-                            value={expandedOpp === opp.id ? contractForm.title : ""}
-                            onChange={e => setContractForm(f => ({ ...f, title: e.target.value }))}
-                            className="col-span-2 px-3 py-1.5 rounded border border-slate-300 text-sm" />
-                          <input type="date" value={contractForm.startDate}
-                            onChange={e => setContractForm(f => ({ ...f, startDate: e.target.value }))}
-                            className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-                          <input type="date" value={contractForm.endDate}
-                            onChange={e => setContractForm(f => ({ ...f, endDate: e.target.value }))}
-                            className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
-                          <button
-                            onClick={() => handleCreateContract(opp.id)}
-                            disabled={createContract.isPending || !contractForm.title}
-                            className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm disabled:opacity-50">
-                            Add Contract
-                          </button>
-                        </div>
+                        <form onSubmit={contractHandleSubmit((data) => handleCreateContract(opp.id, data))}>
+                          <div className="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
+                            <div className="col-span-2">
+                              <input type="text" placeholder="Contract title" {...contractReg("title")}
+                                className="w-full px-3 py-1.5 rounded border border-slate-300 text-sm" />
+                            </div>
+                            <input type="date" {...contractReg("startDate")}
+                              className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
+                            <input type="date" {...contractReg("endDate")}
+                              className="px-3 py-1.5 rounded border border-slate-300 text-sm" />
+                            <button type="submit" disabled={createContract.isPending}
+                              className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm disabled:opacity-50">
+                              Add Contract
+                            </button>
+                          </div>
+                        </form>
                       </div>
                     )}
                   </div>
@@ -1223,50 +1143,33 @@ export default function VegGovernanceWorkspace({ initialTab: propTab }: { initia
           </button>
           <h2 className="text-2xl font-bold text-slate-800">New VEG Workflow Request</h2>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Title *</label>
-              <input type="text" value={wfForm.title} onChange={e => setWfForm(f => ({ ...f, title: e.target.value }))}
-                placeholder="e.g. RFP — BNP Paribas Colline Migration" className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" required />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Client *</label>
-              <input type="text" value={wfForm.client} onChange={e => setWfForm(f => ({ ...f, client: e.target.value }))}
-                placeholder="e.g. BNP Paribas" className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" required />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Request Type</label>
-                <select value={wfForm.type} onChange={e => setWfForm(f => ({ ...f, type: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm">
-                  <option value="RFI">RFI</option>
-                  <option value="RFP">RFP</option>
-                  <option value="NEW_CLIENT_REQUEST">New Client Request</option>
-                  <option value="BD_REQUEST">BD Request</option>
-                  <option value="ACC_CODE_CREATION">ACC Code Creation</option>
-                  <option value="BID_COMMITTEE_OVERSIGHT">Bid Committee Oversight</option>
-                </select>
+          <form onSubmit={wfHandleSubmit(handleWfCreate)}>
+            <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+              <FormInput label="Title *" registration={wfReg("title")} placeholder="e.g. RFP — BNP Paribas Colline Migration" />
+              <FormInput label="Client *" registration={wfReg("client")} placeholder="e.g. BNP Paribas" />
+              <div className="grid grid-cols-2 gap-4">
+                <FormSelect label="Request Type" registration={wfReg("type")} options={[
+                  { value: "RFI", label: "RFI" },
+                  { value: "RFP", label: "RFP" },
+                  { value: "NEW_CLIENT_REQUEST", label: "New Client Request" },
+                  { value: "BD_REQUEST", label: "BD Request" },
+                  { value: "ACC_CODE_CREATION", label: "ACC Code Creation" },
+                  { value: "BID_COMMITTEE_OVERSIGHT", label: "Bid Committee Oversight" },
+                ]} />
+                <FormInput label="Owner ID" registration={wfReg("ownerId")} placeholder="User UUID (optional)" />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Owner ID</label>
-                <input type="text" value={wfForm.ownerId} onChange={e => setWfForm(f => ({ ...f, ownerId: e.target.value }))}
-                  placeholder="User UUID (optional)" className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-              <textarea value={wfForm.description} onChange={e => setWfForm(f => ({ ...f, description: e.target.value }))}
-                rows={3} placeholder="Optional description or notes..." className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
-            </div>
+              <FormTextarea label="Description" registration={wfReg("description")} rows={3} placeholder="Optional description or notes..." />
 
-            <div className="flex gap-3 pt-2">
-              <button onClick={handleWfCreate} disabled={createWf.isPending || !wfForm.title || !wfForm.client}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-50">
-                <FilePlus className="w-4 h-4 inline mr-1" /> Create Request
-              </button>
-              <button onClick={() => setMode("workflow")}
-                className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={createWf.isPending}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-50">
+                  <FilePlus className="w-4 h-4 inline mr-1" /> Create Request
+                </button>
+                <button onClick={() => setMode("workflow")}
+                  className="px-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50">Cancel</button>
+              </div>
             </div>
-          </div>
+          </form>
         </div>
       );
     }

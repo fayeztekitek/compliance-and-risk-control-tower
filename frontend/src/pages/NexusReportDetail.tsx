@@ -4,6 +4,7 @@ import { useFindings } from "../hooks/useNexus";
 import { SkeletonPage } from "../components/ui/Skeleton";
 import NexusVulnerabilityDetail from "./NexusVulnerabilityDetail";
 import NexusReportComparison from "./NexusReportComparison";
+import Pagination from "../components/ui/Pagination";
 
 interface Props {
   reportId: string;
@@ -29,7 +30,9 @@ export default function NexusReportDetail({ reportId, applicationId, application
   const [severityFilter, setSeverityFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
-  const { data: findingsData, isLoading } = useFindings({ scanId: reportId, limit: 200 });
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+  const { data: findingsData, isLoading } = useFindings({ scanId: reportId, page, limit });
 
   if (reportView === "vulnerability" && selectedVulnId) {
     return (
@@ -206,6 +209,7 @@ export default function NexusReportDetail({ reportId, applicationId, application
             </tbody>
           </table>
         </div>
+        {findingsData && <Pagination page={findingsData.page || 1} limit={findingsData.limit || limit} total={findingsData.total || filteredVulns.length} onPageChange={setPage} onLimitChange={l => { setLimit(l); setPage(1); }} />}
       </div>
     </div>
   );

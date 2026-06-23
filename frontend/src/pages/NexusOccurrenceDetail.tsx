@@ -6,6 +6,10 @@ import {
 } from "lucide-react";
 import { useOccurrenceDetail, useProposeMitigation, useApproveMitigation, useVerifyMitigation, useCloseMitigation, useRejectMitigation } from "../hooks/useNexus";
 import { SkeletonPage } from "../components/ui/Skeleton";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { mitigationSchema, type MitigationForm } from "../schemas/forms";
+import { FormInput, FormSelect, FormTextarea } from "../components/ui/FormField";
 
 interface Props {
   occurrenceId: string;
@@ -38,11 +42,16 @@ const OCC_STATUS_COLORS: Record<string, string> = {
 export default function NexusOccurrenceDetail({ occurrenceId, onBackToVuln, onBackToReport, onBackToApp, onBackToOverview }: Props) {
   const { data: detail, isLoading } = useOccurrenceDetail(occurrenceId);
   const [showMitForm, setShowMitForm] = useState(false);
-  const [mitForm, setMitForm] = useState({ mitigationType: "FIX", targetComponentVersion: "", owner: "", dueDate: "", notes: "" });
   const [verifyEvidence, setVerifyEvidence] = useState("");
   const [verifyMitId, setVerifyMitId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectMitId, setRejectMitId] = useState<string | null>(null);
+
+  const mitForm = useForm<MitigationForm>({
+    resolver: zodResolver(mitigationSchema),
+    defaultValues: { mitigationType: "FIX" },
+  });
+  const { register: mitReg, handleSubmit: mitHandleSubmit, formState: { errors: mitErrors }, reset: mitReset } = mitForm;
 
   const proposeMit = useProposeMitigation();
   const approveMit = useApproveMitigation();
@@ -63,18 +72,18 @@ export default function NexusOccurrenceDetail({ occurrenceId, onBackToVuln, onBa
   const { occurrence, component, finding, mitigations, waivers } = detail;
   const activeWaiver = waivers.find((w: any) => w.status === "active");
 
-  async function handlePropose() {
+  async function handlePropose(data: MitigationForm) {
     if (!finding) return;
     await proposeMit.mutateAsync({
       findingId: finding.id,
-      mitigationType: mitForm.mitigationType,
-      targetComponentVersion: mitForm.targetComponentVersion || undefined,
-      owner: mitForm.owner || undefined,
-      dueDate: mitForm.dueDate || undefined,
-      notes: mitForm.notes || undefined,
+      mitigationType: data.mitigationType,
+      targetComponentVersion: data.targetComponentVersion || undefined,
+      owner: data.owner || undefined,
+      dueDate: data.dueDate || undefined,
+      notes: data.notes || undefined,
     });
     setShowMitForm(false);
-    setMitForm({ mitigationType: "FIX", targetComponentVersion: "", owner: "", dueDate: "", notes: "" });
+    mitReset();
   }
 
   return (
@@ -274,48 +283,22 @@ export default function NexusOccurrenceDetail({ occurrenceId, onBackToVuln, onBa
             </div>
 
             {showMitForm && (
-              <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+              <form onSubmit={mitHandleSubmit(handlePropose)} className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Type</label>
-                    <select value={mitForm.mitigationType} onChange={e => setMitForm(f => ({ ...f, mitigationType: e.target.value }))}
-                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2">
-                      <option value="FIX">Fix</option>
-                      <option value="UPGRADE">Upgrade</option>
-                      <option value="PATCH">Patch</option>
-                      <option value="WORKAROUND">Workaround</option>
-                      <option value="ACCEPT">Accept Risk</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Owner</label>
-                    <input value={mitForm.owner} onChange={e => setMitForm(f => ({ ...f, owner: e.target.value }))}
-                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="Assignee" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Target Version</label>
-                    <input value={mitForm.targetComponentVersion} onChange={e => setMitForm(f => ({ ...f, targetComponentVersion: e.target.value }))}
-                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="e.g. 2.1.0" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Due Date</label>
-                    <input type="date" value={mitForm.dueDate} onChange={e => setMitForm(f => ({ ...f, dueDate: e.target.value }))}
-                      className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" />
-                  </div>
+                  <FormSelect label="Type" registration={mitReg("mitigationType")} error={mitErrors.mitigationType} options={[{value:"FIX",label:"Fix"},{value:"UPGRADE",label:"Upgrade"},{value:"PATCH",label:"Patch"},{value:"WORKAROUND",label:"Workaround"},{value:"ACCEPT",label:"Accept Risk"}]} />
+                  <FormInput label="Owner" registration={mitReg("owner")} error={mitErrors.owner} placeholder="Assignee" />
+                  <FormInput label="Target Version" registration={mitReg("targetComponentVersion")} error={mitErrors.targetComponentVersion} placeholder="e.g. 2.1.0" />
+                  <FormInput label="Due Date" registration={mitReg("dueDate")} error={mitErrors.dueDate} type="date" />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Notes</label>
-                  <textarea value={mitForm.notes} onChange={e => setMitForm(f => ({ ...f, notes: e.target.value }))}
-                    className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" rows={2} placeholder="Optional notes" />
-                </div>
+                <FormTextarea label="Notes" registration={mitReg("notes")} error={mitErrors.notes} rows={2} placeholder="Optional notes" />
                 <div className="flex gap-2">
-                  <button onClick={handlePropose} disabled={proposeMit.isPending}
+                  <button type="submit" disabled={proposeMit.isPending}
                     className="flex items-center gap-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                     <Send className="w-3 h-3" /> {proposeMit.isPending ? "Submitting..." : "Submit"}
                   </button>
-                  <button onClick={() => setShowMitForm(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+                  <button type="button" onClick={() => setShowMitForm(false)} className="px-4 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
                 </div>
-              </div>
+              </form>
             )}
 
             {mitigations.length > 0 ? (
