@@ -30,6 +30,9 @@ import trendRoutes from "./routes/trend.routes.js";
 import mitigationRoutes from "./routes/mitigation.routes.js";
 import policyRuleRoutes from "./routes/policyRule.routes.js";
 import complianceRoutes from "./routes/compliance.routes.js";
+import fortifyRoutes from "./routes/fortify.routes.js";
+import sonarqubeRoutes from "./routes/sonarqube.routes.js";
+import veracodeRoutes from "./routes/veracode.routes.js";
 
 const app = express();
 
@@ -89,6 +92,9 @@ app.use("/api/trends", trendRoutes);
 app.use("/api/mitigations", mitigationRoutes);
 app.use("/api/policy-rules", policyRuleRoutes);
 app.use("/api/compliance", complianceRoutes);
+app.use("/api/fortify", fortifyRoutes);
+app.use("/api/sonarqube", sonarqubeRoutes);
+app.use("/api/veracode", veracodeRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);
