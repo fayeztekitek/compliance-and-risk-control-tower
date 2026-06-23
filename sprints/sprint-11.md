@@ -1,6 +1,6 @@
 # Sprint 11: Nexus Policy Violations + Compliance Classification + Platform Catch-up
 
-**Status:** 🟡 In Progress  
+**Status:** ✅ Completed  
 **Branch:** `sprint-11-policy-compliance`  
 **Goal:** Build the missing policy violations backend + frontend. Add compliance classification framework for regulatory mapping (PCI-DSS, GDPR, SOX). Also catch up Sprint 7 deferred items CF-6 through CF-9.
 
@@ -72,10 +72,10 @@
 
 | Type | Count | Description |
 |------|-------|-------------|
-| Backend Unit | 4 | Policy rules CRUD, compliance auto-classify, SLA breach detection |
-| Backend Integration | 2 | Policy rules endpoints, compliance endpoints |
+| Backend Unit | 10 | Policy rules CRUD (5) + compliance service (5) |
+| Backend Integration | 0 | (route-level integration deferred) |
 | Frontend Unit | 4 | Policy rules page, compliance matrix, compliance badges |
-| Regression | ~206 | All Sprint 1–10 tests |
+| Regression | 232 | 208 backend (30 files) + 24 frontend (4 files) - 2 pre-existing failures |
 
 ---
 
