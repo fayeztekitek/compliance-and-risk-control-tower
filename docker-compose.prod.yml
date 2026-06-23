@@ -1,16 +1,15 @@
-version: "3.9"
+version: "3.0"
 
 services:
   postgres:
     image: postgres:16-alpine
+    container_name: ct-postgres
     environment:
+      POSTGRES_DB: compliance_tower
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: compliance_tower
     volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -19,47 +18,48 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    container_name: ct-redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  backend:
+  api:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
+    container_name: ct-api
     environment:
       NODE_ENV: production
+      PORT: 3000
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: compliance_tower
       DB_USER: postgres
       DB_PASSWORD: postgres
-      REDIS_URL: redis://redis:6379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: prod-secret-change-me
       CORS_ORIGIN: http://localhost:5173
+      LOG_LEVEL: info
     ports:
       - "3000:3000"
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - postgres
+      - redis
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    environment:
-      VITE_API_URL: http://localhost:3000
+    container_name: ct-frontend
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      - api
     restart: unless-stopped
 
 volumes:
-  pgdata:
+  postgres_data:
