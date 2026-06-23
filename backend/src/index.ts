@@ -74,6 +74,13 @@ import("./services/enrichmentWorker.js").then(({ startEnrichmentWorker }) => {
   logger.warn({ err }, "Failed to start enrichment worker (Redis may be unavailable)");
 });
 
+import("./services/vegSlaWorker.js").then(({ startVegSlaWorker, scheduleVegSlaDaily }) => {
+  startVegSlaWorker();
+  scheduleVegSlaDaily();
+}).catch((err) => {
+  logger.warn({ err }, "Failed to start VEG SLA worker (Redis may be unavailable)");
+});
+
 app.listen(env.PORT, "0.0.0.0", () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, "Server started");
 });

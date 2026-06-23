@@ -14,6 +14,7 @@ export const queues = {
   emailNotify: new Queue("email-notify", { connection }),
   kpiRecalc: new Queue("kpi-recalc", { connection }),
   enrichment: new Queue("enrichment", { connection }),
+  vegSlaCheck: new Queue("veg-sla-check", { connection }),
 };
 
 export async function startWorkers() {

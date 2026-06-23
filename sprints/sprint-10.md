@@ -34,9 +34,9 @@ These items were deferred from Sprint 7 and are prioritized for Sprint 10:
 - [x] Emit events on: deal created/updated
 
 ### Backend — VEG SLA Tracking
-- [ ] Migration 024: add `due_date` to `veg_requests` table
-- [ ] BullMQ worker `veg-sla-check` for daily overdue detection
-- [ ] SLA breach notification event
+- [x] Migration 024: add `due_date` to `veg_requests` table
+- [x] BullMQ worker `veg-sla-check` for daily overdue detection
+- [x] SLA breach notification event (emitted via vegEventBus)
 
 ### Backend — VEG Deal Enhanced Stats
 - [ ] Year-over-year comparison data in `getStats()`
