@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { Radar, Shield, Bug, AlertTriangle, Activity, ChevronRight, Building2, Layers } from "lucide-react";
-import { useOrganizations, useProducts, useCrossToolSummary, useDistinctCount, useTotalOccurrences } from "../hooks/useNexus";
-import { SkeletonPage } from "../components/ui/Skeleton";
+import { useState, useEffect, useCallback } from "react";
+import { Building2, Loader2, CheckCircle2, XCircle, ChevronRight, FileText } from "lucide-react";
 import NexusApplicationDetail from "./NexusApplicationDetail";
+import { nexusApi } from "../api/nexus.api";
 
 type NexusView = "overview" | "application";
 
@@ -10,14 +9,113 @@ export default function NexusOverview() {
   const [nexusView, setNexusView] = useState<NexusView>("overview");
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
-  const { data: orgs, isLoading: orgsLoading } = useOrganizations();
-  const { data: products, isLoading: productsLoading } = useProducts();
-  const { data: summary, isLoading: summaryLoading } = useCrossToolSummary();
-  const { data: distinctCount } = useDistinctCount();
-  const { data: totalOccurrences } = useTotalOccurrences();
+
+  const [nexusUrl, setNexusUrl] = useState("");
+  const [nexusUsername, setNexusUsername] = useState("");
+  const [nexusToken, setNexusToken] = useState("");
+  const [connecting, setConnecting] = useState(false);
+  const [connectionResult, setConnectionResult] = useState<{ success: boolean; message: string; duration: number } | null>(null);
+  const [remoteOrgs, setRemoteOrgs] = useState<{ organizationId: string; organizationName: string }[]>([]);
+  const [connected, setConnected] = useState(false);
+  const [apps, setApps] = useState<any[]>([]);
+  const [appsLoading, setAppsLoading] = useState(false);
+  const [appScanCounts, setAppScanCounts] = useState<Record<string, { count: number; latest: string }>>({});
+
+  // Session token from backend (encrypted credentials on server)
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/nexus/config", { headers: { Authorization: `Bearer ${localStorage.getItem("auth_token")}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.data) {
+          setNexusUrl(d.data.url || "");
+          setNexusUsername(d.data.username || "");
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    setConnectionResult(null);
+    try {
+      const { data } = await nexusApi.connectToNexus({
+        url: nexusUrl,
+        username: nexusUsername,
+        token: nexusToken,
+      });
+      setConnectionResult(data.data.connection);
+      if (data.data.connection.success) {
+        setRemoteOrgs(data.data.remoteOrgs);
+        setConnected(true);
+        if (data.data.sessionToken) {
+          setSessionToken(data.data.sessionToken);
+          sessionStorage.setItem("nexus_session_token", data.data.sessionToken);
+        }
+      }
+    } catch {
+      setConnectionResult({ success: false, message: "Connection failed: unable to reach server", duration: 0 });
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  // Fetch applications when org selection changes
+  const fetchAppsForOrg = useCallback(async (orgId: string) => {
+    if (!sessionToken && !orgId) { setApps([]); return; }
+    setAppsLoading(true);
+    try {
+      const { data } = await nexusApi.fetchNexusApplications({
+        sessionToken: sessionToken || undefined,
+        organizationId: orgId,
+      });
+      const appList = data.data.applications || [];
+      setApps(appList);
+
+      // Fetch scan count for each app in parallel
+      if (sessionToken) {
+        const counts: Record<string, { count: number; latest: string }> = {};
+        await Promise.all(appList.map(async (app: any) => {
+          try {
+            const hist = await nexusApi.fetchNexusReportHistory({ sessionToken, applicationId: app.id });
+            const reports = hist.data.data.reports || [];
+            counts[app.id] = {
+              count: reports.length,
+              latest: reports.length > 0
+                ? new Date(reports[0].reportTime).toLocaleDateString()
+                : "—",
+            };
+          } catch {
+            counts[app.id] = { count: 0, latest: "—" };
+          }
+        }));
+        setAppScanCounts(counts);
+      }
+    } catch {
+      setApps([]);
+    } finally {
+      setAppsLoading(false);
+    }
+  }, [sessionToken]);
+
+  useEffect(() => {
+    if (selectedOrgId) {
+      fetchAppsForOrg(selectedOrgId);
+    } else {
+      setApps([]);
+    }
+  }, [selectedOrgId, fetchAppsForOrg]);
+
+  // Auto-select first org when connected
+  useEffect(() => {
+    if (connected && remoteOrgs.length > 0 && !selectedOrgId) {
+      setSelectedOrgId(remoteOrgs[0].organizationId);
+    }
+  }, [connected, remoteOrgs, selectedOrgId]);
 
   if (nexusView === "application" && selectedAppId) {
-    const app = (products || []).find((p: any) => p.id === selectedAppId);
+    const app = apps.find((p: any) => p.id === selectedAppId);
     return (
       <NexusApplicationDetail
         applicationId={selectedAppId}
@@ -28,117 +126,158 @@ export default function NexusOverview() {
     );
   }
 
-  const isLoading = orgsLoading || productsLoading || summaryLoading;
-  if (isLoading) return <SkeletonPage />;
-
-  const filteredApps = selectedOrgId
-    ? (products || []).filter((p: any) => p.organizationId === selectedOrgId)
-    : (products || []);
-
-  const selectedOrg = orgs?.find((o: any) => o.organizationId === selectedOrgId);
+  const allOrgs = connected && remoteOrgs.length > 0
+    ? remoteOrgs
+    : [];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-lg bg-indigo-100">
-            <Radar className="w-5 h-5 text-indigo-600" />
+      {/* Connection Section */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-slate-800">Nexus IQ Connection</h2>
+          {connectionResult && (
+            <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${
+              connectionResult.success
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-red-50 text-red-700 border border-red-200"
+            }`}>
+              {connectionResult.success
+                ? <CheckCircle2 className="w-3.5 h-3.5" />
+                : <XCircle className="w-3.5 h-3.5" />
+              }
+              {connectionResult.success ? `Connected in ${connectionResult.duration}ms` : connectionResult.message}
+            </span>
+          )}
+          {!connectionResult && !connecting && (
+            <span className="text-xs text-slate-400">Not connected</span>
+          )}
+          {connecting && (
+            <span className="inline-flex items-center gap-1.5 text-xs text-slate-500">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Connecting...
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Nexus IQ URL</label>
+            <input
+              type="text"
+              value={nexusUrl}
+              onChange={(e) => setNexusUrl(e.target.value)}
+              placeholder="https://soft-security:8070"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
+            />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Nexus IQ Security Dashboard</h1>
-            <p className="text-sm text-slate-500">Application vulnerability drill-down</p>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Username</label>
+            <input
+              type="text"
+              value={nexusUsername}
+              onChange={(e) => setNexusUsername(e.target.value)}
+              placeholder="admin"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
+            />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">Token / Password</label>
+            <input
+              type="password"
+              value={nexusToken}
+              onChange={(e) => setNexusToken(e.target.value)}
+              placeholder="••••••••"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none"
+            />
+          </div>
+          <button
+            onClick={handleConnect}
+            disabled={connecting || !nexusUrl}
+            className="px-5 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-slate-300 text-white text-sm font-medium rounded-lg transition-colors whitespace-nowrap"
+          >
+            {connecting ? "Connecting..." : connected ? "Reconnect" : "Connect"}
+          </button>
         </div>
       </div>
 
-      {/* KPI Bar */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Distinct Vulnerabilities</p>
-            <Bug className="w-4 h-4 text-indigo-500" />
-          </div>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{distinctCount ?? summary?.total ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Total Occurrences</p>
-            <Layers className="w-4 h-4 text-amber-500" />
-          </div>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{totalOccurrences ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Affected Applications</p>
-            <Building2 className="w-4 h-4 text-blue-500" />
-          </div>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{products?.length ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">Organizations</p>
-            <Shield className="w-4 h-4 text-emerald-500" />
-          </div>
-          <p className="text-2xl font-bold text-slate-800 mt-1">{orgs?.length ?? 0}</p>
-        </div>
-      </div>
-
-      {/* Org Selector */}
+      {/* Organization Filter */}
       <div className="bg-white rounded-xl border border-slate-200 p-5">
         <label className="block text-sm font-medium text-slate-700 mb-2">Filter by Organization</label>
         <select
           value={selectedOrgId}
           onChange={(e) => setSelectedOrgId(e.target.value)}
-          className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full max-w-xs rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500 outline-none bg-white"
         >
-          <option value="">All Organizations</option>
-          {orgs?.map((org: any) => (
+          <option value="">-- Select an organization --</option>
+          {allOrgs.map((org: any) => (
             <option key={org.organizationId} value={org.organizationId}>
               {org.organizationName}
             </option>
           ))}
         </select>
-        {selectedOrg && (
-          <div className="mt-3 flex items-center space-x-4 text-sm text-slate-600">
-            <span>Compliance: <strong className={selectedOrg.compliancePosture?.postureGrade === "GREEN" ? "text-emerald-600" : selectedOrg.compliancePosture?.postureGrade === "ORANGE" ? "text-amber-600" : "text-red-600"}>{selectedOrg.compliancePosture?.postureGrade || "N/A"}</strong></span>
-            <span>Score: <strong>{selectedOrg.compliancePosture?.complianceScore ?? "N/A"}%</strong></span>
-          </div>
-        )}
       </div>
 
-      {/* App Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredApps.map((app: any) => {
-          const statusColor = app.status === "GREEN" ? "border-l-emerald-500" : app.status === "ORANGE" ? "border-l-amber-500" : "border-l-red-500";
-          return (
-            <button
-              key={app.id}
-              onClick={() => { setSelectedAppId(app.id); setNexusView("application"); }}
-              className={`text-left bg-white rounded-xl border border-slate-200 border-l-4 ${statusColor} p-5 hover:shadow-md transition-shadow`}
-            >
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-slate-800">{app.name}</h3>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                <span className={`px-2 py-1 rounded-full font-medium ${
-                  app.status === "GREEN" ? "bg-emerald-100 text-emerald-700" :
-                  app.status === "ORANGE" ? "bg-amber-100 text-amber-700" :
-                  "bg-red-100 text-red-700"
-                }`}>{app.status || "UNKNOWN"}</span>
-                <span className="px-2 py-1 rounded-full bg-slate-100 text-slate-600">{app.businessCriticality || "N/A"}</span>
-              </div>
-              <p className="mt-2 text-xs text-slate-400">Product: {app.productId}</p>
-            </button>
-          );
-        })}
-        {filteredApps.length === 0 && (
-          <div className="col-span-full text-center py-12 text-slate-400">
-            <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
-            <p>No applications found. Sync Nexus IQ data to get started.</p>
+      {/* Applications Grid */}
+      {appsLoading && (
+        <div className="flex items-center justify-center py-12 text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+          <span className="text-sm">Loading applications...</span>
+        </div>
+      )}
+
+      {!appsLoading && apps.length > 0 && (
+        <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {apps.map((app: any) => {
+              const sc = appScanCounts[app.id];
+              return (
+                <button
+                  key={app.id}
+                  onClick={() => { setSelectedAppId(app.id); setNexusView("application"); }}
+                  className="text-left bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold text-slate-800 text-sm">{app.name}</h3>
+                    <ChevronRight className="w-4 h-4 text-slate-300" />
+                  </div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                      app.status === "GREEN" ? "bg-emerald-50 text-emerald-700" :
+                      app.status === "ORANGE" ? "bg-amber-50 text-amber-700" :
+                      "bg-red-50 text-red-700"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        app.status === "GREEN" ? "bg-emerald-500" :
+                        app.status === "ORANGE" ? "bg-amber-500" :
+                        "bg-red-500"
+                      }`} />
+                      {app.status || "UNKNOWN"}
+                    </span>
+                    {app.businessCriticality && (
+                      <span className="text-xs text-slate-400">{app.businessCriticality}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center text-xs text-slate-400">
+                    <FileText className="w-3 h-3 mr-1" />
+                    <span>{sc ? `${sc.count} scan${sc.count !== 1 ? 's' : ''}` : "—"}</span>
+                    {sc?.latest && sc.count > 0 && (
+                      <span className="ml-2">· Latest: {sc.latest}</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {!appsLoading && selectedOrgId && apps.length === 0 && (
+        <div className="text-center py-12 text-slate-400">
+          <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">No applications found for this organization.</p>
+        </div>
+      )}
     </div>
   );
 }

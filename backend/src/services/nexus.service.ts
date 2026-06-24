@@ -1,9 +1,11 @@
 import { nexusRepo } from "../repositories/nexus.repo.js";
 import { unifiedFindingRepo } from "../repositories/unifiedFinding.repo.js";
 import { riskScoreService } from "./riskScore.service.js";
-import { createClientFromConfig } from "./nexusHttpClient.js";
-import { NotFoundError } from "../core/errors.js";
+import { createClientFromConfig, createClientFromCredentials } from "./nexusHttpClient.js";
+import { NotFoundError, ValidationError } from "../core/errors.js";
+import { credentialStore } from "./credentialStore.js";
 import crypto from "crypto";
+import { env } from "../config/env.js";
 
 export const nexusService = {
   // ---- Config ----
@@ -19,6 +21,155 @@ export const nexusService = {
   async testConnection() {
     const client = await createClientFromConfig();
     return client.testConnection();
+  },
+
+  async testAndFetchOrgs(data?: { url?: string; username?: string; token?: string }) {
+    let client;
+    let creds: { url: string; username: string; token: string } | undefined;
+    if (data?.url) {
+      creds = {
+        url: data.url,
+        username: data.username || env.NEXUS_IQ_USERNAME || "admin",
+        token: data.token || env.NEXUS_IQ_TOKEN || "",
+      };
+      client = createClientFromCredentials(creds);
+    } else {
+      client = await createClientFromConfig();
+    }
+    const connectionResult = await client.testConnection();
+    if (!connectionResult.success) {
+      return { connection: connectionResult, remoteOrgs: [], sessionToken: null };
+    }
+    const orgs = await client.executeRequest<any>("api/v2/organizations");
+    let orgList: any[] = [];
+    if (Array.isArray(orgs)) {
+      orgList = orgs;
+    } else if (orgs?.organizations && Array.isArray(orgs.organizations)) {
+      orgList = orgs.organizations;
+    } else if (orgs?.items && Array.isArray(orgs.items)) {
+      orgList = orgs.items;
+    }
+    const remoteOrgs = orgList.map((o: any) => ({
+      organizationId: o.id || o.organizationId,
+      organizationName: o.name || o.organizationName,
+    }));
+    let sessionToken: string | null = null;
+    if (creds) {
+      sessionToken = credentialStore.store(creds);
+    }
+    return { connection: connectionResult, remoteOrgs, sessionToken };
+  },
+
+  async fetchApplications(data?: { sessionToken?: string; organizationId?: string; url?: string; username?: string; token?: string }) {
+    let creds: { url: string; username: string; token: string } | undefined;
+
+    if (data?.sessionToken) {
+      const stored = credentialStore.retrieve(data.sessionToken);
+      if (stored) {
+        creds = stored;
+      }
+    }
+
+    if (!creds && data?.url) {
+      creds = {
+        url: data.url,
+        username: data.username || env.NEXUS_IQ_USERNAME || "admin",
+        token: data.token || env.NEXUS_IQ_TOKEN || "",
+      };
+    }
+
+    if (!creds) {
+      return { applications: [] };
+    }
+
+    const client = createClientFromCredentials(creds);
+    const endpoint = data?.organizationId
+      ? `api/v2/applications/organization/${encodeURIComponent(data.organizationId)}`
+      : "api/v2/applications";
+    const apps = await client.executeRequest<any>(endpoint);
+    let appList: any[] = [];
+    if (Array.isArray(apps)) {
+      appList = apps;
+    } else if (apps?.applications && Array.isArray(apps.applications)) {
+      appList = apps.applications;
+    } else if (apps?.items && Array.isArray(apps.items)) {
+      appList = apps.items;
+    }
+    const remoteApps = appList.map((a: any) => ({
+      id: a.id,
+      name: a.name || a.publicId,
+      organizationId: a.organizationId,
+      status: a.status || "UNKNOWN",
+      businessCriticality: a.businessCriticality || "N/A",
+      productId: a.publicId || a.id,
+    }));
+    return { applications: remoteApps };
+  },
+
+  // ---- Reports ----
+
+  async fetchReportHistory(data?: { sessionToken?: string; applicationId?: string }) {
+    const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
+    if (!creds || !data?.applicationId) return { reports: [] };
+    const client = createClientFromCredentials(creds);
+    const result = await client.executeRequest<any>(`api/v2/reports/applications/${data.applicationId}/history`);
+    const raw = result?.reports || (Array.isArray(result) ? result : []);
+    const reports = raw.map((r: any) => ({
+      reportId: r.reportId,
+      reportTime: r.reportTime,
+      reportTitle: r.reportTitle || "Scan Report",
+      stage: r.stage || "unknown",
+      commitHash: r.commitHash || null,
+      initiator: r.initiator || "system",
+      applicationId: r.application?.id || data.applicationId,
+      applicationName: r.application?.name || "",
+    }));
+    return { reports };
+  },
+
+  async fetchReportPolicyViolations(data?: { sessionToken?: string; applicationPublicId?: string; scanId?: string }) {
+    const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
+    if (!creds || !data?.applicationPublicId || !data?.scanId) return { violations: [], severityCounts: {} };
+    const client = createClientFromCredentials(creds);
+    const result = await client.executeRequest<any>(
+      `api/v2/applications/${data.applicationPublicId}/reports/${data.scanId}/policy`
+    );
+    const components = result?.components || [];
+    const allViolations: any[] = [];
+    for (const comp of components) {
+      for (const violation of (comp.violations || [])) {
+        allViolations.push({
+          componentHash: comp.hash,
+          componentName: comp.displayName,
+          policyId: violation.policyId,
+          policyName: violation.policyName,
+          policyThreatLevel: violation.policyThreatLevel,
+          threatCategory: violation.policyThreatCategory,
+          constraintName: violation.constraintName,
+          violationState: violation.violationState || "OPEN",
+        });
+      }
+    }
+    const severityCounts = {
+      critical: allViolations.filter((v: any) => v.policyThreatLevel >= 8).length,
+      high: allViolations.filter((v: any) => v.policyThreatLevel >= 5 && v.policyThreatLevel < 8).length,
+      medium: allViolations.filter((v: any) => v.policyThreatLevel >= 3 && v.policyThreatLevel < 5).length,
+      low: allViolations.filter((v: any) => v.policyThreatLevel < 3).length,
+      total: allViolations.length,
+    };
+    return { violations: allViolations, severityCounts };
+  },
+
+  async fetchLatestReport(data?: { sessionToken?: string; applicationId?: string; applicationPublicId?: string }) {
+    const history = await this.fetchReportHistory(data);
+    if (history.reports.length === 0) return { report: null, severityCounts: null };
+    const latest = history.reports[0];
+    const violations = await this.fetchReportPolicyViolations({
+      sessionToken: data?.sessionToken,
+      applicationPublicId: data?.applicationPublicId || latest.applicationId,
+      scanId: latest.reportId,
+    });
+    return { report: latest, severityCounts: violations.severityCounts };
   },
 
   // ---- Sync ----

@@ -43,6 +43,7 @@ services:
       JWT_SECRET: prod-secret-change-me
       CORS_ORIGIN: http://localhost:5173
       LOG_LEVEL: info
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
     ports:
       - "3000:3000"
     depends_on:

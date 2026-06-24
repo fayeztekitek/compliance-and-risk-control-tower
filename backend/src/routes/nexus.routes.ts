@@ -103,6 +103,78 @@ router.post("/config/test", async (_req: Request, res: Response, next: NextFunct
 
 /**
  * @openapi
+ * /nexus/config/connect:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Test Nexus IQ connection and fetch remote organizations
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Connection test result and remote org list
+ */
+router.post("/config/connect", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.testAndFetchOrgs(req.body);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/applications/fetch:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Fetch applications from Nexus IQ, optionally filtered by organizationId
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of applications from Nexus IQ
+ */
+router.post("/applications/fetch", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.fetchApplications(req.body);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+// ---- Reports ----
+
+router.post("/reports/history", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.fetchReportHistory(req.body);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+router.post("/reports/violations", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.fetchReportPolicyViolations(req.body);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+router.post("/reports/latest", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.fetchLatestReport(req.body);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+// Backward-compatible GET endpoint for old frontend
+router.get("/reports/:applicationId/latest", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.fetchLatestReport({
+      sessionToken: req.query.sessionToken as string | undefined,
+      applicationId: req.params.applicationId,
+    });
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
  * /nexus/sync:
  *   post:
  *     tags: [Nexus]

@@ -101,3 +101,11 @@ export async function createClientFromConfig(): Promise<NexusHttpClient> {
   }
   return new NexusHttpClient({ url: "https://mock-nexus-server.local/", username: "mock", token: "mock-token" });
 }
+
+export function createClientFromCredentials(creds: { url: string; username: string; token: string }): NexusHttpClient {
+  return new NexusHttpClient({
+    url: creds.url,
+    username: creds.username || "admin",
+    token: creds.token || "",
+  });
+}

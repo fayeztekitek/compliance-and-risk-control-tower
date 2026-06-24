@@ -1,8 +1,7 @@
-import { useState } from "react";
-import { ArrowLeft, Radar, AlertTriangle, Shield, Clock, ChevronRight, FileText, TrendingUp, Bug, Layers } from "lucide-react";
-import { useProducts, useApplications, useLatestReport, useReports, useFindings, useDistinctCount, useTotalOccurrences } from "../hooks/useNexus";
+import { useState, useEffect, useCallback } from "react";
+import { ArrowLeft, ChevronRight, Clock, FileText, Bug, AlertTriangle, Shield, Layers, Loader2 } from "lucide-react";
+import { nexusApi } from "../api/nexus.api";
 import { SkeletonPage } from "../components/ui/Skeleton";
-import NexusReportDetail from "./NexusReportDetail";
 
 interface Props {
   applicationId: string;
@@ -11,54 +10,71 @@ interface Props {
   onBackToOverview?: () => void;
 }
 
-type AppView = "detail" | "report" | "comparison";
+type SeverityCounts = { critical: number; high: number; medium: number; low: number; total: number };
 
 export default function NexusApplicationDetail({ applicationId, applicationName, onBack, onBackToOverview }: Props) {
-  const [appView, setAppView] = useState<AppView>("detail");
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
-  const { data: products } = useProducts();
-  const { data: applications } = useApplications();
-  const { data: latestReport } = useLatestReport(applicationId);
-  const { data: reports } = useReports(applicationId);
-  const { data: findings } = useFindings({ applicationId, limit: 100 });
-  const { data: distinctCount } = useDistinctCount(applicationId);
-  const { data: totalOccurrences } = useTotalOccurrences(applicationId);
+  const [reports, setReports] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [severities, setSeverities] = useState<Record<string, SeverityCounts>>({});
+  const [latestSev, setLatestSev] = useState<SeverityCounts | null>(null);
 
-  const app = applications?.find((a: any) => a.id === applicationId);
-  const product = products?.find((p: any) => p.id === applicationId);
-  const appName = applicationName || app?.name || product?.name || applicationId;
+  // Attempt to read sessionToken from localStorage or from the connect flow
+  // The sessionToken is stored in NexusOverview state — we read it from the API response.
+  // For simplicity, we re-fetch using a minimal sessionToken stored in sessionStorage.
+  const sessionToken = sessionStorage.getItem("nexus_session_token");
 
-  if (appView === "report" && selectedReportId) {
-    return (
-      <NexusReportDetail
-        reportId={selectedReportId}
-        applicationId={applicationId}
-        applicationName={appName}
-        onBack={() => { setAppView("detail"); setSelectedReportId(null); }}
-        onBackToApp={() => { setAppView("detail"); setSelectedReportId(null); }}
-        onBackToOverview={onBackToOverview}
-      />
-    );
-  }
+  const loadData = useCallback(async () => {
+    if (!sessionToken) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const hist = await nexusApi.fetchNexusReportHistory({ sessionToken, applicationId });
+      const reportList = hist.data.data.reports || [];
+      setReports(reportList);
 
-  if (!products || !applications) return <SkeletonPage />;
+      // Fetch severity counts for each report in parallel
+      const sevMap: Record<string, SeverityCounts> = {};
+      await Promise.all(reportList.map(async (r: any) => {
+        try {
+          const v = await nexusApi.fetchNexusReportViolations({
+            sessionToken,
+            applicationPublicId: r.applicationId || applicationId,
+            scanId: r.reportId,
+          });
+          sevMap[r.reportId] = v.data.data.severityCounts;
+        } catch {
+          sevMap[r.reportId] = { critical: 0, high: 0, medium: 0, low: 0, total: 0 };
+        }
+      }));
+      setSeverities(sevMap);
 
-  const vulns = findings?.data || [];
-  const openVulns = vulns.filter((v: any) => v.status === "OPEN");
-  const criticalVulns = vulns.filter((v: any) => v.unifiedSeverity === "CRITICAL");
-  const highVulns = vulns.filter((v: any) => v.unifiedSeverity === "HIGH");
-  const fixedVulns = vulns.filter((v: any) => v.status === "FIXED");
+      if (reportList.length > 0) {
+        setLatestSev(reportList[0] ? sevMap[reportList[0].reportId] || null : null);
+      }
+    } catch {
+      setReports([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionToken, applicationId]);
 
-  const totalRisk = vulns.reduce((s: number, v: any) => s + (v.riskScore || 0), 0);
-  const riskGrade = totalRisk >= 70 ? "RED" : totalRisk >= 40 ? "ORANGE" : "GREEN";
-  const riskColor = riskGrade === "RED" ? "text-red-600" : riskGrade === "ORANGE" ? "text-amber-600" : "text-emerald-600";
-  const riskBg = riskGrade === "RED" ? "bg-red-50 border-red-200" : riskGrade === "ORANGE" ? "bg-amber-50 border-amber-200" : "bg-emerald-50 border-emerald-200";
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const appName = applicationName || applicationId;
+
+  if (loading) return <SkeletonPage />;
+
+  const sevColors: Record<string, string> = {
+    critical: "text-red-600 bg-red-50",
+    high: "text-orange-600 bg-orange-50",
+    medium: "text-amber-600 bg-amber-50",
+    low: "text-slate-500 bg-slate-50",
+  };
 
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center space-x-2 text-sm text-slate-500">
-        {onBackToOverview && <><button onClick={onBackToOverview} className="hover:text-indigo-600">Nexus IQ</button><span>/</span></>}
+        {onBackToOverview && <><button onClick={onBackToOverview} className="hover:text-violet-600">Nexus IQ</button><span>/</span></>}
         <span className="text-slate-800 font-medium">{appName}</span>
       </nav>
 
@@ -67,125 +83,81 @@ export default function NexusApplicationDetail({ applicationId, applicationName,
         <button onClick={onBack} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
           <ArrowLeft className="w-5 h-5 text-slate-600" />
         </button>
-        <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-lg bg-indigo-100">
-            <Radar className="w-5 h-5 text-indigo-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">{appName}</h1>
-            <p className="text-sm text-slate-500">{product?.name || "Application"} Vulnerability Details</p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">{appName}</h1>
+          <p className="text-sm text-slate-500">{reports.length} scan report{reports.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
-      {/* Risk Score Gauge */}
-      <div className={`rounded-xl border ${riskBg} p-5`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-600">Security Risk Score</p>
-            <p className={`text-3xl font-bold ${riskColor}`}>{Math.round(totalRisk)}</p>
-          </div>
-          <div className="text-right">
-            <p className={`text-lg font-bold ${riskColor}`}>{riskGrade}</p>
-            <p className="text-xs text-slate-500">Risk Level</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">Total Vulns</p>
-            <Bug className="w-3 h-3 text-slate-400" />
-          </div>
-          <p className="text-xl font-bold text-slate-800">{vulns.length}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">Distinct</p>
-            <Layers className="w-3 h-3 text-indigo-400" />
-          </div>
-          <p className="text-xl font-bold text-slate-800">{distinctCount ?? 0}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">Occurrences</p>
-            <FileText className="w-3 h-3 text-amber-400" />
-          </div>
-          <p className="text-xl font-bold text-slate-800">{totalOccurrences ?? vulns.length}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">Open</p>
-            <AlertTriangle className="w-3 h-3 text-red-400" />
-          </div>
-          <p className="text-xl font-bold text-slate-800">{openVulns.length}</p>
-        </div>
-      </div>
-
-      {/* Severity Breakdown */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-4">Vulnerability Severity</h3>
-        <div className="space-y-3">
-          {[
-            { label: "Critical", count: criticalVulns.length, color: "bg-red-500", textColor: "text-red-600" },
-            { label: "High", count: highVulns.length, color: "bg-orange-500", textColor: "text-orange-600" },
-            { label: "Medium", count: vulns.filter((v: any) => v.unifiedSeverity === "MEDIUM").length, color: "bg-amber-500", textColor: "text-amber-600" },
-            { label: "Low", count: vulns.filter((v: any) => v.unifiedSeverity === "LOW").length, color: "bg-slate-400", textColor: "text-slate-600" },
-          ].map((item) => (
-            <div key={item.label} className="flex items-center space-x-3">
-              <span className={`w-2 h-2 rounded-full ${item.color}`} />
-              <span className={`text-sm font-medium ${item.textColor} w-16`}>{item.label}</span>
-              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full ${item.color} rounded-full transition-all`}
-                  style={{ width: vulns.length ? `${(item.count / vulns.length) * 100}%` : "0%" }}
-                />
-              </div>
-              <span className="text-sm font-medium text-slate-700 w-8 text-right">{item.count}</span>
+      {/* Latest Scan Summary */}
+      {latestSev && reports.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-violet-500" />
+              <h2 className="text-sm font-semibold text-slate-700">Latest Scan</h2>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Report History */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-4">Report History</h3>
-        {latestReport && (
-          <div className="mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <Clock className="w-4 h-4 text-indigo-500" />
-                <span className="text-sm font-medium text-indigo-700">Latest: {latestReport.reportDate}</span>
-                <span className="text-xs text-indigo-500">({latestReport.scannerSource})</span>
-              </div>
-              <span className="text-xs text-indigo-600">{latestReport.totalFindings} findings</span>
-            </div>
+            <span className="text-xs text-slate-400">
+              {new Date(reports[0].reportTime).toLocaleDateString()} · {reports[0].stage} · {reports[0].reportTitle}
+            </span>
           </div>
-        )}
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {(reports?.data || []).map((report: any) => (
-            <button
-              key={report.id}
-              onClick={() => { setSelectedReportId(report.id); setAppView("report"); }}
-              className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors text-left"
-            >
-              <div className="flex items-center space-x-3">
-                <FileText className="w-4 h-4 text-slate-400" />
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{report.reportDate}</p>
-                  <p className="text-xs text-slate-400">{report.scannerSource} v{report.reportVersion || "?"}</p>
+          <div className="grid grid-cols-5 gap-3">
+            {[
+              { label: "Critical", key: "critical", color: "bg-red-500" },
+              { label: "High", key: "high", color: "bg-orange-500" },
+              { label: "Medium", key: "medium", color: "bg-amber-500" },
+              { label: "Low", key: "low", color: "bg-slate-400" },
+              { label: "Total", key: "total", color: "bg-violet-500" },
+            ].map((item) => (
+              <div key={item.key} className="text-center">
+                <div className={`text-lg font-bold ${item.key === "total" ? "text-violet-600" : sevColors[item.key]?.split(" ")[0] || "text-slate-600"}`}>
+                  {(latestSev as any)[item.key] ?? 0}
+                </div>
+                <div className="text-xs text-slate-400">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Report List */}
+      <div className="bg-white rounded-xl border border-slate-200">
+        <div className="px-5 py-3 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-700">All Scans</h3>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {reports.map((r: any) => {
+            const sev = severities[r.reportId];
+            return (
+              <div key={r.reportId} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-4 h-4 text-slate-400" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">
+                      {r.reportTitle}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {new Date(r.reportTime).toLocaleDateString()} · {r.stage}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {sev && (
+                    <div className="flex items-center gap-2 text-xs">
+                      {sev.critical > 0 && <span className="text-red-600 font-medium">{sev.critical} C</span>}
+                      {sev.high > 0 && <span className="text-orange-600 font-medium">{sev.high} H</span>}
+                      {sev.medium > 0 && <span className="text-amber-600 font-medium">{sev.medium} M</span>}
+                      <span className="text-slate-400">({sev.total})</span>
+                    </div>
+                  )}
+                  {!sev && <Loader2 className="w-3 h-3 animate-spin text-slate-300" />}
+                  <ChevronRight className="w-4 h-4 text-slate-300" />
                 </div>
               </div>
-              <div className="flex items-center space-x-3">
-                <span className="text-xs text-slate-500">{report.totalFindings} vulns</span>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </div>
-            </button>
-          ))}
-          {(!reports?.data || reports.data.length === 0) && (
-            <p className="text-sm text-slate-400 text-center py-4">No reports available</p>
+            );
+          })}
+          {reports.length === 0 && (
+            <div className="px-5 py-8 text-center text-sm text-slate-400">No scan reports found</div>
           )}
         </div>
       </div>

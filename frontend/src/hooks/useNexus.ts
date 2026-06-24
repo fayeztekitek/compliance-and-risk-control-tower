@@ -1,29 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { nexusApi } from "../api/nexus.api";
 
-export function useOrganizations() {
-  return useQuery({
-    queryKey: ["nexus", "organizations"],
-    queryFn: async () => {
-      const { data } = await nexusApi.listOrganizations();
-      return data.data;
-    },
-    staleTime: 60_000,
-  });
-}
-
-export function useOrganization(organizationId: string) {
-  return useQuery({
-    queryKey: ["nexus", "organization", organizationId],
-    queryFn: async () => {
-      const { data } = await nexusApi.getOrganization(organizationId);
-      return data.data;
-    },
-    enabled: !!organizationId,
-    staleTime: 60_000,
-  });
-}
-
 export function useProducts() {
   return useQuery({
     queryKey: ["nexus", "products"],
@@ -74,18 +51,6 @@ export function useReports(applicationId: string, params?: { page?: number; limi
     queryKey: ["nexus", "reports", applicationId, params],
     queryFn: async () => {
       const { data } = await nexusApi.listReports(applicationId, params);
-      return data;
-    },
-    enabled: !!applicationId,
-    staleTime: 30_000,
-  });
-}
-
-export function useLatestReport(applicationId: string) {
-  return useQuery({
-    queryKey: ["nexus", "latestReport", applicationId],
-    queryFn: async () => {
-      const { data } = await nexusApi.getLatestReport(applicationId);
       return data;
     },
     enabled: !!applicationId,

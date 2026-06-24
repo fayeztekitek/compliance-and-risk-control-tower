@@ -1,18 +1,5 @@
 import { apiClient } from "./client";
 
-export interface NexusOrganization {
-  organizationId: string;
-  organizationName: string;
-  description?: string;
-  complianceOfficer?: string;
-  compliancePosture?: {
-    postureGrade: string;
-    complianceScore: number;
-    totalFindings: number;
-    openFindings: number;
-  };
-}
-
 export interface NexusProduct {
   id: string;
   productId: string;
@@ -168,14 +155,6 @@ export interface PaginatedResponse<T> {
 }
 
 export const nexusApi = {
-  // Organizations
-  listOrganizations() {
-    return apiClient.get<{ data: NexusOrganization[] }>("/api/organizations");
-  },
-  getOrganization(organizationId: string) {
-    return apiClient.get<{ data: NexusOrganization }>(`/api/organizations/${organizationId}`);
-  },
-
   // Products (applications)
   listProducts() {
     return apiClient.get<{ data: NexusProduct[] }>("/api/nexus/products");
@@ -210,9 +189,6 @@ export const nexusApi = {
   // Scan Reports
   listReports(applicationId: string, params?: { page?: number; limit?: number }) {
     return apiClient.get<PaginatedResponse<ScanReport>>(`/api/reports/${applicationId}`, { params });
-  },
-  getLatestReport(applicationId: string) {
-    return apiClient.get<ScanReport>(`/api/reports/${applicationId}/latest`);
   },
 
   // Report Comparison
@@ -302,5 +278,29 @@ export const nexusApi = {
   },
   getOccurrenceDetail(id: string) {
     return apiClient.get<{ data: OccurrenceDetailResponse }>(`/api/nexus/occurrences/${id}/detail`);
+  },
+
+  // Remote connection
+  connectToNexus(credentials?: { url?: string; username?: string; token?: string }) {
+    return apiClient.post<{ data: { connection: { success: boolean; message: string; duration: number }; remoteOrgs: { organizationId: string; organizationName: string }[]; sessionToken: string | null } }>("/api/nexus/config/connect", credentials || {});
+  },
+
+  // Fetch applications from Nexus IQ using sessionToken, filtered by organization
+  fetchNexusApplications(params?: { sessionToken?: string; organizationId?: string }) {
+    return apiClient.post<{ data: { applications: { id: string; name: string; organizationId: string; status: string; businessCriticality: string; productId: string }[] } }>("/api/nexus/applications/fetch", params || {});
+  },
+
+  // ---- Reports from Nexus IQ ----
+
+  fetchNexusReportHistory(params?: { sessionToken?: string; applicationId?: string }) {
+    return apiClient.post<{ data: { reports: { reportId: string; reportTime: number; reportTitle: string; stage: string; commitHash: string | null; initiator: string; applicationId: string; applicationName: string }[] } }>("/api/nexus/reports/history", params || {});
+  },
+
+  fetchNexusReportViolations(params?: { sessionToken?: string; applicationPublicId?: string; scanId?: string }) {
+    return apiClient.post<{ data: { violations: any[]; severityCounts: { critical: number; high: number; medium: number; low: number; total: number } } }>("/api/nexus/reports/violations", params || {});
+  },
+
+  fetchNexusLatestReport(params?: { sessionToken?: string; applicationId?: string; applicationPublicId?: string }) {
+    return apiClient.post<{ data: { report: any | null; severityCounts: { critical: number; high: number; medium: number; low: number; total: number } | null } }>("/api/nexus/reports/latest", params || {});
   },
 };
