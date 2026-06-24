@@ -201,3 +201,67 @@ export function useOccurrenceDetail(id: string | null) {
     staleTime: 30_000,
   });
 }
+
+// ---- Stored Report Hooks (Drill-Down) ----
+
+export function useStoredReports(applicationId: string, params?: { page?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ["nexus", "storedReports", applicationId, params],
+    queryFn: async () => {
+      const { data } = await nexusApi.getStoredReports(applicationId, params);
+      return data;
+    },
+    enabled: !!applicationId,
+    staleTime: 30_000,
+  });
+}
+
+export function useStoredReport(id: string) {
+  return useQuery({
+    queryKey: ["nexus", "storedReport", id],
+    queryFn: async () => {
+      const { data } = await nexusApi.getStoredReport(id);
+      return data.data;
+    },
+    enabled: !!id,
+    staleTime: 30_000,
+  });
+}
+
+export function useStoredReportViolations(reportId: string, params?: {
+  severity?: string; status?: string; search?: string; page?: number; limit?: number;
+}) {
+  return useQuery({
+    queryKey: ["nexus", "storedReportViolations", reportId, params],
+    queryFn: async () => {
+      const { data } = await nexusApi.getStoredReportViolations(reportId, params);
+      return data;
+    },
+    enabled: !!reportId,
+    staleTime: 30_000,
+  });
+}
+
+export function useStoredReportComparison(reportIdA: string, reportIdB: string) {
+  return useQuery({
+    queryKey: ["nexus", "storedReportComparison", reportIdA, reportIdB],
+    queryFn: async () => {
+      const { data } = await nexusApi.compareStoredReports(reportIdA, reportIdB);
+      return data.data;
+    },
+    enabled: !!reportIdA && !!reportIdB,
+    staleTime: 30_000,
+  });
+}
+
+export function useEvolution(applicationId: string, params?: { fromDate?: string; toDate?: string }) {
+  return useQuery({
+    queryKey: ["nexus", "evolution", applicationId, params],
+    queryFn: async () => {
+      const { data } = await nexusApi.getEvolution(applicationId, params);
+      return data.data;
+    },
+    enabled: !!applicationId,
+    staleTime: 30_000,
+  });
+}

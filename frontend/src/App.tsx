@@ -21,6 +21,8 @@ const NexusAppDetail = lazy(() => import("./pages/NexusApplicationDetail"));
 const NexusReportDetail = lazy(() => import("./pages/NexusReportDetail"));
 const NexusVulnerabilityDetail = lazy(() => import("./pages/NexusVulnerabilityDetail"));
 const NexusOccurrenceDetail = lazy(() => import("./pages/NexusOccurrenceDetail"));
+const NexusReportComparison = lazy(() => import("./pages/NexusReportComparison"));
+const NexusEvolutionTimeline = lazy(() => import("./pages/NexusEvolutionTimeline"));
 const PolicyRuleWorkspace = lazy(() => import("./pages/PolicyRuleWorkspace"));
 const ComplianceWorkspace = lazy(() => import("./pages/ComplianceWorkspace"));
 
@@ -87,6 +89,8 @@ export default function App() {
         <Route path="/nexus" element={<AuthLayout><NexusOverview /></AuthLayout>} />
         <Route path="/nexus/app/:appId" element={<AuthLayout><NexusAppDetail /></AuthLayout>} />
         <Route path="/nexus/report/:reportId" element={<AuthLayout><NexusReportDetail /></AuthLayout>} />
+        <Route path="/nexus/compare" element={<AuthLayout><NexusReportComparison /></AuthLayout>} />
+        <Route path="/nexus/evolution/:appId" element={<AuthLayout><NexusEvolutionTimeline /></AuthLayout>} />
         <Route path="/nexus/vuln/:vulnId" element={<AuthLayout><NexusVulnerabilityDetail /></AuthLayout>} />
         <Route path="/nexus/occurrence/:occId" element={<AuthLayout><NexusOccurrenceDetail /></AuthLayout>} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

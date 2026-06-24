@@ -1,249 +1,241 @@
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useReportComparison, useAppTrend } from "../hooks/useNexus";
+import { useSearchParams, Link } from "react-router-dom";
+import { ArrowLeft, Plus, Minus, Check, AlertTriangle, RefreshCw, GitCompare } from "lucide-react";
+import { useStoredReportComparison } from "../hooks/useNexus";
 import { SkeletonPage } from "../components/ui/Skeleton";
+import type { NexusPolicyViolation, ReportComparisonResult } from "../api/nexus.api";
 
-interface Props {
-  applicationId: string;
-  onBack: () => void;
-}
-
-const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: "text-red-600 bg-red-100",
-  HIGH: "text-orange-600 bg-orange-100",
-  MEDIUM: "text-amber-600 bg-amber-100",
-  LOW: "text-slate-600 bg-slate-100",
+const SEVERITY_STYLES: Record<string, string> = {
+  critical: "text-red-600 bg-red-100",
+  high: "text-orange-600 bg-orange-100",
+  medium: "text-amber-600 bg-amber-100",
+  low: "text-slate-600 bg-slate-100",
 };
 
-export default function NexusReportComparison({ applicationId, onBack }: Props) {
-  const { data: comparison, isLoading, error } = useReportComparison(applicationId);
-  const { data: trend } = useAppTrend(applicationId, 6);
+function threatLevelToSeverity(threatLevel: number): string {
+  if (threatLevel >= 8) return "critical";
+  if (threatLevel >= 5) return "high";
+  if (threatLevel >= 3) return "medium";
+  return "low";
+}
+
+function SevBadge({ violation }: { violation: NexusPolicyViolation }) {
+  const sev = violation.securityIssueSeverity
+    ? threatLevelToSeverity(violation.securityIssueSeverity)
+    : threatLevelToSeverity(violation.threatLevel);
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_STYLES[sev] || "bg-slate-100 text-slate-600"}`}>
+      {sev.toUpperCase()}
+    </span>
+  );
+}
+
+function ViolationRow({ violation, label }: { violation: NexusPolicyViolation; label?: string }) {
+  return (
+    <div className="px-5 py-3 flex items-center justify-between hover:bg-slate-50">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center space-x-2">
+          {label && <span className="text-xs font-medium text-slate-400 w-16 shrink-0">{label}</span>}
+          <p className="text-sm font-medium text-slate-700 truncate">{violation.policyName}</p>
+        </div>
+        <p className="text-xs text-slate-400 truncate">
+          {violation.displayName || violation.componentName || "-"}
+          {violation.componentFormat && ` (${violation.componentFormat})`}
+          {violation.cveId && ` — ${violation.cveId}`}
+        </p>
+      </div>
+      <SevBadge violation={violation} />
+    </div>
+  );
+}
+
+function StatusChangedRow({ from, to, index }: { from: NexusPolicyViolation; to: NexusPolicyViolation; index: number }) {
+  return (
+    <div className="px-5 py-3 hover:bg-slate-50">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-700 truncate">{to.policyName}</p>
+          <p className="text-xs text-slate-400 truncate">
+            {to.displayName || to.componentName || "-"}
+            {to.cveId && ` — ${to.cveId}`}
+          </p>
+        </div>
+        <div className="flex items-center space-x-3 shrink-0">
+          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{from.status}</span>
+          <ArrowLeft className="w-3 h-3 text-slate-400" />
+          <span className="text-xs font-medium text-amber-600 bg-amber-100 px-2 py-0.5 rounded">{to.status}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+type SectionKey = "added" | "removed" | "same" | "changed";
+
+export default function NexusReportComparison() {
+  const [searchParams] = useSearchParams();
+  const reportA = searchParams.get("reportA") || "";
+  const reportB = searchParams.get("reportB") || "";
+
+  const { data: comparison, isLoading, error } = useStoredReportComparison(reportA, reportB);
 
   if (isLoading) return <SkeletonPage />;
 
   if (error || !comparison) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center space-x-4">
-          <button onClick={onBack} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-            <ArrowLeft className="w-5 h-5 text-slate-600" />
-          </button>
-          <h1 className="text-2xl font-bold text-slate-800">Report Comparison</h1>
-        </div>
+        <nav className="flex items-center space-x-2 text-sm text-slate-500">
+          <Link to="/nexus" className="hover:text-indigo-600">Nexus IQ</Link>
+          <span>/</span>
+          <span className="text-slate-800 font-medium">Compare</span>
+        </nav>
         <div className="text-center py-16 text-slate-500">
           <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
-          <p>No comparison available. Need at least two reports.</p>
+          <p>No comparison available.</p>
+          {!reportB && <p className="text-xs mt-1">Pass ?reportA=ID&reportB=ID in the URL.</p>}
         </div>
       </div>
     );
   }
 
-  const DeltaIcon = comparison.riskEvolution.delta > 0 ? TrendingUp : comparison.riskEvolution.delta < 0 ? TrendingDown : Minus;
-  const deltaColor = comparison.riskEvolution.delta > 0 ? "text-red-600" : comparison.riskEvolution.delta < 0 ? "text-emerald-600" : "text-slate-600";
+  const sections: { key: SectionKey; count: number; icon: React.ReactNode; color: string; bg: string; comp: React.ReactNode }[] = [
+    {
+      key: "added", count: comparison.summary.added.critical + comparison.summary.added.high + comparison.summary.added.medium + comparison.summary.added.low,
+      icon: <Plus className="w-4 h-4" />, color: "text-red-700", bg: "bg-red-50 border-red-200",
+      comp: comparison.addedViolations.map((v) => <ViolationRow key={v.id} violation={v} label="NEW" />),
+    },
+    {
+      key: "removed", count: comparison.summary.removed.critical + comparison.summary.removed.high + comparison.summary.removed.medium + comparison.summary.removed.low,
+      icon: <Minus className="w-4 h-4" />, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200",
+      comp: comparison.removedViolations.map((v) => <ViolationRow key={v.id} violation={v} label="GONE" />),
+    },
+    {
+      key: "same", count: comparison.summary.same.critical + comparison.summary.same.high + comparison.summary.same.medium + comparison.summary.same.low,
+      icon: <Check className="w-4 h-4" />, color: "text-slate-600", bg: "bg-slate-50 border-slate-200",
+      comp: comparison.sameViolations.map((v) => <ViolationRow key={v.id} violation={v} />),
+    },
+    {
+      key: "changed", count: comparison.statusChangedViolations.length,
+      icon: <RefreshCw className="w-4 h-4" />, color: "text-amber-700", bg: "bg-amber-50 border-amber-200",
+      comp: comparison.statusChangedViolations.map((v, i) => <StatusChangedRow key={v.to.id} from={v.from} to={v.to} index={i} />),
+    },
+  ];
+
+  function severitySum(s: ReportComparisonResult["summary"][SectionKey]) {
+    return { C: s.critical, H: s.high, M: s.medium, L: s.low };
+  }
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <nav className="flex items-center space-x-2 text-sm text-slate-500">
+        <Link to="/nexus" className="hover:text-indigo-600">Nexus IQ</Link>
+        <span>/</span>
+        <span className="text-slate-800 font-medium">Compare Reports</span>
+      </nav>
+
       {/* Header */}
       <div className="flex items-center space-x-4">
-        <button onClick={onBack} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+        <Link to={`/nexus/report/${reportA}`} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
           <ArrowLeft className="w-5 h-5 text-slate-600" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Report Comparison</h1>
-          <p className="text-sm text-slate-500">{comparison.previousReportDate} → {comparison.latestReportDate}</p>
+        </Link>
+        <div className="flex items-center space-x-3">
+          <div className="p-2 rounded-lg bg-indigo-100">
+            <GitCompare className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Report Comparison</h1>
+            <p className="text-sm text-slate-500">
+              {formatDate(comparison.reportB.scanDate)} vs {formatDate(comparison.reportA.scanDate)}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-emerald-700">New Vulnerabilities</p>
-            <AlertTriangle className="w-4 h-4 text-emerald-500" />
-          </div>
-          <p className="text-3xl font-bold text-emerald-700 mt-1">{comparison.newCount}</p>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-red-700">Fixed Vulnerabilities</p>
-            <CheckCircle className="w-4 h-4 text-red-500" />
-          </div>
-          <p className="text-3xl font-bold text-red-700 mt-1">{comparison.fixedCount}</p>
-        </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-amber-700">Recurring</p>
-            <RefreshCw className="w-4 h-4 text-amber-500" />
-          </div>
-          <p className="text-3xl font-bold text-amber-700 mt-1">{comparison.recurringCount}</p>
-        </div>
-      </div>
-
-      {/* Risk Evolution */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-4">Risk Evolution</h3>
-        <div className="flex items-center space-x-8">
-          <div>
-            <p className="text-sm text-slate-500">Previous</p>
-            <p className="text-xl font-bold text-slate-700">{comparison.riskEvolution.previousTotalRisk}</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <DeltaIcon className={`w-5 h-5 ${deltaColor}`} />
-            <span className={`text-lg font-bold ${deltaColor}`}>
-              {comparison.riskEvolution.delta > 0 ? "+" : ""}{comparison.riskEvolution.delta}
-            </span>
-          </div>
-          <div>
-            <p className="text-sm text-slate-500">Latest</p>
-            <p className="text-xl font-bold text-slate-700">{comparison.riskEvolution.latestTotalRisk}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Severity Shift */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-3">Severity Shift</h3>
-        <div className="flex space-x-6">
-          {Object.entries(comparison.severityShift || {}).map(([severity, shift]) => (
-            <div key={severity} className="text-center">
-              <p className={`text-xs font-medium ${SEVERITY_COLORS[severity]?.split(" ")[0] || "text-slate-600"}`}>{severity}</p>
-              <p className={`text-lg font-bold ${(shift as number) > 0 ? "text-red-600" : (shift as number) < 0 ? "text-emerald-600" : "text-slate-400"}`}>
-                {(shift as number) > 0 ? "+" : ""}{shift as number}
+      <div className="grid grid-cols-4 gap-4">
+        {sections.map((s) => (
+          <div key={s.key} className={`rounded-xl border p-5 ${s.bg}`}>
+            <div className="flex items-center justify-between">
+              <p className={`text-sm font-medium ${s.color}`}>
+                {s.key === "added" ? "New" : s.key === "removed" ? "Removed" : s.key === "same" ? "Unchanged" : "Status Changed"}
               </p>
+              {s.icon}
             </div>
-          ))}
+            <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.count}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Severity Breakdown per Section */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 className="font-semibold text-slate-800 mb-4">Severity Breakdown</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-2 pr-4 font-medium text-slate-500">Section</th>
+                <th className="text-center py-2 px-3 font-medium text-red-600">Critical</th>
+                <th className="text-center py-2 px-3 font-medium text-orange-600">High</th>
+                <th className="text-center py-2 px-3 font-medium text-amber-600">Medium</th>
+                <th className="text-center py-2 px-3 font-medium text-slate-600">Low</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {(Object.keys(comparison.summary) as SectionKey[]).map((k) => {
+                const sum = severitySum(comparison.summary[k]);
+                return (
+                  <tr key={k}>
+                    <td className="py-2 pr-4 font-medium text-slate-700 capitalize">{k}</td>
+                    <td className="text-center py-2 px-3">{sum.C}</td>
+                    <td className="text-center py-2 px-3">{sum.H}</td>
+                    <td className="text-center py-2 px-3">{sum.M}</td>
+                    <td className="text-center py-2 px-3">{sum.L}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* New Vulnerabilities List */}
-      {comparison.newVulnerabilities.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-5 py-3 bg-emerald-50 border-b border-emerald-200">
-            <h3 className="font-semibold text-emerald-700">New Vulnerabilities ({comparison.newCount})</h3>
-          </div>
-          <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
-            {comparison.newVulnerabilities.map((vuln: any) => (
-              <div key={vuln.id} className="px-5 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{vuln.cveId || vuln.title}</p>
-                  <p className="text-xs text-slate-400">{vuln.componentName}@{vuln.componentVersion}</p>
-                </div>
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_COLORS[vuln.unifiedSeverity] || ""}`}>{vuln.unifiedSeverity}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Fixed Vulnerabilities List */}
-      {comparison.fixedVulnerabilities.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-5 py-3 bg-red-50 border-b border-red-200">
-            <h3 className="font-semibold text-red-700">Fixed Vulnerabilities ({comparison.fixedCount})</h3>
-          </div>
-          <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
-            {comparison.fixedVulnerabilities.map((vuln: any) => (
-              <div key={vuln.id} className="px-5 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{vuln.cveId || vuln.title}</p>
-                  <p className="text-xs text-slate-400">{vuln.componentName}@{vuln.componentVersion}</p>
-                </div>
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_COLORS[vuln.unifiedSeverity] || ""}`}>{vuln.unifiedSeverity}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Recurring Vulnerabilities List */}
-      {comparison.recurringVulnerabilities.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-5 py-3 bg-amber-50 border-b border-amber-200">
-            <h3 className="font-semibold text-amber-700">Recurring ({comparison.recurringCount})</h3>
-          </div>
-          <div className="divide-y divide-slate-100 max-h-60 overflow-y-auto">
-            {comparison.recurringVulnerabilities.map((vuln: any) => (
-              <div key={vuln.id} className="px-5 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-700">{vuln.cveId || vuln.title}</p>
-                  <p className="text-xs text-slate-400">{vuln.componentName}@{vuln.componentVersion}</p>
-                </div>
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_COLORS[vuln.unifiedSeverity] || ""}`}>{vuln.unifiedSeverity}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Trend Charts */}
-      {trend && trend.dataPoints && trend.dataPoints.length > 1 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Risk Score Trajectory */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h3 className="font-semibold text-slate-800 mb-4">Risk Score Trajectory</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trend.dataPoints}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="reportDate" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="riskScore" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} name="Risk Score" />
-                </LineChart>
-              </ResponsiveContainer>
+      {/* Section Lists */}
+      {sections.map((s) => {
+        if (s.count === 0) return null;
+        const isCollapsible = s.count > 10;
+        const content = s.comp;
+        return (
+          <div key={s.key} className={`bg-white rounded-xl border overflow-hidden ${s.key === "added" ? "border-red-200" : s.key === "removed" ? "border-emerald-200" : s.key === "same" ? "border-slate-200" : "border-amber-200"}`}>
+            <div className={`px-5 py-3 border-b ${s.key === "added" ? "bg-red-50 border-red-200" : s.key === "removed" ? "bg-emerald-50 border-emerald-200" : s.key === "same" ? "bg-slate-50 border-slate-200" : "bg-amber-50 border-amber-200"}`}>
+              <h3 className={`font-semibold ${s.color}`}>
+                {s.key === "added" ? "New Violations" : s.key === "removed" ? "Removed Violations" : s.key === "same" ? "Unchanged Violations" : "Status Changed Violations"} ({s.count})
+              </h3>
             </div>
-            {trend.riskProjection && (
-              <div className={`mt-3 flex items-center space-x-2 text-sm ${trend.riskProjection.direction === "worsening" ? "text-red-600" : trend.riskProjection.direction === "improving" ? "text-emerald-600" : "text-slate-500"}`}>
-                {trend.riskProjection.direction === "worsening" ? <TrendingUp className="w-4 h-4" /> : trend.riskProjection.direction === "improving" ? <TrendingDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
-                <span>Projected by {trend.riskProjection.projectedDate}: {trend.riskProjection.projectedRisk}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Severity Distribution Over Time */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h3 className="font-semibold text-slate-800 mb-4">Severity Distribution</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={trend.dataPoints}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="reportDate" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="severityBreakdown.CRITICAL" stackId="sev" fill="#dc2626" name="Critical" />
-                  <Bar dataKey="severityBreakdown.HIGH" stackId="sev" fill="#ea580c" name="High" />
-                  <Bar dataKey="severityBreakdown.MEDIUM" stackId="sev" fill="#ca8a04" name="Medium" />
-                  <Bar dataKey="severityBreakdown.LOW" stackId="sev" fill="#64748b" name="Low" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className={isCollapsible ? "max-h-80 overflow-y-auto divide-y divide-slate-100" : "divide-y divide-slate-100"}>
+              {content}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })}
 
-      {/* Velocity Insight */}
-      {trend && trend.velocity && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 className="font-semibold text-slate-800 mb-3">Vulnerability Velocity</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-slate-500">New / Week</p>
-              <p className="text-xl font-bold text-emerald-600">{trend.velocity.newPerWeek}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Fixed / Week</p>
-              <p className="text-xl font-bold text-red-600">{trend.velocity.fixedPerWeek}</p>
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Net Velocity</p>
-              <p className={`text-xl font-bold ${trend.velocity.netVelocity > 0 ? "text-red-600" : "text-emerald-600"}`}>
-                {trend.velocity.netVelocity > 0 ? "+" : ""}{trend.velocity.netVelocity}
-              </p>
-            </div>
-          </div>
+      {/* Report Dates */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <p className="text-xs text-slate-500">Report A (earlier)</p>
+          <p className="text-sm font-semibold text-slate-800 mt-1">{formatDate(comparison.reportA.scanDate)}</p>
+          <p className="text-xs text-slate-400">{comparison.reportA.stage} &middot; {comparison.reportA.reportTitle || `#${comparison.reportA.scanId.slice(0, 8)}`}</p>
         </div>
-      )}
+        <div className="bg-white rounded-xl border border-slate-200 p-4">
+          <p className="text-xs text-slate-500">Report B (later)</p>
+          <p className="text-sm font-semibold text-slate-800 mt-1">{formatDate(comparison.reportB.scanDate)}</p>
+          <p className="text-xs text-slate-400">{comparison.reportB.stage} &middot; {comparison.reportB.reportTitle || `#${comparison.reportB.scanId.slice(0, 8)}`}</p>
+        </div>
+      </div>
     </div>
   );
 }
