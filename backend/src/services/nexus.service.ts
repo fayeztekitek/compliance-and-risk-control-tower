@@ -97,10 +97,11 @@ export const nexusService = {
     }
     const remoteApps = appList.map((a: any) => ({
       id: a.id,
+      publicId: a.publicId || a.id,
       name: a.name || a.publicId,
       organizationId: a.organizationId,
       status: a.status || "UNKNOWN",
-      businessCriticality: a.businessCriticality || "N/A",
+      businessCriticality: a.businessCriticality || null,
       productId: a.publicId || a.id,
     }));
     return { applications: remoteApps };

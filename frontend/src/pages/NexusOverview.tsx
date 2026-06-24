@@ -3,6 +3,18 @@ import { Building2, Loader2, CheckCircle2, XCircle, ChevronRight, FileText } fro
 import NexusApplicationDetail from "./NexusApplicationDetail";
 import { nexusApi } from "../api/nexus.api";
 
+function reportAge(reportTime: number): string {
+  const now = Date.now();
+  const diff = now - reportTime;
+  const days = Math.floor(diff / 86400000);
+  if (days < 1) return "Today";
+  if (days === 1) return "1 day ago";
+  if (days < 30) return `${days} days ago`;
+  const months = Math.floor(days / 30);
+  if (months === 1) return "1 month ago";
+  return `${months} months ago`;
+}
+
 type NexusView = "overview" | "application";
 
 export default function NexusOverview() {
@@ -78,12 +90,12 @@ export default function NexusOverview() {
         const counts: Record<string, { count: number; latest: string }> = {};
         await Promise.all(appList.map(async (app: any) => {
           try {
-            const hist = await nexusApi.fetchNexusReportHistory({ sessionToken, applicationId: app.id });
+            const hist = await nexusApi.fetchNexusReportHistory({ sessionToken, applicationId: app.publicId || app.id });
             const reports = hist.data.data.reports || [];
             counts[app.id] = {
               count: reports.length,
-              latest: reports.length > 0
-                ? new Date(reports[0].reportTime).toLocaleDateString()
+              latest: reports.length > 0 && reports[0].reportTime
+                ? reportAge(reports[0].reportTime)
                 : "—",
             };
           } catch {
@@ -119,6 +131,7 @@ export default function NexusOverview() {
     return (
       <NexusApplicationDetail
         applicationId={selectedAppId}
+        applicationPublicId={app?.publicId}
         applicationName={app?.name}
         onBack={() => { setNexusView("overview"); setSelectedAppId(null); }}
         onBackToOverview={() => { setNexusView("overview"); setSelectedAppId(null); }}
@@ -243,18 +256,20 @@ export default function NexusOverview() {
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                      !app.status || app.status === "UNKNOWN" ? "bg-slate-50 text-slate-500" :
                       app.status === "GREEN" ? "bg-emerald-50 text-emerald-700" :
                       app.status === "ORANGE" ? "bg-amber-50 text-amber-700" :
                       "bg-red-50 text-red-700"
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${
+                        !app.status || app.status === "UNKNOWN" ? "bg-slate-400" :
                         app.status === "GREEN" ? "bg-emerald-500" :
                         app.status === "ORANGE" ? "bg-amber-500" :
                         "bg-red-500"
                       }`} />
-                      {app.status || "UNKNOWN"}
+                      {!app.status || app.status === "UNKNOWN" ? "N/A" : app.status}
                     </span>
-                    {app.businessCriticality && (
+                    {app.businessCriticality && app.businessCriticality !== "N/A" && (
                       <span className="text-xs text-slate-400">{app.businessCriticality}</span>
                     )}
                   </div>
@@ -262,7 +277,7 @@ export default function NexusOverview() {
                     <FileText className="w-3 h-3 mr-1" />
                     <span>{sc ? `${sc.count} scan${sc.count !== 1 ? 's' : ''}` : "—"}</span>
                     {sc?.latest && sc.count > 0 && (
-                      <span className="ml-2">· Latest: {sc.latest}</span>
+                      <span className="ml-2">· {sc.latest}</span>
                     )}
                   </div>
                 </button>

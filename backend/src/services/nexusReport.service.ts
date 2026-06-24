@@ -32,13 +32,14 @@ function getNexusPublicId(comp: any): string | undefined {
 
 export const nexusReportService = {
   // ---- Sync ----
-  async syncReports(sessionToken: string, applicationId: string) {
+  async syncReports(sessionToken: string, applicationId: string, applicationPublicId?: string) {
     const creds = credentialStore.retrieve(sessionToken);
     if (!creds) throw new ValidationError("Invalid or expired session token");
     const client = createClientFromCredentials(creds);
+    const appIdForApi = applicationPublicId || applicationId;
 
     const historyResult = await client.executeRequest<any>(
-      `api/v2/reports/applications/${applicationId}/history`
+      `api/v2/reports/applications/${appIdForApi}/history`
     );
     const rawReports: any[] = historyResult?.reports || (Array.isArray(historyResult) ? historyResult : []);
 
@@ -47,14 +48,15 @@ export const nexusReportService = {
     }
 
     const firstReport = rawReports[0];
-    const appPublicId = firstReport.application?.publicId || firstReport.applicationId;
+    const appPublicId = firstReport.application?.publicId || firstReport.application?.id || appIdForApi;
 
     let reportsSynced = 0;
     let violationsSynced = 0;
     let componentsSynced = 0;
 
     for (const raw of rawReports) {
-      const scanId = raw.reportId;
+      const scanId = raw.reportId || raw.id;
+      if (!scanId) continue;
       const reportDate = raw.evaluationDate
         ? new Date(raw.evaluationDate).toISOString().split("T")[0]
         : new Date().toISOString().split("T")[0];

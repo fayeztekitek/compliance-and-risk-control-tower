@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, ChevronRight, FileText, Shield, Layers, Loader2, RefreshCw, BarChart3, GitCompare, ExternalLink } from "lucide-react";
 import { nexusApi, NexusStoredReport, NexusPolicyViolation } from "../api/nexus.api";
 import { SkeletonPage } from "../components/ui/Skeleton";
 
 interface Props {
-  applicationId: string;
+  applicationId?: string;
+  applicationPublicId?: string;
   applicationName?: string;
-  onBack: () => void;
+  onBack?: () => void;
   onBackToOverview?: () => void;
 }
+
+const API_BASE = "/api/nexus/reports";
 
 const sevDotColors: Record<string, string> = {
   critical: "bg-red-500",
@@ -38,8 +41,10 @@ function SevInline({ c, h, m, l }: { c: number; h: number; m: number; l: number 
   );
 }
 
-export default function NexusApplicationDetail({ applicationId, applicationName, onBack, onBackToOverview }: Props) {
+export default function NexusApplicationDetail({ applicationId: propAppId, applicationPublicId, applicationName, onBack, onBackToOverview }: Props) {
+  const { appId } = useParams<{ appId: string }>();
   const navigate = useNavigate();
+  const applicationId = propAppId || appId || "";
   const [reports, setReports] = useState<NexusStoredReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -75,7 +80,7 @@ export default function NexusApplicationDetail({ applicationId, applicationName,
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await nexusApi.syncNexusReports(sessionToken, applicationId);
+      const res = await nexusApi.syncNexusReports(sessionToken, applicationId, applicationPublicId);
       setSyncResult(`Synced ${res.data.data.reportsSynced} reports, ${res.data.data.violationsSynced} violations, ${res.data.data.componentsSynced} components`);
       await loadReports();
     } catch (err: any) {
@@ -117,14 +122,15 @@ export default function NexusApplicationDetail({ applicationId, applicationName,
     <div className="space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center space-x-2 text-sm text-slate-500">
-        {onBackToOverview && <><button onClick={onBackToOverview} className="hover:text-indigo-600">Nexus IQ</button><span>/</span></>}
+        {onBackToOverview ? <><button onClick={onBackToOverview} className="hover:text-indigo-600">Nexus IQ</button><span>/</span></> : <Link to="/nexus" className="hover:text-indigo-600">Nexus IQ</Link>}
+        {onBackToOverview && <span>/</span>}
         <span className="text-slate-800 font-medium">{appName}</span>
       </nav>
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+          <button onClick={onBack || (() => navigate('/nexus'))} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </button>
           <div>

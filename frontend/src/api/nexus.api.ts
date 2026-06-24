@@ -414,8 +414,8 @@ export const nexusApi = {
 
   // ---- Stored Reports (Drill-Down) ----
 
-  syncNexusReports(sessionToken: string, applicationId: string) {
-    return apiClient.post<{ data: { applicationId: string; reportsSynced: number; violationsSynced: number; componentsSynced: number } }>("/api/nexus/reports/sync", { sessionToken, applicationId });
+  syncNexusReports(sessionToken: string, applicationId: string, applicationPublicId?: string) {
+    return apiClient.post<{ data: { applicationId: string; reportsSynced: number; violationsSynced: number; componentsSynced: number } }>("/api/nexus/reports/sync", { sessionToken, applicationId, applicationPublicId });
   },
 
   getStoredReports(applicationId: string, params?: { page?: number; limit?: number }) {

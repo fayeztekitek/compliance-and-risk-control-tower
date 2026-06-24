@@ -3,6 +3,7 @@ import { nexusService } from "../services/nexus.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { ValidationError } from "../core/errors.js";
+import { env } from "../config/env.js";
 import {
   nexusConfigSchema, nexusConfigUpdateSchema, nexusQuerySchema,
   createNexusWaiverSchema, triggerSyncSchema,
@@ -32,7 +33,7 @@ router.get("/config", async (_req: Request, res: Response, next: NextFunction) =
       const { tokenEncrypted, ...safe } = config;
       return res.json({ data: { ...safe, token: tokenEncrypted ? "********" : null } });
     }
-    res.json({ data: null });
+    res.json({ data: { url: env.NEXUS_IQ_URL || "", username: env.NEXUS_IQ_USERNAME || "", token: "" } });
   } catch (err) { next(err); }
 });
 
@@ -189,10 +190,10 @@ router.get("/reports/:applicationId/latest", async (req: Request, res: Response,
  */
 router.post("/reports/sync", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { sessionToken, applicationId } = req.body;
+    const { sessionToken, applicationId, applicationPublicId } = req.body;
     if (!sessionToken || !applicationId) throw new ValidationError("sessionToken and applicationId are required");
     const { nexusReportService } = await import("../services/nexusReport.service.js");
-    const result = await nexusReportService.syncReports(sessionToken, applicationId);
+    const result = await nexusReportService.syncReports(sessionToken, applicationId, applicationPublicId);
     res.json({ data: result });
   } catch (err) { next(err); }
 });
