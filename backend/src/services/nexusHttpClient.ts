@@ -1,4 +1,6 @@
 import { nexusRepo } from "../repositories/nexus.repo.js";
+import http from "http";
+import https from "https";
 
 export interface NexusHttpConfig {
   url: string;
@@ -13,7 +15,7 @@ export class NexusHttpClient {
   private logs: string[] = [];
 
   constructor(config: NexusHttpConfig) {
-    this.config = { timeoutMs: 5000, maxRetries: 3, ...config };
+    this.config = { timeoutMs: 3000, maxRetries: 2, ...config };
   }
 
   private maskToken(msg: string): string {
@@ -31,6 +33,52 @@ export class NexusHttpClient {
 
   getMaskedLogs(): string { return this.logs.join("\n"); }
   clearLogs() { this.logs = []; }
+
+  private async nodeFetch(url: string, options: {
+    method: string;
+    headers: Record<string, string>;
+    body?: string;
+    timeoutMs: number;
+  }): Promise<{ status: number; statusText: string; data: any }> {
+    return new Promise((resolve, reject) => {
+      const parsedUrl = new URL(url);
+      const httpModule = parsedUrl.protocol === "https:" ? https : http;
+      let settled = false;
+
+      const req = httpModule.request(url, {
+        method: options.method,
+        headers: options.headers,
+        timeout: options.timeoutMs,
+        rejectUnauthorized: false,
+      }, (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (chunk: Buffer) => chunks.push(chunk));
+        res.on("end", () => {
+          if (settled) return;
+          settled = true;
+          const raw = Buffer.concat(chunks).toString();
+          let data: any = raw;
+          try { data = raw ? JSON.parse(raw) : null; } catch { /* keep raw string */ }
+          resolve({ status: res.statusCode || 0, statusText: res.statusMessage || "", data });
+        });
+      });
+
+      req.on("error", (err) => {
+        if (settled) return;
+        settled = true;
+        reject(err);
+      });
+      req.on("timeout", () => {
+        if (settled) return;
+        settled = true;
+        req.destroy();
+        reject(new Error("Connection timed out"));
+      });
+
+      if (options.body) req.write(options.body);
+      req.end();
+    });
+  }
 
   async executeRequest<T>(endpoint: string, method = "GET", body: any = null): Promise<T> {
     const targetUrl = `${this.config.url.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
@@ -51,21 +99,20 @@ export class NexusHttpClient {
           return {} as T;
         }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.config.timeoutMs);
         const authHeader = `Basic ${Buffer.from(`${this.config.username}:${this.config.token}`).toString("base64")}`;
 
-        const response = await fetch(targetUrl, {
+        const res = await this.nodeFetch(targetUrl, {
           method,
           headers: { Authorization: authHeader, Accept: "application/json", "Content-Type": "application/json" },
           body: body ? JSON.stringify(body) : undefined,
-          signal: controller.signal,
+          timeoutMs: this.config.timeoutMs,
         });
-        clearTimeout(timeoutId);
-        if (!response.ok) throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
-        const data = await response.json();
-        this.log(`Request completed with status ${response.status}`);
-        return data as T;
+
+        if (res.status < 200 || res.status >= 300) {
+          throw new Error(`HTTP Error: ${res.status} ${res.statusText}`);
+        }
+        this.log(`Request completed with status ${res.status}`);
+        return res.data as T;
       } catch (err: any) {
         this.log(`Request failed: ${err.message}`, true);
         if (attempt >= this.config.maxRetries) {

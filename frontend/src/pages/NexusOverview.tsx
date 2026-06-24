@@ -256,18 +256,12 @@ export default function NexusOverview() {
                   </div>
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-                      !app.status || app.status === "UNKNOWN" ? "bg-slate-50 text-slate-500" :
-                      app.status === "GREEN" ? "bg-emerald-50 text-emerald-700" :
-                      app.status === "ORANGE" ? "bg-amber-50 text-amber-700" :
-                      "bg-red-50 text-red-700"
+                      sc && sc.count > 0 ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-500"
                     }`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${
-                        !app.status || app.status === "UNKNOWN" ? "bg-slate-400" :
-                        app.status === "GREEN" ? "bg-emerald-500" :
-                        app.status === "ORANGE" ? "bg-amber-500" :
-                        "bg-red-500"
+                        sc && sc.count > 0 ? "bg-emerald-500" : "bg-slate-400"
                       }`} />
-                      {!app.status || app.status === "UNKNOWN" ? "N/A" : app.status}
+                      {sc && sc.count > 0 ? `${sc.count} scan${sc.count !== 1 ? "s" : ""}` : "N/A"}
                     </span>
                     {app.businessCriticality && app.businessCriticality !== "N/A" && (
                       <span className="text-xs text-slate-400">{app.businessCriticality}</span>
@@ -275,9 +269,10 @@ export default function NexusOverview() {
                   </div>
                   <div className="flex items-center text-xs text-slate-400">
                     <FileText className="w-3 h-3 mr-1" />
-                    <span>{sc ? `${sc.count} scan${sc.count !== 1 ? 's' : ''}` : "—"}</span>
-                    {sc?.latest && sc.count > 0 && (
-                      <span className="ml-2">· {sc.latest}</span>
+                    {sc?.latest && sc.count > 0 ? (
+                      <span>{sc.latest}</span>
+                    ) : (
+                      <span>No scans</span>
                     )}
                   </div>
                 </button>

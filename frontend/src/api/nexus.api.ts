@@ -390,7 +390,7 @@ export const nexusApi = {
 
   // Remote connection
   connectToNexus(credentials?: { url?: string; username?: string; token?: string }) {
-    return apiClient.post<{ data: { connection: { success: boolean; message: string; duration: number }; remoteOrgs: { organizationId: string; organizationName: string }[]; sessionToken: string | null } }>("/api/nexus/config/connect", credentials || {});
+    return apiClient.post<{ data: { connection: { success: boolean; message: string; duration: number }; remoteOrgs: { organizationId: string; organizationName: string }[]; sessionToken: string | null } }>("/api/nexus/config/connect", credentials || {}, { timeout: 30000 });
   },
 
   // Fetch applications from Nexus IQ using sessionToken, filtered by organization
