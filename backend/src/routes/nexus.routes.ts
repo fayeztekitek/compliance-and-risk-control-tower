@@ -173,6 +173,229 @@ router.get("/reports/:applicationId/latest", async (req: Request, res: Response,
   } catch (err) { next(err); }
 });
 
+// ---- Report Drill-Down Routes ----
+
+/**
+ * @openapi
+ * /nexus/reports/sync:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Sync all reports and violations for an application into local DB
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Sync result summary
+ */
+router.post("/reports/sync", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionToken, applicationId } = req.body;
+    if (!sessionToken || !applicationId) throw new ValidationError("sessionToken and applicationId are required");
+    const { nexusReportService } = await import("../services/nexusReport.service.js");
+    const result = await nexusReportService.syncReports(sessionToken, applicationId);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/reports:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: List stored scan reports for an application
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: applicationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Paginated list of reports
+ */
+router.get("/reports", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const applicationId = req.query.applicationId as string;
+    if (!applicationId) throw new ValidationError("applicationId is required");
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 20;
+    const { nexusReportService } = await import("../services/nexusReport.service.js");
+    const result = await nexusReportService.listReports(applicationId, page, limit);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/reports/{id}:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get a single stored report by scan ID or internal UUID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Report detail
+ */
+router.get("/reports/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { nexusReportService } = await import("../services/nexusReport.service.js");
+    const result = await nexusReportService.getReport(req.params.id);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/reports/{id}/violations:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: List policy violations for a stored report
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: severity
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Violations list with severity summary
+ */
+router.get("/reports/:id/violations", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = parseInt(req.query.limit as string, 10) || 50;
+    const { nexusReportService } = await import("../services/nexusReport.service.js");
+    const result = await nexusReportService.getReportViolations(req.params.id, {
+      severity: req.query.severity as string,
+      status: req.query.status as string,
+      search: req.query.search as string,
+      page, limit,
+    });
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/reports/compare:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Compare two stored reports
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Comparison result with added/removed/same violations
+ */
+router.post("/reports/compare", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { reportIdA, reportIdB } = req.body;
+    if (!reportIdA || !reportIdB) throw new ValidationError("reportIdA and reportIdB are required");
+    const { nexusReportService } = await import("../services/nexusReport.service.js");
+    const result = await nexusReportService.compareReports(reportIdA, reportIdB);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/reports/{applicationId}/evolution:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get vulnerability evolution timeline for an application
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: applicationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Evolution timeline
+ */
+router.get("/reports/:applicationId/evolution", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { nexusReportService } = await import("../services/nexusReport.service.js");
+    const result = await nexusReportService.getEvolution(
+      req.params.applicationId,
+      req.query.fromDate as string,
+      req.query.toDate as string,
+    );
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/reports/{applicationId}/components:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get component impact metrics for an application
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Component impact list
+ */
+router.get("/reports/:applicationId/components", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { nexusReportService } = await import("../services/nexusReport.service.js");
+    const result = await nexusReportService.getComponentImpact(req.params.applicationId);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
 /**
  * @openapi
  * /nexus/sync:

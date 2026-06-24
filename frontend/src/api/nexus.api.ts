@@ -147,6 +147,114 @@ export interface TrendPoint {
   severityBreakdown: Record<string, number>;
 }
 
+export interface NexusStoredReport {
+  id: string;
+  scanId: string;
+  applicationId: string;
+  applicationUuid?: string;
+  stage: string;
+  scanDate: string;
+  reportTitle?: string;
+  commitHash?: string;
+  initiator?: string;
+  reportUrl?: string;
+  embeddableReportHtmlUrl?: string;
+  reportPdfUrl?: string;
+  reportDataUrl?: string;
+  policyEvaluationStatus?: string;
+  totalComponents: number;
+  affectedComponents: number;
+  totalViolations: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+  componentHashes?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NexusPolicyViolation {
+  id: string;
+  violationId: string;
+  reportId: string;
+  policyId?: string;
+  policyName: string;
+  constraintId?: string;
+  constraintName?: string;
+  threatLevel: number;
+  threatCategory?: string;
+  applicationId: string;
+  componentHash?: string;
+  componentFormat?: string;
+  componentName?: string;
+  componentCoordinates?: any;
+  displayName?: string;
+  proprietary?: boolean;
+  matchState?: string;
+  securityIssueRefId?: string;
+  securityIssueSeverity?: number;
+  cveId?: string;
+  status: string;
+  stage?: string;
+  openTime?: string;
+  waiveTime?: string;
+  fixTime?: string;
+  isWaived: boolean;
+  isLegacy: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NexusEvolutionPoint {
+  id: string;
+  applicationId: string;
+  reportId: string;
+  scanDate: string;
+  stage?: string;
+  totalViolations: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+  totalComponents: number;
+  affectedComponents: number;
+  componentChurn?: {
+    newComponents: number;
+    removedComponents: number;
+    newComponentNames?: string[];
+    removedComponentNames?: string[];
+  } | null;
+  newViolations: number;
+  fixedViolations: number;
+}
+
+export interface NexusComponentImpact {
+  applicationId: string;
+  componentHash: string;
+  firstSeen: string;
+  lastSeen: string;
+  reportsAffected: number;
+  violationCount: number;
+  maxThreatLevel: number;
+  versionsSeen: string[];
+}
+
+export interface ReportComparisonResult {
+  reportA: NexusStoredReport;
+  reportB: NexusStoredReport;
+  addedViolations: NexusPolicyViolation[];
+  removedViolations: NexusPolicyViolation[];
+  sameViolations: NexusPolicyViolation[];
+  statusChangedViolations: { from: NexusPolicyViolation; to: NexusPolicyViolation }[];
+  summary: {
+    added: { critical: number; high: number; medium: number; low: number };
+    removed: { critical: number; high: number; medium: number; low: number };
+    same: { critical: number; high: number; medium: number; low: number };
+    statusChanged: number;
+  };
+}
+
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -302,5 +410,41 @@ export const nexusApi = {
 
   fetchNexusLatestReport(params?: { sessionToken?: string; applicationId?: string; applicationPublicId?: string }) {
     return apiClient.post<{ data: { report: any | null; severityCounts: { critical: number; high: number; medium: number; low: number; total: number } | null } }>("/api/nexus/reports/latest", params || {});
+  },
+
+  // ---- Stored Reports (Drill-Down) ----
+
+  syncNexusReports(sessionToken: string, applicationId: string) {
+    return apiClient.post<{ data: { applicationId: string; reportsSynced: number; violationsSynced: number; componentsSynced: number } }>("/api/nexus/reports/sync", { sessionToken, applicationId });
+  },
+
+  getStoredReports(applicationId: string, params?: { page?: number; limit?: number }) {
+    return apiClient.get<{ data: NexusStoredReport[]; total: number; page: number; limit: number }>("/api/nexus/reports", { params: { applicationId, ...params } });
+  },
+
+  getStoredReport(id: string) {
+    return apiClient.get<{ data: NexusStoredReport }>(`/api/nexus/reports/${id}`);
+  },
+
+  getStoredReportViolations(id: string, params?: {
+    severity?: string; status?: string; search?: string; page?: number; limit?: number;
+  }) {
+    return apiClient.get<{
+      data: NexusPolicyViolation[]; total: number; page: number; limit: number;
+      summary: { total: number; critical: number; high: number; medium: number; low: number; open_count: number; waived_count: number; fixed_count: number };
+      report: NexusStoredReport;
+    }>(`/api/nexus/reports/${id}/violations`, { params });
+  },
+
+  compareStoredReports(reportIdA: string, reportIdB: string) {
+    return apiClient.post<{ data: ReportComparisonResult }>("/api/nexus/reports/compare", { reportIdA, reportIdB });
+  },
+
+  getEvolution(applicationId: string, params?: { fromDate?: string; toDate?: string }) {
+    return apiClient.get<{ data: NexusEvolutionPoint[] }>(`/api/nexus/reports/${applicationId}/evolution`, { params });
+  },
+
+  getComponentImpact(applicationId: string) {
+    return apiClient.get<{ data: NexusComponentImpact[] }>(`/api/nexus/reports/${applicationId}/components`);
   },
 };
