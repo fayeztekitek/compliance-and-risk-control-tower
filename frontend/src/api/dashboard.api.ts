@@ -78,6 +78,77 @@ export interface CompliancePostureData {
   grade: "GREEN" | "AMBER" | "RED";
 }
 
+export interface NexusLifecycleTopVuln {
+  vulnerabilityId: string;
+  type: "CVE" | "Sonatype";
+  severity: string;
+  occurrences: number;
+  applicationsImpacted: number;
+  organizationsImpacted: number;
+  firstSeen: string;
+  lastSeen: string;
+}
+
+export interface NexusLifecycleSummary {
+  totalOrganizations: number;
+  totalApplications: number;
+  totalLatestReports: number;
+  distinctVulnerabilities: number;
+  totalOccurrences: number;
+  criticalDistinct: number;
+  highDistinct: number;
+  mediumDistinct: number;
+  lowDistinct: number;
+  topVulnerabilities: NexusLifecycleTopVuln[];
+}
+
+export interface NexusLifecycleOccurrence {
+  organizationName: string;
+  organizationId: string;
+  applicationName: string;
+  applicationId: string;
+  componentName: string;
+  reportDate: string;
+}
+
+export interface LiveNexusTopVuln {
+  vulnerabilityId: string;
+  type: "CVE" | "SONATYPE";
+  severity: string;
+  occurrenceCount: number;
+  impactedApplications: number;
+  impactedOrganizations: number;
+  occurrences: Array<{
+    organizationId: string;
+    organizationName: string;
+    applicationId: string;
+    applicationName: string;
+    reportId: string;
+    reportDate: string;
+    componentName: string;
+    packageUrl: string;
+    path: string;
+    status: string;
+  }>;
+  waived: boolean;
+  lastSeen: string;
+}
+
+export interface LiveNexusKpis {
+  totalOrganizations: number;
+  totalApplications: number;
+  totalScanReports: number;
+  applicationsWithScan: number;
+  applicationsWithoutScan: number;
+  distinctOpenVulnerabilities: number;
+  totalOpenOccurrences: number;
+  waivedVulnerabilities: number;
+  criticalDistinctOpen: number;
+  highDistinctOpen: number;
+  topVulnerabilities: LiveNexusTopVuln[];
+  errors: string[];
+}
+
 export const dashboardApi = {
   executive() {
     return apiClient.get<{ data: ExecutiveDashboard }>("/api/dashboard/executive");
@@ -105,5 +176,14 @@ export const dashboardApi = {
   },
   compliancePosture() {
     return apiClient.get<{ data: CompliancePostureData }>("/api/dashboard/compliance-posture");
+  },
+  nexusLifecycleSummary() {
+    return apiClient.get<{ data: NexusLifecycleSummary }>("/api/dashboard/nexus-lifecycle-summary");
+  },
+  nexusLifecycleOccurrences(vulnId: string) {
+    return apiClient.get<{ data: NexusLifecycleOccurrence[] }>(`/api/dashboard/nexus-lifecycle-occurrences/${encodeURIComponent(vulnId)}`);
+  },
+  fetchLiveNexusKpis(sessionToken: string) {
+    return apiClient.post<{ data: LiveNexusKpis }>("/api/nexus/kpis/executive/live", { sessionToken });
   },
 };

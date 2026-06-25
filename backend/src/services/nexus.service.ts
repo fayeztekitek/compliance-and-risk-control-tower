@@ -113,8 +113,8 @@ export const nexusService = {
     const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
     if (!creds || !data?.applicationId) return { reports: [] };
     const client = createClientFromCredentials(creds);
-    const result = await client.executeRequest<any>(`api/v2/reports/applications/${data.applicationId}/history`);
-    const raw = result?.reports || (Array.isArray(result) ? result : []);
+    const result = await client.executeRequest<any>(`api/v2/reports/applications/${data.applicationId}?limit=100`);
+    const raw: any[] = result?.applicationReports || result?.reports || (Array.isArray(result) ? result : []);
     const reports = raw.map((r: any) => ({
       reportId: r.reportId,
       reportTime: r.reportTime,
@@ -161,6 +161,55 @@ export const nexusService = {
     return { violations: allViolations, severityCounts };
   },
 
+  async fetchReportVulnerabilities(data?: { sessionToken?: string; applicationPublicId?: string; scanId?: string }) {
+    const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
+    if (!creds || !data?.applicationPublicId || !data?.scanId) return { issues: [], severityCounts: {}, statusCounts: {} };
+    const client = createClientFromCredentials(creds);
+    const result = await client.executeRequest<any>(
+      `api/v2/applications/${data.applicationPublicId}/reports/${data.scanId}/raw`
+    );
+    const components = result?.components || [];
+    const issueMap = new Map<string, any>();
+
+    for (const comp of components) {
+      const issues = comp.securityData?.securityIssues || [];
+      for (const iss of issues) {
+        const ref = iss.reference || iss.cve || `internal-${Math.random()}`;
+        if (!issueMap.has(ref)) {
+          const s = parseFloat(String(iss.severity || 0));
+          let severity = "LOW";
+          if (!isNaN(s)) {
+            if (s >= 9.0) severity = "CRITICAL";
+            else if (s >= 7.0) severity = "HIGH";
+            else if (s >= 4.0) severity = "MEDIUM";
+          }
+          issueMap.set(ref, {
+            reference: ref,
+            severity,
+            cvssScore: isNaN(s) ? null : s,
+            status: iss.status || "Open",
+            cwe: iss.cwe || null,
+            url: iss.url || null,
+            componentName: comp.displayName || null,
+          });
+        }
+      }
+    }
+
+    const issues = Array.from(issueMap.values());
+    const severityCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+    const statusCounts: Record<string, number> = {};
+
+    for (const iss of issues) {
+      const sev = iss.severity.toLowerCase();
+      if (sev in severityCounts) severityCounts[sev as keyof typeof severityCounts]++;
+      const st = iss.status || "Unknown";
+      statusCounts[st] = (statusCounts[st] || 0) + 1;
+    }
+
+    return { issues, distinctCount: issues.length, severityCounts, statusCounts };
+  },
+
   async fetchLatestReport(data?: { sessionToken?: string; applicationId?: string; applicationPublicId?: string }) {
     const history = await this.fetchReportHistory(data);
     if (history.reports.length === 0) return { report: null, severityCounts: null };
@@ -174,6 +223,405 @@ export const nexusService = {
   },
 
   // ---- Sync ----
+  async fetchBulkScanStatus(data: { sessionToken: string; applications: { id: string; publicId?: string }[] }) {
+    const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
+    if (!creds || !data?.applications?.length) return { scans: {} };
+    const client = createClientFromCredentials(creds);
+
+    const results: Record<string, {
+      scanPerformed: boolean;
+      scanReportCount: number;
+      latestScanDate: string | null;
+      latestScanAge: string;
+      statusLabel: "N/A" | "Scan Performed";
+      statusColor: "grey" | "green";
+    }> = {};
+
+    const CONCURRENCY = 5;
+    const queue = [...data.applications];
+
+    async function worker() {
+      while (queue.length > 0) {
+        const app = queue.shift()!;
+        const appId = app.id;
+        try {
+          const resp = await client.executeRequest<any>(`api/v2/reports/applications/${appId}?limit=100`);
+          const rawReports: any[] = resp?.applicationReports || resp?.reports || (Array.isArray(resp) ? resp : []);
+
+          if (rawReports.length === 0) {
+            results[appId] = {
+              scanPerformed: false, scanReportCount: 0,
+              latestScanDate: null, latestScanAge: "N/A",
+              statusLabel: "N/A", statusColor: "grey",
+            };
+            continue;
+          }
+
+          let latestDate: string | null = null;
+          let latestMs = 0;
+          for (const r of rawReports) {
+            const ts = r.reportTime || (r.evaluationDate ? new Date(r.evaluationDate).getTime() : 0);
+            if (ts > latestMs) {
+              latestMs = ts;
+              latestDate = r.evaluationDate || new Date(ts).toISOString();
+            }
+          }
+
+          const now = Date.now();
+          const diff = now - latestMs;
+          const days = Math.floor(diff / 86400000);
+          let age: string;
+          if (days < 1) age = "Today";
+          else if (days === 1) age = "Yesterday";
+          else if (days < 7) age = `${days} days ago`;
+          else if (days < 30) age = `${Math.floor(days / 7)} weeks ago`;
+          else age = `${Math.floor(days / 30)} months ago`;
+
+          results[appId] = {
+            scanPerformed: true,
+            scanReportCount: rawReports.length,
+            latestScanDate: latestDate,
+            latestScanAge: age,
+            statusLabel: "Scan Performed",
+            statusColor: "green",
+          };
+        } catch (err: any) {
+          results[appId] = {
+            scanPerformed: false, scanReportCount: 0,
+            latestScanDate: null, latestScanAge: "N/A",
+            statusLabel: "N/A", statusColor: "grey",
+          };
+        }
+      }
+    }
+
+    const workers = Array.from({ length: Math.min(CONCURRENCY, data.applications.length) }, () => worker());
+    await Promise.all(workers);
+    return { scans: results };
+  },
+
+  async fetchExecutiveLiveKpis(data: { sessionToken: string }): Promise<{
+    totalOrganizations: number;
+    totalApplications: number;
+    totalScanReports: number;
+    applicationsWithScan: number;
+    applicationsWithoutScan: number;
+    distinctOpenVulnerabilities: number;
+    totalOpenOccurrences: number;
+    waivedVulnerabilities: number;
+    criticalDistinctOpen: number;
+    highDistinctOpen: number;
+    topVulnerabilities: Array<{
+      vulnerabilityId: string;
+      type: "CVE" | "SONATYPE";
+      severity: string;
+      occurrenceCount: number;
+      impactedApplications: number;
+      impactedOrganizations: number;
+      occurrences: Array<{
+        organizationId: string;
+        organizationName: string;
+        applicationId: string;
+        applicationName: string;
+        reportId: string;
+        reportDate: string;
+        componentName: string;
+        packageUrl: string;
+        path: string;
+        status: string;
+      }>;
+      waived: boolean;
+      lastSeen: string;
+    }>;
+    errors: string[];
+  }> {
+    const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
+    if (!creds) throw new Error("Invalid or expired Nexus IQ session. Please connect to Nexus IQ first.");
+
+    const client = createClientFromCredentials(creds);
+    const errors: string[] = [];
+    const orgMap = new Map<string, string>();
+
+    // 1. Fetch organizations
+    let orgs: any[] = [];
+    try {
+      const raw = await client.executeRequest<any>("api/v2/organizations");
+      orgs = Array.isArray(raw) ? raw : raw?.organizations || raw?.items || [];
+      for (const o of orgs) orgMap.set(o.id || o.organizationId, o.name || o.organizationName || "");
+    } catch (err: any) {
+      errors.push(`Failed to fetch organizations: ${err.message}`);
+    }
+
+    // 2. Fetch all applications
+    let apps: any[] = [];
+    try {
+      const raw = await client.executeRequest<any>("api/v2/applications");
+      apps = Array.isArray(raw) ? raw : raw?.applications || raw?.items || [];
+    } catch (err: any) {
+      errors.push(`Failed to fetch applications: ${err.message}`);
+    }
+
+    const totalOrganizations = orgs.length;
+    const totalApplications = apps.length;
+
+    // 3. For each app, fetch reports concurrently (concurrency 10)
+    interface AppReportInfo {
+      appId: string;
+      appPublicId: string;
+      appName: string;
+      appOrgId: string;
+      reportCount: number;
+      latestScanId: string | null;
+      latestScanDate: string | null;
+    }
+
+    const appInfos: AppReportInfo[] = [];
+    const appQueue = [...apps];
+    const CONCURRENCY = 10;
+
+    async function fetchAppReports(workerClient: typeof client) {
+      while (appQueue.length > 0) {
+        const app = appQueue.shift()!;
+        const appId = app.id || app.applicationId;
+        const appPublicId = app.publicId || appId;
+        const appName = app.name || app.publicId || appId;
+        const appOrgId = app.organizationId || "";
+
+        try {
+          const resp = await workerClient.executeRequest<any>(`api/v2/reports/applications/${appId}?limit=100`);
+          const rawReports: any[] = resp?.applicationReports || resp?.reports || (Array.isArray(resp) ? resp : []);
+          let latestScanId: string | null = null;
+          let latestScanDate: string | null = null;
+          let latestMs = 0;
+
+          for (const r of rawReports) {
+            const ts = r.reportTime || (r.evaluationDate ? new Date(r.evaluationDate).getTime() : 0);
+            if (ts > latestMs) {
+              latestMs = ts;
+              latestScanId = r.reportHtmlUrl?.split("/report/")[1]?.split("/")[0]
+                || r.reportId
+                || r.id
+                || null;
+              latestScanDate = r.evaluationDate || new Date(ts).toISOString();
+            }
+          }
+
+          appInfos.push({
+            appId,
+            appPublicId,
+            appName,
+            appOrgId,
+            reportCount: rawReports.length,
+            latestScanId,
+            latestScanDate,
+          });
+        } catch (err: any) {
+          errors.push(`Failed to fetch reports for ${appName} (${appId}): ${err.message}`);
+          appInfos.push({
+            appId, appPublicId, appName, appOrgId,
+            reportCount: 0,
+            latestScanId: null,
+            latestScanDate: null,
+          });
+        }
+      }
+    }
+
+    const workers = Array.from({ length: Math.min(CONCURRENCY, apps.length || 1) }, () => fetchAppReports(client));
+    await Promise.all(workers);
+
+    const totalScanReports = appInfos.reduce((s, a) => s + a.reportCount, 0);
+    const applicationsWithScan = appInfos.filter(a => a.reportCount > 0).length;
+    const applicationsWithoutScan = appInfos.filter(a => a.reportCount === 0).length;
+
+    // 4. Fetch vulnerabilities from latest reports
+    // Global dedup by CVE / Sonatype reference
+    const globalVulnMap = new Map<string, {
+      vulnerabilityId: string;
+      type: "CVE" | "SONATYPE";
+      severity: string;
+      occurrenceCount: number;
+      impactedApplications: Set<string>;
+      impactedOrganizations: Set<string>;
+      occurrences: Array<{
+        organizationId: string;
+        organizationName: string;
+        applicationId: string;
+        applicationName: string;
+        reportId: string;
+        reportDate: string;
+        componentName: string;
+        packageUrl: string;
+        path: string;
+        status: string;
+      }>;
+      lastSeen: string;
+    }>();
+
+    const vulnQueue = appInfos.filter(a => a.latestScanId);
+    const VULN_CONCURRENCY = 5;
+
+    async function fetchVulnWorker(workerClient: typeof client) {
+      while (vulnQueue.length > 0) {
+        const appInfo = vulnQueue.shift()!;
+        try {
+          const result = await workerClient.executeRequest<any>(
+            `api/v2/applications/${appInfo.appPublicId}/reports/${appInfo.latestScanId}/raw`
+          );
+          const components = result?.components || [];
+          const orgName = orgMap.get(appInfo.appOrgId) || "";
+
+          for (const comp of components) {
+            const issues = comp.securityData?.securityIssues || [];
+            for (const iss of issues) {
+              const vid = iss.reference || iss.cve || "";
+              if (!vid) continue;
+
+              const isCve = vid.startsWith("CVE-");
+              const s = parseFloat(String(iss.severity || 0));
+              let severity = "LOW";
+              if (!isNaN(s)) {
+                if (s >= 9.0) severity = "CRITICAL";
+                else if (s >= 7.0) severity = "HIGH";
+                else if (s >= 4.0) severity = "MEDIUM";
+              }
+              const status = String(iss.status || "Open").toLowerCase();
+              // Skip fixed vulnerabilities for open counts
+              if (status === "fixed") continue;
+
+              if (!globalVulnMap.has(vid)) {
+                globalVulnMap.set(vid, {
+                  vulnerabilityId: vid,
+                  type: isCve ? "CVE" : "SONATYPE",
+                  severity,
+                  occurrenceCount: 0,
+                  impactedApplications: new Set(),
+                  impactedOrganizations: new Set(),
+                  occurrences: [],
+                  lastSeen: "",
+                });
+              }
+              const entry = globalVulnMap.get(vid)!;
+              entry.occurrenceCount++;
+              entry.impactedApplications.add(appInfo.appId);
+              entry.impactedOrganizations.add(appInfo.appOrgId);
+              entry.occurrences.push({
+                organizationId: appInfo.appOrgId,
+                organizationName: orgName,
+                applicationId: appInfo.appId,
+                applicationName: appInfo.appName,
+                reportId: appInfo.latestScanId!,
+                reportDate: appInfo.latestScanDate || "",
+                componentName: comp.displayName || "",
+                packageUrl: comp.packageUrl || "",
+                path: comp.pathnames?.[0] || "",
+                status: iss.status || "Open",
+              });
+              if (appInfo.latestScanDate && appInfo.latestScanDate > entry.lastSeen) {
+                entry.lastSeen = appInfo.latestScanDate;
+              }
+            }
+          }
+        } catch (err: any) {
+          errors.push(`Failed to fetch vulnerabilities for ${appInfo.appName}: ${err.message}`);
+        }
+      }
+    }
+
+    const vulnWorkers = Array.from({ length: Math.min(VULN_CONCURRENCY, vulnQueue.length || 1) }, () => fetchVulnWorker(client));
+    await Promise.all(vulnWorkers);
+
+    // 5. Fetch waivers
+    let waivedVulnerabilities = 0;
+    try {
+      const globalWaiverIds = new Set<string>();
+      // Application-level waivers
+      for (const appInfo of appInfos) {
+        try {
+          const waiverResp = await client.executeRequest<any>(`api/v2/policyWaivers/application/${appInfo.appPublicId}`);
+          const waivers: any[] = Array.isArray(waiverResp) ? waiverResp : waiverResp?.policyWaivers || waiverResp?.waivers || [];
+          for (const w of waivers) {
+            if (w.status === "active" || w.expiryDate ? new Date(w.expiryDate) > new Date() : false) {
+              if (w.scopeId) globalWaiverIds.add(w.scopeId);
+              if (w.violationId) globalWaiverIds.add(w.violationId);
+              if (w.cveId) globalWaiverIds.add(w.cveId);
+            }
+          }
+        } catch { /* skip app waiver errors */ }
+      }
+      // Organization-level waivers
+      for (const [orgId] of orgMap) {
+        try {
+          const waiverResp = await client.executeRequest<any>(`api/v2/policyWaivers/organization/${orgId}`);
+          const waivers: any[] = Array.isArray(waiverResp) ? waiverResp : waiverResp?.policyWaivers || waiverResp?.waivers || [];
+          for (const w of waivers) {
+            if (w.status === "active" || w.expiryDate ? new Date(w.expiryDate) > new Date() : false) {
+              if (w.scopeId) globalWaiverIds.add(w.scopeId);
+              if (w.violationId) globalWaiverIds.add(w.violationId);
+              if (w.cveId) globalWaiverIds.add(w.cveId);
+            }
+          }
+        } catch { /* skip org waiver errors */ }
+      }
+      waivedVulnerabilities = globalWaiverIds.size;
+      // Mark waived vulnerabilities in the map
+      for (const [vid, entry] of globalVulnMap) {
+        const isWaived = globalWaiverIds.has(vid);
+        if (isWaived) {
+          entry.occurrences = entry.occurrences.map(o => ({ ...o, status: "Waived" }));
+        }
+      }
+    } catch (err: any) {
+      errors.push(`Failed to fetch waivers: ${err.message}`);
+    }
+
+    // 6. Aggregate results
+    let distinctOpenVulnerabilities = 0;
+    let criticalDistinctOpen = 0;
+    let highDistinctOpen = 0;
+    let totalOpenOccurrences = 0;
+
+    for (const [vid, entry] of globalVulnMap) {
+      const hasOpen = entry.occurrences.some(o => o.status !== "Waived" && o.status !== "Fixed");
+      if (hasOpen) {
+        distinctOpenVulnerabilities++;
+        totalOpenOccurrences += entry.occurrences.filter(o => o.status !== "Waived" && o.status !== "Fixed").length;
+        if (entry.severity === "CRITICAL") criticalDistinctOpen++;
+        else if (entry.severity === "HIGH") highDistinctOpen++;
+      }
+    }
+
+    const topVulnerabilities = Array.from(globalVulnMap.entries())
+      .map(([vid, entry]) => ({
+        vulnerabilityId: vid,
+        type: entry.type,
+        severity: entry.severity,
+        occurrenceCount: entry.occurrenceCount,
+        impactedApplications: entry.impactedApplications.size,
+        impactedOrganizations: entry.impactedOrganizations.size,
+        occurrences: entry.occurrences,
+        waived: entry.occurrences.some(o => o.status === "Waived"),
+        lastSeen: entry.lastSeen,
+      }))
+      .sort((a, b) => b.occurrenceCount - a.occurrenceCount)
+      .slice(0, 50);
+
+    return {
+      totalOrganizations,
+      totalApplications,
+      totalScanReports,
+      applicationsWithScan,
+      applicationsWithoutScan,
+      distinctOpenVulnerabilities,
+      totalOpenOccurrences,
+      waivedVulnerabilities,
+      criticalDistinctOpen,
+      highDistinctOpen,
+      topVulnerabilities,
+      errors,
+    };
+  },
+
   async triggerSync(data: { mode: string; targetUrl?: string }) {
     const batchId = crypto.randomUUID();
     const syncLog = await nexusRepo.createSyncLog({

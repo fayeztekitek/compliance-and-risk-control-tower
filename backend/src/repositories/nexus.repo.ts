@@ -155,6 +155,22 @@ export const nexusRepo = {
     return r.rows.map(appRow);
   },
 
+  async upsertApplication(data: {
+    applicationId: string;
+    applicationPublicId: string;
+    applicationName: string;
+    organizationId?: string;
+  }) {
+    const r = await query(
+      `INSERT INTO nexus_applications (application_id, application_public_id, application_name, organization_id, source_system)
+       VALUES ($1,$2,$3,$4,'sonatype_nexus_iq')
+       ON CONFLICT (application_id) DO UPDATE SET application_public_id=$2, application_name=$3, organization_id=$4
+       RETURNING ${APP_COLS.join(",")}`,
+      [data.applicationId, data.applicationPublicId, data.applicationName, data.organizationId || null]
+    );
+    return r.rows.length ? appRow(r.rows[0]) : null;
+  },
+
   // ---- Vulnerabilities ----
   async listVulnerabilities(filters: { page: number; limit: number; severity?: string; status?: string; productId?: string; applicationId?: string; search?: string }) {
     const params: any[] = []; let idx = 1;

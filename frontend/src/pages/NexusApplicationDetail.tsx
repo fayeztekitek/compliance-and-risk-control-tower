@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, ChevronRight, FileText, Shield, Layers, Loader2, RefreshCw, BarChart3, ExternalLink } from "lucide-react";
+import { ArrowLeft, ChevronRight, FileText, Shield, Layers, Loader2, RefreshCw, BarChart3, ExternalLink, Bug } from "lucide-react";
 import { nexusApi, NexusStoredReport, NexusPolicyViolation } from "../api/nexus.api";
 import { SkeletonPage } from "../components/ui/Skeleton";
 
@@ -8,6 +8,7 @@ interface Props {
   applicationId?: string;
   applicationPublicId?: string;
   applicationName?: string;
+  organizationName?: string;
   onBack?: () => void;
   onBackToOverview?: () => void;
 }
@@ -41,8 +42,9 @@ function SevInline({ c, h, m, l }: { c: number; h: number; m: number; l: number 
   );
 }
 
-export default function NexusApplicationDetail({ applicationId: propAppId, applicationPublicId, applicationName, onBack, onBackToOverview }: Props) {
+export default function NexusApplicationDetail({ applicationId: propAppId, applicationPublicId, applicationName, organizationName: propOrgName, onBack, onBackToOverview }: Props) {
   const { appId } = useParams<{ appId: string }>();
+  const organizationName = propOrgName || "";
   const navigate = useNavigate();
   const applicationId = propAppId || appId || "";
   const [reports, setReports] = useState<NexusStoredReport[]>([]);
@@ -57,19 +59,48 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
   const [reportViolations, setReportViolations] = useState<NexusPolicyViolation[]>([]);
   const [violationsLoading, setViolationsLoading] = useState(false);
 
-  const sessionToken = sessionStorage.getItem("nexus_session_token");
+  const sessionToken = localStorage.getItem("nexus_session_token");
+
+  // Live vulnerabilities from Nexus IQ
+  const [vulnIssues, setVulnIssues] = useState<any[]>([]);
+  const [vulnLoading, setVulnLoading] = useState(false);
+  const [vulnCounts, setVulnCounts] = useState<{ distinctCount: number; severityCounts: { critical: number; high: number; medium: number; low: number }; statusCounts: Record<string, number> } | null>(null);
+
+  const fetchVulnerabilities = useCallback(async (publicId: string, scanId: string) => {
+    if (!sessionToken || !publicId || !scanId) return;
+    setVulnLoading(true);
+    try {
+      const res = await nexusApi.fetchNexusReportVulnerabilities({ sessionToken, applicationPublicId: publicId, scanId });
+      setVulnIssues(res.data.data.issues || []);
+      setVulnCounts(res.data.data);
+    } catch {
+      setVulnIssues([]);
+      setVulnCounts(null);
+    } finally {
+      setVulnLoading(false);
+    }
+  }, [sessionToken]);
 
   const loadReports = useCallback(async () => {
     setLoading(true);
     try {
       const res = await nexusApi.getStoredReports(applicationId, { limit: 100 });
-      setReports(res.data.data || []);
+      const list = res.data.data || [];
+      setReports(list);
+      // Fetch live vulnerabilities for the latest report
+      if (list.length > 0 && applicationPublicId && sessionToken) {
+        const latest = list[0];
+        const scanId = latest.scanId;
+        if (scanId) {
+          fetchVulnerabilities(applicationPublicId, scanId);
+        }
+      }
     } catch {
       setReports([]);
     } finally {
       setLoading(false);
     }
-  }, [applicationId]);
+  }, [applicationId, applicationPublicId, sessionToken, fetchVulnerabilities]);
 
   useEffect(() => { loadReports(); }, [loadReports]);
 
@@ -119,9 +150,19 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
-      <nav className="flex items-center space-x-2 text-sm text-slate-500">
-        {onBackToOverview ? <><button onClick={onBackToOverview} className="hover:text-indigo-600">Nexus IQ</button><span>/</span></> : <Link to="/nexus" className="hover:text-indigo-600">Nexus IQ</Link>}
-        {onBackToOverview && <span>/</span>}
+      <nav className="flex items-center gap-2 text-sm text-slate-500">
+        {onBackToOverview ? (
+          <button onClick={onBackToOverview} className="hover:text-indigo-600">Nexus IQ</button>
+        ) : (
+          <Link to="/nexus" className="hover:text-indigo-600">Nexus IQ</Link>
+        )}
+        <span>/</span>
+        {organizationName && (
+          <>
+            <span className="text-slate-600">{organizationName}</span>
+            <span>/</span>
+          </>
+        )}
         <span className="text-slate-800 font-medium">{appName}</span>
       </nav>
 
@@ -161,12 +202,12 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
         </div>
       )}
 
-      {/* Aggregate Severity Summary */}
+      {/* Policy Violation Summary */}
       {reports.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Shield className="w-4 h-4 text-indigo-500" />
-            <h2 className="text-sm font-semibold text-slate-700">Aggregate Severity (all reports)</h2>
+            <h2 className="text-sm font-semibold text-slate-700">Policy Violations (all reports)</h2>
           </div>
           <div className="grid grid-cols-5 gap-3">
             <SeverityBadge label="Critical" count={totalCritical} color="text-red-600" />
@@ -175,6 +216,37 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
             <SeverityBadge label="Low" count={totalLow} color="text-slate-500" />
             <SeverityBadge label="Total" count={totalCritical + totalHigh + totalMedium + totalLow} color="text-indigo-600" />
           </div>
+        </div>
+      )}
+
+      {/* Security Vulnerabilities (live from Nexus IQ) */}
+      {vulnCounts && (
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Bug className="w-4 h-4 text-red-500" />
+            <h2 className="text-sm font-semibold text-slate-700">Security Vulnerabilities (latest report — live)</h2>
+          </div>
+          <div className="grid grid-cols-5 gap-3">
+            <SeverityBadge label="Critical" count={vulnCounts.severityCounts.critical} color="text-red-600" />
+            <SeverityBadge label="High" count={vulnCounts.severityCounts.high} color="text-orange-600" />
+            <SeverityBadge label="Medium" count={vulnCounts.severityCounts.medium} color="text-amber-600" />
+            <SeverityBadge label="Low" count={vulnCounts.severityCounts.low} color="text-slate-500" />
+            <SeverityBadge label="Distinct" count={vulnCounts.distinctCount} color="text-indigo-600" />
+          </div>
+          <div className="mt-3 flex items-center gap-4 text-xs text-slate-500">
+            {Object.entries(vulnCounts.statusCounts).map(([status, count]) => (
+              <span key={status}>
+                <span className={`font-medium ${status === "Open" ? "text-red-500" : status === "Waived" ? "text-amber-500" : status === "Fixed" ? "text-green-500" : ""}`}>{count}</span>
+                {" "}{status}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {vulnLoading && (
+        <div className="flex items-center gap-2 text-sm text-slate-400">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Loading vulnerabilities...
         </div>
       )}
 

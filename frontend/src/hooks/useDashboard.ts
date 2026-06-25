@@ -99,3 +99,39 @@ export function useCompliancePosture() {
     staleTime: 60_000,
   });
 }
+
+export function useNexusLifecycleSummary() {
+  return useQuery({
+    queryKey: ["dashboard", "nexus-lifecycle"],
+    queryFn: async () => {
+      const { data } = await dashboardApi.nexusLifecycleSummary();
+      return data.data;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useNexusLifecycleOccurrences(vulnId: string | null) {
+  return useQuery({
+    queryKey: ["dashboard", "nexus-occurrences", vulnId],
+    queryFn: async () => {
+      const { data } = await dashboardApi.nexusLifecycleOccurrences(vulnId!);
+      return data.data;
+    },
+    enabled: !!vulnId,
+    staleTime: 30_000,
+  });
+}
+
+export function useLiveNexusKpis(sessionToken: string | null) {
+  return useQuery({
+    queryKey: ["dashboard", "nexus-live-kpis", sessionToken],
+    queryFn: async () => {
+      const { data } = await dashboardApi.fetchLiveNexusKpis(sessionToken!);
+      return data.data;
+    },
+    enabled: !!sessionToken,
+    staleTime: 120_000,
+    retry: 1,
+  });
+}

@@ -1,6 +1,30 @@
 import { apiClient } from "./client";
 
-export interface NexusProduct {
+export interface ScanStatusResult {
+  scanPerformed: boolean;
+  scanReportCount: number;
+  latestScanDate: string | null;
+  latestScanAge: string;
+  statusLabel: "N/A" | "Scan Performed";
+  statusColor: "grey" | "green";
+}
+
+export interface ApplicationOverview {
+  id: string;
+  publicId?: string;
+  organizationId: string;
+  applicationName: string;
+  scanPerformed: boolean;
+  scanReportCount: number;
+  latestScanDate: string | null;
+  latestScanAge: string;
+  statusLabel: "N/A" | "Scan Performed";
+  statusColor: "grey" | "green";
+  lifecycleStage?: string;
+  policyStatus?: string;
+}
+
+interface NexusProduct {
   id: string;
   productId: string;
   name: string;
@@ -408,6 +432,10 @@ export const nexusApi = {
     return apiClient.post<{ data: { violations: any[]; severityCounts: { critical: number; high: number; medium: number; low: number; total: number } } }>("/api/nexus/reports/violations", params || {});
   },
 
+  fetchNexusReportVulnerabilities(params?: { sessionToken?: string; applicationPublicId?: string; scanId?: string }) {
+    return apiClient.post<{ data: { issues: any[]; distinctCount: number; severityCounts: { critical: number; high: number; medium: number; low: number }; statusCounts: Record<string, number> } }>("/api/nexus/reports/vulnerabilities/live", params || {});
+  },
+
   fetchNexusLatestReport(params?: { sessionToken?: string; applicationId?: string; applicationPublicId?: string }) {
     return apiClient.post<{ data: { report: any | null; severityCounts: { critical: number; high: number; medium: number; low: number; total: number } | null } }>("/api/nexus/reports/latest", params || {});
   },
@@ -416,6 +444,10 @@ export const nexusApi = {
 
   syncNexusReports(sessionToken: string, applicationId: string, applicationPublicId?: string) {
     return apiClient.post<{ data: { applicationId: string; reportsSynced: number; violationsSynced: number; componentsSynced: number } }>("/api/nexus/reports/sync", { sessionToken, applicationId, applicationPublicId });
+  },
+
+  getScanCounts(applicationIds: string[]) {
+    return apiClient.post<{ data: Record<string, { count: number; latest: string; latestDate: string | null; latestStage: string | null; policyStatus: string | null }> }>("/api/nexus/reports/scan-counts", { applicationIds });
   },
 
   getStoredReports(applicationId: string, params?: { page?: number; limit?: number }) {
@@ -446,5 +478,10 @@ export const nexusApi = {
 
   getComponentImpact(applicationId: string) {
     return apiClient.get<{ data: NexusComponentImpact[] }>(`/api/nexus/reports/${applicationId}/components`);
+  },
+
+  // ---- Live Scan Status (Bulk) ----
+  bulkScanStatus(sessionToken: string, applications: { id: string; publicId?: string }[]) {
+    return apiClient.post<{ data: Record<string, ScanStatusResult> }>("/api/nexus/reports/bulk-scan-status", { sessionToken, applications });
   },
 };

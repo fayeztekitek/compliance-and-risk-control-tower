@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { dashboardService } from "../services/dashboard.service.js";
 import { kpiService } from "../services/kpi.service.js";
+import { vulnerabilityAggregationService } from "../services/vulnerabilityAggregation.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { getCached, setCache } from "../services/redis.js";
@@ -184,6 +185,49 @@ router.get("/compliance-posture", async (_req: Request, res: Response, next: Nex
       grade: kpis.complianceScore >= 90 ? "GREEN" : kpis.complianceScore >= 70 ? "AMBER" : "RED",
     };
     res.json({ data: posture });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/nexus-lifecycle-summary:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Nexus Lifecycle vulnerability aggregation across all orgs/apps
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Aggregated stats and top vulnerabilities
+ */
+router.get("/nexus-lifecycle-summary", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await vulnerabilityAggregationService.getStats();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/nexus-lifecycle-occurrences/{vulnId}:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Drill-down occurrences for a specific vulnerability
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: vulnId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: List of occurrences
+ */
+router.get("/nexus-lifecycle-occurrences/:vulnId", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await vulnerabilityAggregationService.getOccurrences(req.params.vulnId);
+    res.json({ data: result });
   } catch (err) { next(err); }
 });
 

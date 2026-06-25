@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { nexusService } from "../services/nexus.service.js";
+import { nexusReportRepo } from "../repositories/nexusReport.repo.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { ValidationError } from "../core/errors.js";
@@ -156,6 +157,13 @@ router.post("/reports/violations", async (req: Request, res: Response, next: Nex
   } catch (err) { next(err); }
 });
 
+router.post("/reports/vulnerabilities/live", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.fetchReportVulnerabilities(req.body);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
 router.post("/reports/latest", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await nexusService.fetchLatestReport(req.body);
@@ -195,6 +203,45 @@ router.post("/reports/sync", async (req: Request, res: Response, next: NextFunct
     const { nexusReportService } = await import("../services/nexusReport.service.js");
     const result = await nexusReportService.syncReports(sessionToken, applicationId, applicationPublicId);
     res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/reports/bulk-scan-status:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Fetch live scan status for multiple applications with concurrency control
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               sessionToken:
+ *                 type: string
+ *               applications:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     publicId:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Scan status per application
+ */
+router.post("/reports/bulk-scan-status", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { sessionToken, applications } = req.body;
+    if (!sessionToken || !Array.isArray(applications)) throw new ValidationError("sessionToken and applications array are required");
+    const result = await nexusService.fetchBulkScanStatus({ sessionToken, applications });
+    res.json({ data: result.scans });
   } catch (err) { next(err); }
 });
 
@@ -334,6 +381,38 @@ router.post("/reports/compare", async (req: Request, res: Response, next: NextFu
     const { nexusReportService } = await import("../services/nexusReport.service.js");
     const result = await nexusReportService.compareReports(reportIdA, reportIdB);
     res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/reports/scan-counts:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Get stored scan report counts and latest dates for multiple applications
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               applicationIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Scan counts per application
+ */
+router.post("/reports/scan-counts", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { applicationIds } = req.body;
+    if (!Array.isArray(applicationIds)) throw new ValidationError("applicationIds must be an array");
+    const counts = await nexusReportRepo.getScanCountsForApps(applicationIds);
+    res.json({ data: counts });
   } catch (err) { next(err); }
 });
 
@@ -714,6 +793,13 @@ router.get("/occurrences/:id/detail", async (req: Request, res: Response, next: 
   try {
     const { findingDetailService } = await import("../services/findingDetail.service.js");
     const result = await findingDetailService.getOccurrenceDetail(req.params.id);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+router.post("/kpis/executive/live", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.fetchExecutiveLiveKpis(req.body);
     res.json({ data: result });
   } catch (err) { next(err); }
 });

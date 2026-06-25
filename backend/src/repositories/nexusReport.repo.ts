@@ -226,6 +226,42 @@ export const nexusReportRepo = {
     return result.rows.length ? (result.rows[0].component_hashes || []) : [];
   },
 
+  async getScanCountsForApps(applicationIds: string[]) {
+    if (!applicationIds.length) return {};
+    const n = applicationIds.length;
+    const p1 = applicationIds.map((_, i) => `$${i + 1}`).join(",");
+    const p2 = applicationIds.map((_, i) => `$${i + 1 + n}`).join(",");
+    const result = await query(
+      `SELECT DISTINCT ON (sr.application_uuid)
+              sr.application_uuid AS id,
+              COUNT(*) OVER (PARTITION BY sr.application_uuid) AS count,
+              sr.scan_date AS latest_date,
+              sr.stage AS latest_stage,
+              sr.policy_evaluation_status AS policy_status
+       FROM nexus_scan_reports sr
+       WHERE sr.application_uuid IN (${p1}) OR sr.application_id IN (${p2})
+       ORDER BY sr.application_uuid, sr.scan_date DESC`,
+      [...applicationIds, ...applicationIds]
+    );
+    const counts: Record<string, {
+      count: number;
+      latest: string;
+      latestDate: string | null;
+      latestStage: string | null;
+      policyStatus: string | null;
+    }> = {};
+    for (const row of result.rows) {
+      counts[row.id] = {
+        count: row.count,
+        latest: row.latest_date ? row.latest_date.toISOString() : "—",
+        latestDate: row.latest_date ? row.latest_date.toISOString() : null,
+        latestStage: row.latest_stage || null,
+        policyStatus: row.policy_status || null,
+      };
+    }
+    return counts;
+  },
+
   async getApplicationByScanId(scanId: string) {
     const result = await query(
       `SELECT a.id, a.application_id, a.application_public_id, a.application_name

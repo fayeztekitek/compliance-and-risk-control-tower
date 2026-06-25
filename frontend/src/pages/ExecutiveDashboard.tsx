@@ -1,8 +1,8 @@
 import { useState } from "react";
 import {
   Shield, AlertTriangle, CheckCircle, Bug, Clock,
-  TrendingUp, DollarSign, Users, FileText, Download,
-  BarChart3, Activity, Target, Zap, Bell,
+  TrendingUp, Users, FileText, Download,
+  BarChart3, Bell, Building2, Layers, X,
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -11,29 +11,13 @@ import {
 import {
   useExecutiveDashboard, useDashboardTrends,
   useMttr, useSlaBreach, useDistinctVsOccurrences, useCompliancePosture,
+  useNexusLifecycleOccurrences, useLiveNexusKpis,
 } from "../hooks/useDashboard";
 import { useUIStore } from "../store/ui.store";
 import { exportApi } from "../api/export.api";
 import { SkeletonPage } from "../components/ui/Skeleton";
 
-const KPI_CARDS = [
-  { key: "totalVulnerabilities", label: "Total Vulns", icon: Bug, color: "text-slate-600 bg-slate-100" },
-  { key: "criticalVulnerabilities", label: "Critical", icon: AlertTriangle, color: "text-red-600 bg-red-100" },
-  { key: "highVulnerabilities", label: "High", icon: AlertTriangle, color: "text-orange-600 bg-orange-100" },
-  { key: "openVulnerabilities", label: "Open", icon: Activity, color: "text-amber-600 bg-amber-100" },
-  { key: "slaOverdueVulnerabilities", label: "SLA Overdue", icon: Clock, color: "text-rose-600 bg-rose-100" },
-  { key: "falsePositives", label: "False Positives", icon: CheckCircle, color: "text-gray-600 bg-gray-100" },
-  { key: "fixedVulnerabilities", label: "Fixed", icon: CheckCircle, color: "text-green-600 bg-green-100" },
-  { key: "waivedVulnerabilities", label: "Waived", icon: Shield, color: "text-indigo-600 bg-indigo-100" },
-  { key: "activeWaivers", label: "Active Waivers", icon: FileText, color: "text-purple-600 bg-purple-100" },
-  { key: "totalProjects", label: "Total Projects", icon: Users, color: "text-blue-600 bg-blue-100" },
-  { key: "deviatingProjects", label: "Deviating", icon: TrendingUp, color: "text-amber-600 bg-amber-100" },
-  { key: "budgetOverrunProjects", label: "Budget Overruns", icon: DollarSign, color: "text-red-600 bg-red-100" },
-  { key: "globalRiskScore", label: "Risk Score", icon: Target, color: "text-rose-600 bg-rose-100", suffix: "%" },
-  { key: "complianceScore", label: "Compliance", icon: Shield, color: "text-emerald-600 bg-emerald-100", suffix: "%" },
-  { key: "productsRed", label: "Red Products", icon: Zap, color: "text-red-600 bg-red-100" },
-  { key: "productsGreen", label: "Green Products", icon: CheckCircle, color: "text-green-600 bg-green-100" },
-];
+
 
 const KRI_STATUS = {
   OK: "bg-green-100 text-green-700",
@@ -59,6 +43,10 @@ export default function ExecutiveDashboard() {
   const { data: sla } = useSlaBreach();
   const { data: distinctOcc } = useDistinctVsOccurrences();
   const { data: compliance } = useCompliancePosture();
+  const nexusSessionToken = localStorage.getItem("nexus_session_token");
+  const { data: liveNexusKpis, isFetching: liveKpisLoading } = useLiveNexusKpis(nexusSessionToken);
+  const [selectedVulnId, setSelectedVulnId] = useState<string | null>(null);
+  const { data: vulnOccurrences } = useNexusLifecycleOccurrences(selectedVulnId);
   const addToast = useUIStore((s) => s.addToast);
   const [chartView, setChartView] = useState<"risk" | "vulns">("risk");
 
@@ -83,7 +71,7 @@ export default function ExecutiveDashboard() {
     );
   }
 
-  const { kpis, kris, heatmap, recentAlerts, lastUpdated } = dash;
+  const { kris, heatmap, recentAlerts, lastUpdated } = dash;
 
   return (
     <div className="space-y-6">
@@ -111,25 +99,113 @@ export default function ExecutiveDashboard() {
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {KPI_CARDS.map(({ key, label, icon: Icon, color, suffix }) => (
-          <div key={key} className="bg-white rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${color}`}>
-                <Icon className="w-5 h-5" />
+      {/* Nexus IQ Executive KPIs (Live) */}
+      {liveNexusKpis && (
+        <>
+          <div className="flex items-center gap-2 mt-2">
+            <Building2 className="w-5 h-5 text-emerald-500" />
+            <h3 className="text-lg font-semibold text-slate-800">Nexus IQ Executive KPIs (Live)</h3>
+            {liveKpisLoading && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+          </div>
+          {liveNexusKpis.errors?.length > 0 && (
+            <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg">
+              {liveNexusKpis.errors.length} warning(s) during aggregation. Some data may be partial.
+            </div>
+          )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="bg-white rounded-xl border border-emerald-200 border-l-4 border-l-emerald-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-100"><Building2 className="w-5 h-5 text-emerald-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Organizations</p>
+                  <p className="text-lg font-bold text-slate-800">{liveNexusKpis.totalOrganizations?.toLocaleString() ?? "—"}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-slate-500 font-medium">{label}</p>
-                <p className="text-lg font-bold text-slate-800">
-                  {Number((kpis as any)[key])?.toLocaleString() ?? "—"}
-                  {suffix}
-                </p>
+            </div>
+            <div className="bg-white rounded-xl border border-emerald-200 border-l-4 border-l-emerald-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100"><Layers className="w-5 h-5 text-blue-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Applications</p>
+                  <p className="text-lg font-bold text-slate-800">{liveNexusKpis.totalApplications?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-emerald-200 border-l-4 border-l-emerald-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-slate-100"><FileText className="w-5 h-5 text-slate-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Scan Reports</p>
+                  <p className="text-lg font-bold text-slate-800">{liveNexusKpis.totalScanReports?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-emerald-200 border-l-4 border-l-emerald-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-100"><CheckCircle className="w-5 h-5 text-green-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Apps Scanned</p>
+                  <p className="text-lg font-bold text-green-700">{liveNexusKpis.applicationsWithScan?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-emerald-200 border-l-4 border-l-emerald-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-100"><X className="w-5 h-5 text-red-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Apps Not Scanned</p>
+                  <p className="text-lg font-bold text-red-700">{liveNexusKpis.applicationsWithoutScan?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-red-200 border-l-4 border-l-red-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-100"><Bug className="w-5 h-5 text-red-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Distinct Open Vulns</p>
+                  <p className="text-lg font-bold text-red-700">{liveNexusKpis.distinctOpenVulnerabilities?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-red-200 border-l-4 border-l-red-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-100"><AlertTriangle className="w-5 h-5 text-orange-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Open Occurrences</p>
+                  <p className="text-lg font-bold text-slate-800">{liveNexusKpis.totalOpenOccurrences?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-red-200 border-l-4 border-l-red-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-100"><Shield className="w-5 h-5 text-purple-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Waived Vulns</p>
+                  <p className="text-lg font-bold text-slate-800">{liveNexusKpis.waivedVulnerabilities?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-red-300 border-l-4 border-l-red-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-100"><Bug className="w-5 h-5 text-red-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Critical Open</p>
+                  <p className="text-lg font-bold text-red-700">{liveNexusKpis.criticalDistinctOpen?.toLocaleString() ?? "—"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white rounded-xl border border-orange-300 border-l-4 border-l-orange-500 p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-100"><AlertTriangle className="w-5 h-5 text-orange-600" /></div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">High Open</p>
+                  <p className="text-lg font-bold text-orange-700">{liveNexusKpis.highDistinctOpen?.toLocaleString() ?? "—"}</p>
+                </div>
               </div>
             </div>
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       {/* Enhanced KPI Row (MTTR, SLA, Distinct/Occurrence) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -350,6 +426,107 @@ export default function ExecutiveDashboard() {
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Top Open Vulnerabilities by Occurrence — Live Nexus IQ */}
+      {liveNexusKpis && liveNexusKpis.topVulnerabilities && liveNexusKpis.topVulnerabilities.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <Bug className="w-5 h-5" /> Top Open Vulnerabilities by Occurrence (Live)
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">#</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Vulnerability ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Severity</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Occurrences</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Impacted Apps</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Impacted Orgs</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Waived</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Last Seen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {liveNexusKpis.topVulnerabilities.map((vuln, i) => (
+                  <tr key={vuln.vulnerabilityId} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 text-xs text-slate-400">{i + 1}</td>
+                    <td className="px-4 py-3 font-mono text-xs font-medium text-slate-700">{vuln.vulnerabilityId}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{vuln.type}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
+                        vuln.severity === "CRITICAL" ? "bg-red-100 text-red-700" :
+                        vuln.severity === "HIGH" ? "bg-orange-100 text-orange-700" :
+                        vuln.severity === "MEDIUM" ? "bg-amber-100 text-amber-700" :
+                        "bg-slate-100 text-slate-700"
+                      }`}>
+                        {vuln.severity}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-slate-800">{vuln.occurrenceCount}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{vuln.impactedApplications}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{vuln.impactedOrganizations}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs font-medium ${vuln.waived ? "text-amber-600" : "text-green-600"}`}>
+                        {vuln.waived ? "Waived" : "Not Waived"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-slate-400">
+                      {vuln.lastSeen ? new Date(vuln.lastSeen).toLocaleDateString() : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Drill-down Modal — Occurrences for selected vulnerability */}
+      {selectedVulnId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedVulnId(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-800 font-mono">{selectedVulnId}</h3>
+              <button onClick={() => setSelectedVulnId(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-6">
+              {!vulnOccurrences ? (
+                <div className="flex items-center justify-center py-12 text-slate-400">
+                  <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mr-2" />
+                  Loading...
+                </div>
+              ) : vulnOccurrences.length === 0 ? (
+                <p className="text-center text-slate-400 py-8">No occurrences found.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200">
+                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">Organization</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">Application</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500">Component</th>
+                      <th className="px-3 py-2 text-right text-xs font-medium text-slate-500">Report Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {vulnOccurrences.map((occ, i) => (
+                      <tr key={i} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 text-slate-700">{occ.organizationName}</td>
+                        <td className="px-3 py-2 text-slate-700">{occ.applicationName}</td>
+                        <td className="px-3 py-2 text-slate-500 font-mono text-xs">{occ.componentName}</td>
+                        <td className="px-3 py-2 text-right text-slate-500 text-xs">{new Date(occ.reportDate).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         </div>
       )}

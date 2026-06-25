@@ -36,26 +36,55 @@ export const nexusReportService = {
     const creds = credentialStore.retrieve(sessionToken);
     if (!creds) throw new ValidationError("Invalid or expired session token");
     const client = createClientFromCredentials(creds);
-    const appIdForApi = applicationPublicId || applicationId;
+    const appIdForApi = applicationId;
 
     const historyResult = await client.executeRequest<any>(
-      `api/v2/reports/applications/${appIdForApi}/history`
+      `api/v2/reports/applications/${appIdForApi}?limit=100`
     );
-    const rawReports: any[] = historyResult?.reports || (Array.isArray(historyResult) ? historyResult : []);
+    const rawReports: any[] = historyResult?.applicationReports || historyResult?.reports || (Array.isArray(historyResult) ? historyResult : []);
 
     if (rawReports.length === 0) {
       return { applicationId, reportsSynced: 0, violationsSynced: 0, componentsSynced: 0 };
     }
 
     const firstReport = rawReports[0];
-    const appPublicId = firstReport.application?.publicId || firstReport.application?.id || appIdForApi;
+    let appPublicId = firstReport.application?.publicId
+      || firstReport.application?.id
+      || (typeof firstReport.reportHtmlUrl === "string"
+        ? firstReport.reportHtmlUrl.split("/application/")[1]?.split("/")[0]
+        : undefined)
+      || appIdForApi;
+
+    let appName = firstReport.application?.name || appPublicId;
+    try {
+      const appDetail = await client.executeRequest<any>(`api/v2/applications/${appIdForApi}`);
+      if (appDetail?.name) appName = appDetail.name;
+      if (appDetail?.publicId) appPublicId = appDetail.publicId;
+    } catch { }
+
+    await nexusRepo.upsertApplication({
+      applicationId: appIdForApi,
+      applicationPublicId: appPublicId,
+      applicationName: appName,
+      organizationId: firstReport.application?.organizationId || undefined,
+    });
 
     let reportsSynced = 0;
     let violationsSynced = 0;
     let componentsSynced = 0;
 
+    function extractScanId(raw: any): string | undefined {
+      if (raw.reportId) return raw.reportId;
+      if (raw.id) return raw.id;
+      if (typeof raw.reportHtmlUrl === "string") {
+        const parts = raw.reportHtmlUrl.split("/report/");
+        if (parts.length > 1) return parts[1].split("/")[0];
+      }
+      return undefined;
+    }
+
     for (const raw of rawReports) {
-      const scanId = raw.reportId || raw.id;
+      const scanId = extractScanId(raw);
       if (!scanId) continue;
       const reportDate = raw.evaluationDate
         ? new Date(raw.evaluationDate).toISOString().split("T")[0]
@@ -126,7 +155,7 @@ export const nexusReportService = {
 
           for (const ci of compViolations) {
             const violationId = ci.policyViolationId || `${scanId}-${hash}-${ci.constraintId || ci.policyId}-${Date.now()}`;
-            const threatLevel = extractThreatLevel(ci.threatLevel);
+            const threatLevel = extractThreatLevel(ci.policyThreatLevel ?? ci.threatLevel);
             const bucket = severityBucket(threatLevel);
             severityCounts[bucket]++;
 
@@ -244,13 +273,14 @@ export const nexusReportService = {
           highCount: severityCounts.high,
           mediumCount: severityCounts.medium,
           lowCount: severityCounts.low,
-          totalComponents: policyResult?.matchSummary?.totalComponentCount || componentHashes.length,
-          affectedComponents: componentHashes.length,
+          totalComponents: policyResult?.counts?.totalComponentCount || componentHashes.length || components.length,
+          affectedComponents: componentHashes.length || components.length,
           componentChurn,
           newViolations,
           fixedViolations,
         });
-      } catch {
+      } catch (err: any) {
+        console.error(`[nexusReportService.syncReports] Policy/evolution processing failed for scan ${scanId}: ${err.message}`);
         if (!totalViolations) totalViolations = 0;
         await nexusReportRepo.upsertReport({
           ...reportData,
