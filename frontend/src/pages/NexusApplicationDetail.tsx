@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, ChevronRight, FileText, Shield, Layers, Loader2, RefreshCw, BarChart3, GitCompare, ExternalLink } from "lucide-react";
+import { ArrowLeft, ChevronRight, FileText, Shield, Layers, Loader2, RefreshCw, BarChart3, ExternalLink } from "lucide-react";
 import { nexusApi, NexusStoredReport, NexusPolicyViolation } from "../api/nexus.api";
 import { SkeletonPage } from "../components/ui/Skeleton";
 
@@ -51,8 +51,6 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
   // Compare
-  const [compareA, setCompareA] = useState<string>("");
-  const [compareB, setCompareB] = useState<string>("");
 
   // Inline violation panel
   const [selectedReport, setSelectedReport] = useState<NexusStoredReport | null>(null);
@@ -180,39 +178,6 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
         </div>
       )}
 
-      {/* Compare Controls */}
-      <div className="flex items-center gap-3 bg-white rounded-xl border border-slate-200 px-5 py-3">
-        <GitCompare className="w-4 h-4 text-slate-400" />
-        <span className="text-sm text-slate-600">Compare:</span>
-        <select
-          className="text-sm border border-slate-200 rounded px-2 py-1"
-          value={compareA}
-          onChange={(e) => setCompareA(e.target.value)}
-        >
-          <option value="">Select report A</option>
-          {reports.map(r => <option key={r.id} value={r.id}>{r.scanDate} ({r.stage})</option>)}
-        </select>
-        <span className="text-slate-300">vs</span>
-        <select
-          className="text-sm border border-slate-200 rounded px-2 py-1"
-          value={compareB}
-          onChange={(e) => setCompareB(e.target.value)}
-        >
-          <option value="">Select report B</option>
-          {reports.map(r => <option key={r.id} value={r.id}>{r.scanDate} ({r.stage})</option>)}
-        </select>
-        <button
-          onClick={() => {
-            if (compareA && compareB) {
-              navigate(`/nexus/compare?reportA=${compareA}&reportB=${compareB}`);
-            }
-          }}
-          disabled={!compareA || !compareB}
-          className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-        >
-          Go
-        </button>
-      </div>
 
       {/* Report List */}
       <div className="bg-white rounded-xl border border-slate-200">

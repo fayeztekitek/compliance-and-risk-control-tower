@@ -53,6 +53,8 @@ services:
       CORS_ORIGIN: http://localhost:5173
       LOG_LEVEL: debug
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    extra_hosts:
+      - "soft-security:10.6.144.213"
     depends_on:
       - postgres
       - redis
