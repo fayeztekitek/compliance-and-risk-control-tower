@@ -15,7 +15,7 @@ export class NexusHttpClient {
   private logs: string[] = [];
 
   constructor(config: NexusHttpConfig) {
-    this.config = { timeoutMs: 30000, maxRetries: 2, ...config };
+    this.config = { timeoutMs: 60000, maxRetries: 2, ...config };
   }
 
   private maskToken(msg: string): string {
