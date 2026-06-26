@@ -140,6 +140,7 @@ export interface LiveNexusKpis {
   totalScanReports: number;
   applicationsWithScan: number;
   applicationsWithoutScan: number;
+  applicationsInactive: number;
   distinctOpenVulnerabilities: number;
   totalOpenOccurrences: number;
   waivedVulnerabilities: number;

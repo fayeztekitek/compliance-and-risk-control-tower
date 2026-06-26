@@ -307,6 +307,7 @@ export const nexusService = {
     totalScanReports: number;
     applicationsWithScan: number;
     applicationsWithoutScan: number;
+    applicationsInactive: number;
     distinctOpenVulnerabilities: number;
     totalOpenOccurrences: number;
     waivedVulnerabilities: number;
@@ -434,8 +435,14 @@ export const nexusService = {
     const totalScanReports = appInfos.reduce((s, a) => s + a.reportCount, 0);
     const applicationsWithScan = appInfos.filter(a => a.reportCount > 0).length;
     const applicationsWithoutScan = appInfos.filter(a => a.reportCount === 0).length;
+    const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const applicationsInactive = appInfos.filter(a => {
+      if (a.reportCount === 0) return true;
+      if (!a.latestScanDate) return true;
+      return new Date(a.latestScanDate).getTime() < threeMonthsAgo;
+    }).length;
 
-    // ── Phase 3a + 3b: Vulnerabilities + Waivers (parallel) ──────────
+    // ── Phase 3: Vulnerabilities ─────────────────────────────────────
 
     // 3a. Fetch vulnerabilities from latest reports
     const globalVulnMap = new Map<string, {
@@ -564,6 +571,7 @@ export const nexusService = {
       totalScanReports,
       applicationsWithScan,
       applicationsWithoutScan,
+      applicationsInactive,
       distinctOpenVulnerabilities,
       totalOpenOccurrences,
       waivedVulnerabilities,

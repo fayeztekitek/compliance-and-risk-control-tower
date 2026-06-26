@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   AlertTriangle, CheckCircle, Bug,
-  Building2, Layers, FileText, X, Loader2,
+  Building2, Layers, FileText, X, Loader2, Clock,
 } from "lucide-react";
 import { useLiveNexusKpis, useNexusLifecycleOccurrences } from "../hooks/useDashboard";
 import { useNavigate } from "react-router-dom";
@@ -122,6 +122,15 @@ export default function ExecutiveDashboard() {
             <div>
               <p className="text-xs text-slate-500 font-medium">Apps Not Scanned</p>
               <p className="text-lg font-bold text-red-700">{liveNexusKpis.applicationsWithoutScan?.toLocaleString() ?? "—"}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-amber-300 border-l-4 border-l-amber-500 p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-100"><Clock className="w-5 h-5 text-amber-600" /></div>
+            <div>
+              <p className="text-xs text-slate-500 font-medium">Apps Inactive (&gt;3mo)</p>
+              <p className="text-lg font-bold text-amber-700">{liveNexusKpis.applicationsInactive?.toLocaleString() ?? "—"}</p>
             </div>
           </div>
         </div>
