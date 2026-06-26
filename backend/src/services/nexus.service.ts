@@ -462,124 +462,70 @@ export const nexusService = {
 
     const vulnQueue = appInfos.filter(a => a.latestScanId);
 
-    await Promise.all([
-      // 3a. Vulnerabilities
-      (async () => {
-        await processQueue(vulnQueue, 10, async (appInfo) => {
-          try {
-            const result = await client.executeRequest<any>(
-              `api/v2/applications/${appInfo.appPublicId}/reports/${appInfo.latestScanId}/raw`
-            );
-            const components = result?.components || [];
-            const orgName = orgMap.get(appInfo.appOrgId) || "";
+    await processQueue(vulnQueue, 10, async (appInfo) => {
+      try {
+        const result = await client.executeRequest<any>(
+          `api/v2/applications/${appInfo.appPublicId}/reports/${appInfo.latestScanId}/raw`
+        );
+        const components = result?.components || [];
+        const orgName = orgMap.get(appInfo.appOrgId) || "";
 
-            for (const comp of components) {
-              const issues = comp.securityData?.securityIssues || [];
-              for (const iss of issues) {
-                const vid = iss.reference || iss.cve || "";
-                if (!vid) continue;
+        for (const comp of components) {
+          const issues = comp.securityData?.securityIssues || [];
+          for (const iss of issues) {
+            const vid = iss.reference || iss.cve || "";
+            if (!vid) continue;
 
-                const isCve = vid.startsWith("CVE-");
-                const s = parseFloat(String(iss.severity || 0));
-                let severity = "LOW";
-                if (!isNaN(s)) {
-                  if (s >= 9.0) severity = "CRITICAL";
-                  else if (s >= 7.0) severity = "HIGH";
-                  else if (s >= 4.0) severity = "MEDIUM";
-                }
-                const status = String(iss.status || "Open").toLowerCase();
-                if (status === "fixed") continue;
-
-                if (!globalVulnMap.has(vid)) {
-                  globalVulnMap.set(vid, {
-                    vulnerabilityId: vid,
-                    type: isCve ? "CVE" : "SONATYPE",
-                    severity,
-                    occurrenceCount: 0,
-                    impactedApplications: new Set(),
-                    impactedOrganizations: new Set(),
-                    occurrences: [],
-                    lastSeen: "",
-                  });
-                }
-                const entry = globalVulnMap.get(vid)!;
-                entry.occurrenceCount++;
-                entry.impactedApplications.add(appInfo.appId);
-                entry.impactedOrganizations.add(appInfo.appOrgId);
-                entry.occurrences.push({
-                  organizationId: appInfo.appOrgId,
-                  organizationName: orgName,
-                  applicationId: appInfo.appId,
-                  applicationName: appInfo.appName,
-                  reportId: appInfo.latestScanId!,
-                  reportDate: appInfo.latestScanDate || "",
-                  componentName: comp.displayName || "",
-                  packageUrl: comp.packageUrl || "",
-                  path: comp.pathnames?.[0] || "",
-                  status: iss.status || "Open",
-                });
-                if (appInfo.latestScanDate && appInfo.latestScanDate > entry.lastSeen) {
-                  entry.lastSeen = appInfo.latestScanDate;
-                }
-              }
+            const isCve = vid.startsWith("CVE-");
+            const s = parseFloat(String(iss.severity || 0));
+            let severity = "LOW";
+            if (!isNaN(s)) {
+              if (s >= 9.0) severity = "CRITICAL";
+              else if (s >= 7.0) severity = "HIGH";
+              else if (s >= 4.0) severity = "MEDIUM";
             }
-          } catch (err: any) {
-            errors.push(`Failed to fetch vulnerabilities for ${appInfo.appName}: ${err.message}`);
-          }
-        });
-      })(),
+            const status = String(iss.status || "Open").toLowerCase();
+            if (status === "fixed") continue;
 
-      // 3b. Waivers (parallel with vulns, concurrency 30)
-      (async () => {
-        let waivedVulnerabilitiesCount = 0;
-        try {
-          const globalWaiverIds = new Set<string>();
-
-          // Build waiver queue from apps + orgs
-          const waiverTargets: Array<{ type: string; id: string }> = [
-            ...appInfos.map(a => ({ type: "application", id: a.appPublicId })),
-            ...Array.from(orgMap.keys()).map(id => ({ type: "organization", id })),
-          ];
-
-          await processQueue(waiverTargets, 30, async (target) => {
-            try {
-              const waiverResp = await client.executeRequest<any>(`api/v2/policyWaivers/${target.type}/${encodeURIComponent(target.id)}`);
-              const waivers: any[] = Array.isArray(waiverResp) ? waiverResp : waiverResp?.policyWaivers || waiverResp?.waivers || [];
-              for (const w of waivers) {
-                if (w.status === "active" || w.expiryDate ? new Date(w.expiryDate) > new Date() : false) {
-                  if (w.scopeId) globalWaiverIds.add(w.scopeId);
-                  if (w.violationId) globalWaiverIds.add(w.violationId);
-                  if (w.cveId) globalWaiverIds.add(w.cveId);
-                }
-              }
-            } catch { /* skip waiver errors */ }
-          });
-
-          waivedVulnerabilitiesCount = globalWaiverIds.size;
-          for (const [vid, entry] of globalVulnMap) {
-            if (globalWaiverIds.has(vid)) {
-              entry.occurrences = entry.occurrences.map(o => ({ ...o, status: "Waived" }));
+            if (!globalVulnMap.has(vid)) {
+              globalVulnMap.set(vid, {
+                vulnerabilityId: vid,
+                type: isCve ? "CVE" : "SONATYPE",
+                severity,
+                occurrenceCount: 0,
+                impactedApplications: new Set(),
+                impactedOrganizations: new Set(),
+                occurrences: [],
+                lastSeen: "",
+              });
+            }
+            const entry = globalVulnMap.get(vid)!;
+            entry.occurrenceCount++;
+            entry.impactedApplications.add(appInfo.appId);
+            entry.impactedOrganizations.add(appInfo.appOrgId);
+            entry.occurrences.push({
+              organizationId: appInfo.appOrgId,
+              organizationName: orgName,
+              applicationId: appInfo.appId,
+              applicationName: appInfo.appName,
+              reportId: appInfo.latestScanId!,
+              reportDate: appInfo.latestScanDate || "",
+              componentName: comp.displayName || "",
+              packageUrl: comp.packageUrl || "",
+              path: comp.pathnames?.[0] || "",
+              status: iss.status || "Open",
+            });
+            if (appInfo.latestScanDate && appInfo.latestScanDate > entry.lastSeen) {
+              entry.lastSeen = appInfo.latestScanDate;
             }
           }
-        } catch (err: any) {
-          errors.push(`Failed to fetch waivers: ${err.message}`);
         }
-
-        // Store waived count into closure — will be read after Promise.all
-        return waivedVulnerabilitiesCount;
-      })(),
-    ]);
-
-    // Read waived count from the closure
-    let waivedVulnerabilities = 0;
-    try {
-      const globalWaiverIds = new Set<string>();
-      for (const [, entry] of globalVulnMap) {
-        if (entry.occurrences.some(o => o.status === "Waived")) {
-          waivedVulnerabilities++;
-        }
+      } catch (err: any) {
+        errors.push(`Failed to fetch vulnerabilities for ${appInfo.appName}: ${err.message}`);
       }
-    } catch { /* ok */ }
+    });
+
+    let waivedVulnerabilities = 0;
 
     // ── Phase 4: Aggregate ────────────────────────────────────────────
     let distinctOpenVulnerabilities = 0;

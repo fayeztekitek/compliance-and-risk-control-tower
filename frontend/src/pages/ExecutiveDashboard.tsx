@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Shield, AlertTriangle, CheckCircle, Bug,
+  AlertTriangle, CheckCircle, Bug,
   Building2, Layers, FileText, X, Loader2,
 } from "lucide-react";
 import { useLiveNexusKpis, useNexusLifecycleOccurrences } from "../hooks/useDashboard";
@@ -143,15 +143,6 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-red-200 border-l-4 border-l-red-500 p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-100"><Shield className="w-5 h-5 text-purple-600" /></div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Waived Vulns</p>
-              <p className="text-lg font-bold text-slate-800">{liveNexusKpis.waivedVulnerabilities?.toLocaleString() ?? "—"}</p>
-            </div>
-          </div>
-        </div>
         <div className="bg-white rounded-xl border border-red-300 border-l-4 border-l-red-500 p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-red-100"><Bug className="w-5 h-5 text-red-600" /></div>
@@ -189,7 +180,6 @@ export default function ExecutiveDashboard() {
                   <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Occurrences</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Impacted Apps</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Impacted Orgs</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">Waived</th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Last Seen</th>
                 </tr>
               </thead>
@@ -212,11 +202,6 @@ export default function ExecutiveDashboard() {
                     <td className="px-4 py-3 text-right font-semibold text-slate-800">{vuln.occurrenceCount}</td>
                     <td className="px-4 py-3 text-right text-slate-600">{vuln.impactedApplications}</td>
                     <td className="px-4 py-3 text-right text-slate-600">{vuln.impactedOrganizations}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`text-xs font-medium ${vuln.waived ? "text-amber-600" : "text-green-600"}`}>
-                        {vuln.waived ? "Waived" : "Not Waived"}
-                      </span>
-                    </td>
                     <td className="px-4 py-3 text-right text-xs text-slate-400">
                       {vuln.lastSeen ? new Date(vuln.lastSeen).toLocaleDateString() : "—"}
                     </td>
