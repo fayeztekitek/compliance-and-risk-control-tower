@@ -147,6 +147,7 @@ export interface LiveNexusKpis {
   criticalDistinctOpen: number;
   highDistinctOpen: number;
   topVulnerabilities: LiveNexusTopVuln[];
+  timings: { phase1Ms: number; phase2Ms: number; phase3Ms: number; totalMs: number };
   errors: string[];
 }
 

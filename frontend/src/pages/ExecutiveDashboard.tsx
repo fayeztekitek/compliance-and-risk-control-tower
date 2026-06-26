@@ -222,6 +222,16 @@ export default function ExecutiveDashboard() {
         </div>
       )}
 
+      {/* Timing breakdown */}
+      {liveNexusKpis.timings && (
+        <div className="text-xs text-slate-400 flex items-center gap-4 justify-end">
+          <span>Orgs+Apps: {(liveNexusKpis.timings.phase1Ms / 1000).toFixed(1)}s</span>
+          <span>Reports: {(liveNexusKpis.timings.phase2Ms / 1000).toFixed(1)}s</span>
+          <span>Vulns: {(liveNexusKpis.timings.phase3Ms / 1000).toFixed(1)}s</span>
+          <span className="font-medium text-slate-500">Total: {(liveNexusKpis.timings.totalMs / 1000).toFixed(1)}s</span>
+        </div>
+      )}
+
       {/* Drill-down Modal — Occurrences for selected vulnerability */}
       {selectedVulnId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setSelectedVulnId(null)}>

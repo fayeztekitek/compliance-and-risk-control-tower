@@ -335,6 +335,7 @@ export const nexusService = {
       waived: boolean;
       lastSeen: string;
     }>;
+    timings: { phase1Ms: number; phase2Ms: number; phase3Ms: number; totalMs: number };
     errors: string[];
   }> {
     const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
@@ -348,8 +349,11 @@ export const nexusService = {
     const client = createClientFromCredentials(creds);
     const errors: string[] = [];
     const orgMap = new Map<string, string>();
+    const t = { phase1Ms: 0, phase2Ms: 0, phase3Ms: 0 };
+    const t0 = Date.now();
 
     // ── Phase 1: Orgs + Apps (parallel) ──────────────────────────────
+    const t1 = Date.now();
     let orgs: any[] = [];
     let apps: any[] = [];
     await Promise.all([
@@ -371,11 +375,13 @@ export const nexusService = {
         }
       })(),
     ]);
+    t.phase1Ms = Date.now() - t1;
 
     const totalOrganizations = orgs.length;
     const totalApplications = apps.length;
 
     // ── Phase 2: Reports per app (parallel pool, concurrency 20) ─────
+    const t2 = Date.now();
     interface AppReportInfo {
       appId: string;
       appPublicId: string;
@@ -431,6 +437,7 @@ export const nexusService = {
         appInfos.push({ appId, appPublicId, appName, appOrgId, reportCount: 0, latestScanId: null, latestScanDate: null });
       }
     });
+    t.phase2Ms = Date.now() - t2;
 
     const totalScanReports = appInfos.reduce((s, a) => s + a.reportCount, 0);
     const applicationsWithScan = appInfos.filter(a => a.reportCount > 0).length;
@@ -468,6 +475,7 @@ export const nexusService = {
     }>();
 
     const vulnQueue = appInfos.filter(a => a.latestScanId);
+    const t3 = Date.now();
 
     await processQueue(vulnQueue, 10, async (appInfo) => {
       try {
@@ -531,6 +539,7 @@ export const nexusService = {
         errors.push(`Failed to fetch vulnerabilities for ${appInfo.appName}: ${err.message}`);
       }
     });
+    t.phase3Ms = Date.now() - t3;
 
     let waivedVulnerabilities = 0;
 
@@ -565,6 +574,7 @@ export const nexusService = {
       .sort((a, b) => b.occurrenceCount - a.occurrenceCount)
       .slice(0, 50);
 
+    const totalMs = Date.now() - t0;
     const result = {
       totalOrganizations,
       totalApplications,
@@ -579,6 +589,7 @@ export const nexusService = {
       highDistinctOpen,
       topVulnerabilities,
       errors,
+      timings: { ...t, totalMs },
     };
 
     // Cache for 5 minutes
