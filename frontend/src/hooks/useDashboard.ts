@@ -127,11 +127,24 @@ export function useLiveNexusKpis(sessionToken: string | null) {
   return useQuery({
     queryKey: ["dashboard", "nexus-live-kpis", sessionToken],
     queryFn: async () => {
-      const { data } = await dashboardApi.fetchLiveNexusKpis(sessionToken!);
+      const { data } = await dashboardApi.fetchLiveNexusKpis(sessionToken!, false);
       return data.data;
     },
     enabled: !!sessionToken,
     staleTime: 120_000,
+    retry: 1,
+  });
+}
+
+export function useLiveNexusVulns(sessionToken: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ["dashboard", "nexus-live-vulns", sessionToken],
+    queryFn: async () => {
+      const { data } = await dashboardApi.fetchLiveNexusKpis(sessionToken!, true);
+      return data.data;
+    },
+    enabled: !!sessionToken && enabled,
+    staleTime: 300_000,
     retry: 1,
   });
 }

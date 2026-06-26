@@ -3,12 +3,14 @@ import {
   AlertTriangle, CheckCircle, Bug,
   Building2, Layers, FileText, X, Loader2, Clock,
 } from "lucide-react";
-import { useLiveNexusKpis, useNexusLifecycleOccurrences } from "../hooks/useDashboard";
+import { useLiveNexusKpis, useLiveNexusVulns, useNexusLifecycleOccurrences } from "../hooks/useDashboard";
 import { useNavigate } from "react-router-dom";
 
 export default function ExecutiveDashboard() {
   const nexusSessionToken = localStorage.getItem("nexus_session_token");
   const { data: liveNexusKpis, isFetching: liveKpisLoading } = useLiveNexusKpis(nexusSessionToken);
+  const [showVulns, setShowVulns] = useState(false);
+  const { data: vulnData, isFetching: vulnsLoading } = useLiveNexusVulns(nexusSessionToken, showVulns);
   const [selectedVulnId, setSelectedVulnId] = useState<string | null>(null);
   const { data: vulnOccurrences } = useNexusLifecycleOccurrences(selectedVulnId);
   const navigate = useNavigate();
@@ -139,7 +141,7 @@ export default function ExecutiveDashboard() {
             <div className="p-2 rounded-lg bg-red-100"><Bug className="w-5 h-5 text-red-600" /></div>
             <div>
               <p className="text-xs text-slate-500 font-medium">Distinct Open Vulns</p>
-              <p className="text-lg font-bold text-red-700">{liveNexusKpis.distinctOpenVulnerabilities?.toLocaleString() ?? "—"}</p>
+              <p className="text-lg font-bold text-red-700">{(vulnData ?? liveNexusKpis).distinctOpenVulnerabilities?.toLocaleString() ?? "—"}</p>
             </div>
           </div>
         </div>
@@ -148,7 +150,7 @@ export default function ExecutiveDashboard() {
             <div className="p-2 rounded-lg bg-orange-100"><AlertTriangle className="w-5 h-5 text-orange-600" /></div>
             <div>
               <p className="text-xs text-slate-500 font-medium">Open Occurrences</p>
-              <p className="text-lg font-bold text-slate-800">{liveNexusKpis.totalOpenOccurrences?.toLocaleString() ?? "—"}</p>
+              <p className="text-lg font-bold text-slate-800">{(vulnData ?? liveNexusKpis).totalOpenOccurrences?.toLocaleString() ?? "—"}</p>
             </div>
           </div>
         </div>
@@ -157,7 +159,7 @@ export default function ExecutiveDashboard() {
             <div className="p-2 rounded-lg bg-red-100"><Bug className="w-5 h-5 text-red-600" /></div>
             <div>
               <p className="text-xs text-slate-500 font-medium">Critical Open</p>
-              <p className="text-lg font-bold text-red-700">{liveNexusKpis.criticalDistinctOpen?.toLocaleString() ?? "—"}</p>
+              <p className="text-lg font-bold text-red-700">{(vulnData ?? liveNexusKpis).criticalDistinctOpen?.toLocaleString() ?? "—"}</p>
             </div>
           </div>
         </div>
@@ -166,18 +168,34 @@ export default function ExecutiveDashboard() {
             <div className="p-2 rounded-lg bg-orange-100"><AlertTriangle className="w-5 h-5 text-orange-600" /></div>
             <div>
               <p className="text-xs text-slate-500 font-medium">High Open</p>
-              <p className="text-lg font-bold text-orange-700">{liveNexusKpis.highDistinctOpen?.toLocaleString() ?? "—"}</p>
+              <p className="text-lg font-bold text-orange-700">{(vulnData ?? liveNexusKpis).highDistinctOpen?.toLocaleString() ?? "—"}</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Top Open Vulnerabilities by Occurrence — Live Nexus IQ */}
-      {liveNexusKpis.topVulnerabilities && liveNexusKpis.topVulnerabilities.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <Bug className="w-5 h-5" /> Top Open Vulnerabilities by Occurrence (Live)
+      {/* Top Open Vulnerabilities by Occurrence — on demand */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <Bug className="w-5 h-5" /> Top Open Vulnerabilities by Occurrence
           </h3>
+          {!showVulns && (
+            <button
+              onClick={() => setShowVulns(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <Bug className="w-4 h-4" /> Load Top Vulnerabilities
+            </button>
+          )}
+        </div>
+        {showVulns && vulnsLoading && (
+          <div className="flex items-center justify-center py-12 text-slate-400">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            Loading vulnerability data...
+          </div>
+        )}
+        {showVulns && !vulnsLoading && vulnData?.topVulnerabilities && vulnData.topVulnerabilities.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -193,7 +211,7 @@ export default function ExecutiveDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {liveNexusKpis.topVulnerabilities.map((vuln, i) => (
+                {(vulnData?.topVulnerabilities ?? []).map((vuln, i) => (
                   <tr key={vuln.vulnerabilityId} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 text-xs text-slate-400">{i + 1}</td>
                     <td className="px-4 py-3 font-mono text-xs font-medium text-slate-700">{vuln.vulnerabilityId}</td>
@@ -219,8 +237,11 @@ export default function ExecutiveDashboard() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+        {showVulns && !vulnsLoading && vulnData && (!vulnData.topVulnerabilities || vulnData.topVulnerabilities.length === 0) && (
+          <p className="text-center text-slate-400 py-8">No open vulnerabilities found.</p>
+        )}
+      </div>
 
       {/* Timing breakdown */}
       {liveNexusKpis.timings && (

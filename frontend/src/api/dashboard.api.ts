@@ -185,7 +185,7 @@ export const dashboardApi = {
   nexusLifecycleOccurrences(vulnId: string) {
     return apiClient.get<{ data: NexusLifecycleOccurrence[] }>(`/api/dashboard/nexus-lifecycle-occurrences/${encodeURIComponent(vulnId)}`);
   },
-  fetchLiveNexusKpis(sessionToken: string) {
-    return apiClient.post<{ data: LiveNexusKpis }>("/api/nexus/kpis/executive/live", { sessionToken }, { timeout: 120000 });
+  fetchLiveNexusKpis(sessionToken: string, includeVulns = false) {
+    return apiClient.post<{ data: LiveNexusKpis }>("/api/nexus/kpis/executive/live", { sessionToken, includeVulns }, { timeout: 120000 });
   },
 };

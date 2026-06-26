@@ -338,11 +338,13 @@ export const nexusService = {
     timings: { phase1Ms: number; phase2Ms: number; phase3Ms: number; totalMs: number };
     errors: string[];
   }> {
+    const includeVulns = data?.includeVulns !== false;
     const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
     if (!creds) throw new Error("Invalid or expired Nexus IQ session. Please connect to Nexus IQ first.");
 
-    // Redis cache key based on credentials
-    const cacheKey = `nexus:live-kpis:${crypto.createHash("md5").update(`${creds.url}|${creds.username}`).digest("hex")}`;
+    // Redis cache key based on credentials (different keys for with/without vulns)
+    const suffix = includeVulns ? "" : ":base";
+    const cacheKey = `nexus:live-kpis:${crypto.createHash("md5").update(`${creds.url}|${creds.username}`).digest("hex")}${suffix}`;
     const cached = await getCached<any>(cacheKey);
     if (cached) return cached;
 
@@ -449,9 +451,8 @@ export const nexusService = {
       return new Date(a.latestScanDate).getTime() < threeMonthsAgo;
     }).length;
 
-    // ── Phase 3: Vulnerabilities ─────────────────────────────────────
+    // ── Phase 3: Vulnerabilities (skipped unless includeVulns=true) ──
 
-    // 3a. Fetch vulnerabilities from latest reports
     const globalVulnMap = new Map<string, {
       vulnerabilityId: string;
       type: "CVE" | "SONATYPE";
@@ -474,72 +475,74 @@ export const nexusService = {
       lastSeen: string;
     }>();
 
-    const vulnQueue = appInfos.filter(a => a.latestScanId);
-    const t3 = Date.now();
+    if (includeVulns) {
+      const vulnQueue = appInfos.filter(a => a.latestScanId);
+      const t3 = Date.now();
 
-    await processQueue(vulnQueue, 10, async (appInfo) => {
-      try {
-        const result = await client.executeRequest<any>(
-          `api/v2/applications/${appInfo.appPublicId}/reports/${appInfo.latestScanId}/raw`
-        );
-        const components = result?.components || [];
-        const orgName = orgMap.get(appInfo.appOrgId) || "";
+      await processQueue(vulnQueue, 10, async (appInfo) => {
+        try {
+          const result = await client.executeRequest<any>(
+            `api/v2/applications/${appInfo.appPublicId}/reports/${appInfo.latestScanId}/raw`
+          );
+          const components = result?.components || [];
+          const orgName = orgMap.get(appInfo.appOrgId) || "";
 
-        for (const comp of components) {
-          const issues = comp.securityData?.securityIssues || [];
-          for (const iss of issues) {
-            const vid = iss.reference || iss.cve || "";
-            if (!vid) continue;
+          for (const comp of components) {
+            const issues = comp.securityData?.securityIssues || [];
+            for (const iss of issues) {
+              const vid = iss.reference || iss.cve || "";
+              if (!vid) continue;
 
-            const isCve = vid.startsWith("CVE-");
-            const s = parseFloat(String(iss.severity || 0));
-            let severity = "LOW";
-            if (!isNaN(s)) {
-              if (s >= 9.0) severity = "CRITICAL";
-              else if (s >= 7.0) severity = "HIGH";
-              else if (s >= 4.0) severity = "MEDIUM";
-            }
-            const status = String(iss.status || "Open").toLowerCase();
-            if (status === "fixed") continue;
+              const isCve = vid.startsWith("CVE-");
+              const s = parseFloat(String(iss.severity || 0));
+              let severity = "LOW";
+              if (!isNaN(s)) {
+                if (s >= 9.0) severity = "CRITICAL";
+                else if (s >= 7.0) severity = "HIGH";
+                else if (s >= 4.0) severity = "MEDIUM";
+              }
+              const status = String(iss.status || "Open").toLowerCase();
+              if (status === "fixed") continue;
 
-            if (!globalVulnMap.has(vid)) {
-              globalVulnMap.set(vid, {
-                vulnerabilityId: vid,
-                type: isCve ? "CVE" : "SONATYPE",
-                severity,
-                occurrenceCount: 0,
-                impactedApplications: new Set(),
-                impactedOrganizations: new Set(),
-                occurrences: [],
-                lastSeen: "",
+              if (!globalVulnMap.has(vid)) {
+                globalVulnMap.set(vid, {
+                  vulnerabilityId: vid,
+                  type: isCve ? "CVE" : "SONATYPE",
+                  severity,
+                  occurrenceCount: 0,
+                  impactedApplications: new Set(),
+                  impactedOrganizations: new Set(),
+                  occurrences: [],
+                  lastSeen: "",
+                });
+              }
+              const entry = globalVulnMap.get(vid)!;
+              entry.occurrenceCount++;
+              entry.impactedApplications.add(appInfo.appId);
+              entry.impactedOrganizations.add(appInfo.appOrgId);
+              entry.occurrences.push({
+                organizationId: appInfo.appOrgId,
+                organizationName: orgName,
+                applicationId: appInfo.appId,
+                applicationName: appInfo.appName,
+                reportId: appInfo.latestScanId!,
+                reportDate: appInfo.latestScanDate || "",
+                componentName: comp.displayName || "",
+                packageUrl: comp.packageUrl || "",
+                path: comp.pathnames?.[0] || "",
+                status: iss.status || "Open",
               });
-            }
-            const entry = globalVulnMap.get(vid)!;
-            entry.occurrenceCount++;
-            entry.impactedApplications.add(appInfo.appId);
-            entry.impactedOrganizations.add(appInfo.appOrgId);
-            entry.occurrences.push({
-              organizationId: appInfo.appOrgId,
-              organizationName: orgName,
-              applicationId: appInfo.appId,
-              applicationName: appInfo.appName,
-              reportId: appInfo.latestScanId!,
-              reportDate: appInfo.latestScanDate || "",
-              componentName: comp.displayName || "",
-              packageUrl: comp.packageUrl || "",
-              path: comp.pathnames?.[0] || "",
-              status: iss.status || "Open",
-            });
-            if (appInfo.latestScanDate && appInfo.latestScanDate > entry.lastSeen) {
-              entry.lastSeen = appInfo.latestScanDate;
+              if (appInfo.latestScanDate && appInfo.latestScanDate > entry.lastSeen) {
+                entry.lastSeen = appInfo.latestScanDate;
+              }
             }
           }
+        } catch (err: any) {
+          errors.push(`Failed to fetch vulnerabilities for ${appInfo.appName}: ${err.message}`);
         }
-      } catch (err: any) {
-        errors.push(`Failed to fetch vulnerabilities for ${appInfo.appName}: ${err.message}`);
-      }
-    });
-    t.phase3Ms = Date.now() - t3;
+      });
+      t.phase3Ms = Date.now() - t3;
+    }
 
     let waivedVulnerabilities = 0;
 
