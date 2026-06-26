@@ -46,6 +46,8 @@ services:
       NODE_TLS_REJECT_UNAUTHORIZED: "0"
     ports:
       - "3000:3000"
+    extra_hosts:
+      - "soft-security:10.6.144.213"
     depends_on:
       - postgres
       - redis
