@@ -137,18 +137,6 @@ export interface LiveNexusTopVuln {
 export interface LiveNexusKpis {
   totalOrganizations: number;
   totalApplications: number;
-  totalScanReports: number;
-  applicationsWithScan: number;
-  applicationsWithoutScan: number;
-  applicationsInactive: number;
-  distinctOpenVulnerabilities: number;
-  totalOpenOccurrences: number;
-  waivedVulnerabilities: number;
-  criticalDistinctOpen: number;
-  highDistinctOpen: number;
-  topVulnerabilities: LiveNexusTopVuln[];
-  timings: { phase1Ms: number; phase2Ms: number; phase3Ms: number; totalMs: number };
-  errors: string[];
 }
 
 export const dashboardApi = {
@@ -185,7 +173,7 @@ export const dashboardApi = {
   nexusLifecycleOccurrences(vulnId: string) {
     return apiClient.get<{ data: NexusLifecycleOccurrence[] }>(`/api/dashboard/nexus-lifecycle-occurrences/${encodeURIComponent(vulnId)}`);
   },
-  fetchLiveNexusKpis(sessionToken: string, includeVulns = false) {
-    return apiClient.post<{ data: LiveNexusKpis }>("/api/nexus/kpis/executive/live", { sessionToken, includeVulns }, { timeout: 120000 });
+  fetchLiveNexusKpis(sessionToken: string) {
+    return apiClient.post<{ data: LiveNexusKpis }>("/api/nexus/kpis/executive/live", { sessionToken }, { timeout: 30000 });
   },
 };

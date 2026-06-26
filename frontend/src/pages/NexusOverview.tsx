@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Building2, Loader2, CheckCircle2, XCircle, ChevronRight, ChevronLeft, BarChart3, PieChart, Database } from "lucide-react";
-import { PieChart as RechartsPie, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { useState, useEffect, useCallback } from "react";
+import { Building2, Loader2, CheckCircle2, XCircle, ChevronRight, ChevronLeft } from "lucide-react";
 import NexusApplicationDetail from "./NexusApplicationDetail";
 import { nexusApi, ApplicationOverview, ScanStatusResult } from "../api/nexus.api";
 
@@ -111,12 +110,6 @@ export default function NexusOverview() {
       setApps([]);
     }
   }, [selectedOrgId, fetchAppsForOrg]);
-
-  useEffect(() => {
-    if (connected && remoteOrgs.length > 0 && !selectedOrgId) {
-      setSelectedOrgId(remoteOrgs[0].organizationId);
-    }
-  }, [connected, remoteOrgs, selectedOrgId]);
 
   const allOrgs = connected && remoteOrgs.length > 0 ? remoteOrgs : [];
   const selectedOrgName = allOrgs.find((o) => o.organizationId === selectedOrgId)?.organizationName || "";
@@ -238,113 +231,6 @@ export default function NexusOverview() {
           ))}
         </select>
       </div>
-
-      {/* Stats Summary */}
-      {!appsLoading && apps.length > 0 && Object.keys(scanStatuses).length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3 lg:col-span-2">
-            <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
-              <Database className="w-5 h-5 text-indigo-500" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-slate-800">{apps.length}</div>
-              <div className="text-xs text-slate-500">Total Applications</div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-emerald-700">
-                {Object.values(scanStatuses).filter((s: any) => s.scanPerformed).length}
-              </div>
-              <div className="text-xs text-slate-500">Scanned</div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
-              <XCircle className="w-5 h-5 text-slate-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-slate-500">
-                {Object.values(scanStatuses).filter((s: any) => !s.scanPerformed).length}
-              </div>
-              <div className="text-xs text-slate-500">Not Scanned</div>
-            </div>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-violet-50 flex items-center justify-center shrink-0">
-              <BarChart3 className="w-5 h-5 text-violet-500" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-violet-700">
-                {Object.values(scanStatuses).reduce((sum: number, s: any) => sum + (s.scanReportCount || 0), 0)}
-              </div>
-              <div className="text-xs text-slate-500">Total Reports</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Charts Row */}
-      {!appsLoading && apps.length > 0 && Object.keys(scanStatuses).length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Scan Status Pie Chart */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <PieChart className="w-4 h-4 text-indigo-500" />
-              <h3 className="text-sm font-semibold text-slate-700">Scan Coverage</h3>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <RechartsPie>
-                <Pie
-                  data={[
-                    { name: "Scanned", value: Object.values(scanStatuses).filter((s: any) => s.scanPerformed).length, color: "#10b981" },
-                    { name: "Not Scanned", value: Object.values(scanStatuses).filter((s: any) => !s.scanPerformed).length, color: "#94a3b8" },
-                  ]}
-                  cx="50%" cy="50%" innerRadius={50} outerRadius={80}
-                  dataKey="value" nameKey="name"
-                  label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {[
-                    <Cell key="scanned" fill="#10b981" />,
-                    <Cell key="not-scanned" fill="#94a3b8" />,
-                  ]}
-                </Pie>
-                <Tooltip />
-              </RechartsPie>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Top Apps by Reports Bar Chart */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <BarChart3 className="w-4 h-4 text-indigo-500" />
-              <h3 className="text-sm font-semibold text-slate-700">Top Apps by Reports</h3>
-            </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart
-                data={(() => {
-                  const withReports = apps
-                    .map((a: any) => ({ name: a.name, reports: scanStatuses[a.id]?.scanReportCount || 0 }))
-                    .filter((a: any) => a.reports > 0)
-                    .sort((a: any, b: any) => b.reports - a.reports)
-                    .slice(0, 10);
-                  if (withReports.length === 0) return [{ name: "No data", reports: 0 }];
-                  return withReports;
-                })()}
-                margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-              >
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" height={50} />
-                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                <Tooltip />
-                <Bar dataKey="reports" fill="#6366f1" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      )}
 
       {/* Loading State */}
       {appsLoading && (

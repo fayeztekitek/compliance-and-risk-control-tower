@@ -301,61 +301,16 @@ export const nexusService = {
     return { scans: results };
   },
 
-  async fetchExecutiveLiveKpis(data: { sessionToken: string }): Promise<{
+  async fetchExecutiveLiveKpis(data: { sessionToken: string; includeVulns?: boolean }): Promise<{
     totalOrganizations: number;
     totalApplications: number;
-    totalScanReports: number;
-    applicationsWithScan: number;
-    applicationsWithoutScan: number;
-    applicationsInactive: number;
-    distinctOpenVulnerabilities: number;
-    totalOpenOccurrences: number;
-    waivedVulnerabilities: number;
-    criticalDistinctOpen: number;
-    highDistinctOpen: number;
-    topVulnerabilities: Array<{
-      vulnerabilityId: string;
-      type: "CVE" | "SONATYPE";
-      severity: string;
-      occurrenceCount: number;
-      impactedApplications: number;
-      impactedOrganizations: number;
-      occurrences: Array<{
-        organizationId: string;
-        organizationName: string;
-        applicationId: string;
-        applicationName: string;
-        reportId: string;
-        reportDate: string;
-        componentName: string;
-        packageUrl: string;
-        path: string;
-        status: string;
-      }>;
-      waived: boolean;
-      lastSeen: string;
-    }>;
-    timings: { phase1Ms: number; phase2Ms: number; phase3Ms: number; totalMs: number };
-    errors: string[];
   }> {
-    const includeVulns = data?.includeVulns !== false;
     const creds = data?.sessionToken ? credentialStore.retrieve(data.sessionToken) : null;
     if (!creds) throw new Error("Invalid or expired Nexus IQ session. Please connect to Nexus IQ first.");
 
-    // Redis cache key based on credentials (different keys for with/without vulns)
-    const suffix = includeVulns ? "" : ":base";
-    const cacheKey = `nexus:live-kpis:${crypto.createHash("md5").update(`${creds.url}|${creds.username}`).digest("hex")}${suffix}`;
-    const cached = await getCached<any>(cacheKey);
-    if (cached) return cached;
-
     const client = createClientFromCredentials(creds);
     const errors: string[] = [];
-    const orgMap = new Map<string, string>();
-    const t = { phase1Ms: 0, phase2Ms: 0, phase3Ms: 0 };
-    const t0 = Date.now();
 
-    // ── Phase 1: Orgs + Apps (parallel) ──────────────────────────────
-    const t1 = Date.now();
     let orgs: any[] = [];
     let apps: any[] = [];
     await Promise.all([
@@ -363,7 +318,6 @@ export const nexusService = {
         try {
           const raw = await client.executeRequest<any>("api/v2/organizations");
           orgs = Array.isArray(raw) ? raw : raw?.organizations || raw?.items || [];
-          for (const o of orgs) orgMap.set(o.id || o.organizationId, o.name || o.organizationName || "");
         } catch (err: any) {
           errors.push(`Failed to fetch organizations: ${err.message}`);
         }
@@ -377,228 +331,11 @@ export const nexusService = {
         }
       })(),
     ]);
-    t.phase1Ms = Date.now() - t1;
 
-    const totalOrganizations = orgs.length;
-    const totalApplications = apps.length;
-
-    // ── Phase 2: Reports per app (parallel pool, concurrency 20) ─────
-    const t2 = Date.now();
-    interface AppReportInfo {
-      appId: string;
-      appPublicId: string;
-      appName: string;
-      appOrgId: string;
-      reportCount: number;
-      latestScanId: string | null;
-      latestScanDate: string | null;
-    }
-
-    const appInfos: AppReportInfo[] = [];
-    const appQueue = [...apps];
-    const CONCURRENCY = 20;
-
-    async function processQueue<T>(queue: T[], concurrency: number, fn: (item: T) => Promise<void>) {
-      const worker = async () => {
-        while (queue.length > 0) {
-          const item = queue.shift()!;
-          await fn(item);
-        }
-      };
-      await Promise.all(Array.from({ length: Math.min(concurrency, queue.length || 1) }, () => worker()));
-    }
-
-    await processQueue(appQueue, CONCURRENCY, async (app) => {
-      const appId = app.id || app.applicationId;
-      const appPublicId = app.publicId || appId;
-      const appName = app.name || app.publicId || appId;
-      const appOrgId = app.organizationId || "";
-
-      try {
-        const resp = await client.executeRequest<any>(`api/v2/reports/applications/${appId}?limit=100`);
-        const rawReports: any[] = resp?.applicationReports || resp?.reports || (Array.isArray(resp) ? resp : []);
-        let latestScanId: string | null = null;
-        let latestScanDate: string | null = null;
-        let latestMs = 0;
-
-        for (const r of rawReports) {
-          const ts = r.reportTime || (r.evaluationDate ? new Date(r.evaluationDate).getTime() : 0);
-          if (ts > latestMs) {
-            latestMs = ts;
-            latestScanId = r.reportHtmlUrl?.split("/report/")[1]?.split("/")[0]
-              || r.reportId
-              || r.id
-              || null;
-            latestScanDate = r.evaluationDate || new Date(ts).toISOString();
-          }
-        }
-
-        appInfos.push({ appId, appPublicId, appName, appOrgId, reportCount: rawReports.length, latestScanId, latestScanDate });
-      } catch (err: any) {
-        errors.push(`Failed to fetch reports for ${appName} (${appId}): ${err.message}`);
-        appInfos.push({ appId, appPublicId, appName, appOrgId, reportCount: 0, latestScanId: null, latestScanDate: null });
-      }
-    });
-    t.phase2Ms = Date.now() - t2;
-
-    const totalScanReports = appInfos.reduce((s, a) => s + a.reportCount, 0);
-    const applicationsWithScan = appInfos.filter(a => a.reportCount > 0).length;
-    const applicationsWithoutScan = appInfos.filter(a => a.reportCount === 0).length;
-    const threeMonthsAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
-    const applicationsInactive = appInfos.filter(a => {
-      if (a.reportCount === 0) return true;
-      if (!a.latestScanDate) return true;
-      return new Date(a.latestScanDate).getTime() < threeMonthsAgo;
-    }).length;
-
-    // ── Phase 3: Vulnerabilities (skipped unless includeVulns=true) ──
-
-    const globalVulnMap = new Map<string, {
-      vulnerabilityId: string;
-      type: "CVE" | "SONATYPE";
-      severity: string;
-      occurrenceCount: number;
-      impactedApplications: Set<string>;
-      impactedOrganizations: Set<string>;
-      occurrences: Array<{
-        organizationId: string;
-        organizationName: string;
-        applicationId: string;
-        applicationName: string;
-        reportId: string;
-        reportDate: string;
-        componentName: string;
-        packageUrl: string;
-        path: string;
-        status: string;
-      }>;
-      lastSeen: string;
-    }>();
-
-    if (includeVulns) {
-      const vulnQueue = appInfos.filter(a => a.latestScanId);
-      const t3 = Date.now();
-
-      await processQueue(vulnQueue, 10, async (appInfo) => {
-        try {
-          const result = await client.executeRequest<any>(
-            `api/v2/applications/${appInfo.appPublicId}/reports/${appInfo.latestScanId}/raw`
-          );
-          const components = result?.components || [];
-          const orgName = orgMap.get(appInfo.appOrgId) || "";
-
-          for (const comp of components) {
-            const issues = comp.securityData?.securityIssues || [];
-            for (const iss of issues) {
-              const vid = iss.reference || iss.cve || "";
-              if (!vid) continue;
-
-              const isCve = vid.startsWith("CVE-");
-              const s = parseFloat(String(iss.severity || 0));
-              let severity = "LOW";
-              if (!isNaN(s)) {
-                if (s >= 9.0) severity = "CRITICAL";
-                else if (s >= 7.0) severity = "HIGH";
-                else if (s >= 4.0) severity = "MEDIUM";
-              }
-              const status = String(iss.status || "Open").toLowerCase();
-              if (status === "fixed") continue;
-
-              if (!globalVulnMap.has(vid)) {
-                globalVulnMap.set(vid, {
-                  vulnerabilityId: vid,
-                  type: isCve ? "CVE" : "SONATYPE",
-                  severity,
-                  occurrenceCount: 0,
-                  impactedApplications: new Set(),
-                  impactedOrganizations: new Set(),
-                  occurrences: [],
-                  lastSeen: "",
-                });
-              }
-              const entry = globalVulnMap.get(vid)!;
-              entry.occurrenceCount++;
-              entry.impactedApplications.add(appInfo.appId);
-              entry.impactedOrganizations.add(appInfo.appOrgId);
-              entry.occurrences.push({
-                organizationId: appInfo.appOrgId,
-                organizationName: orgName,
-                applicationId: appInfo.appId,
-                applicationName: appInfo.appName,
-                reportId: appInfo.latestScanId!,
-                reportDate: appInfo.latestScanDate || "",
-                componentName: comp.displayName || "",
-                packageUrl: comp.packageUrl || "",
-                path: comp.pathnames?.[0] || "",
-                status: iss.status || "Open",
-              });
-              if (appInfo.latestScanDate && appInfo.latestScanDate > entry.lastSeen) {
-                entry.lastSeen = appInfo.latestScanDate;
-              }
-            }
-          }
-        } catch (err: any) {
-          errors.push(`Failed to fetch vulnerabilities for ${appInfo.appName}: ${err.message}`);
-        }
-      });
-      t.phase3Ms = Date.now() - t3;
-    }
-
-    let waivedVulnerabilities = 0;
-
-    // ── Phase 4: Aggregate ────────────────────────────────────────────
-    let distinctOpenVulnerabilities = 0;
-    let criticalDistinctOpen = 0;
-    let highDistinctOpen = 0;
-    let totalOpenOccurrences = 0;
-
-    for (const [, entry] of globalVulnMap) {
-      const hasOpen = entry.occurrences.some(o => o.status !== "Waived" && o.status !== "Fixed");
-      if (hasOpen) {
-        distinctOpenVulnerabilities++;
-        totalOpenOccurrences += entry.occurrences.filter(o => o.status !== "Waived" && o.status !== "Fixed").length;
-        if (entry.severity === "CRITICAL") criticalDistinctOpen++;
-        else if (entry.severity === "HIGH") highDistinctOpen++;
-      }
-    }
-
-    const topVulnerabilities = Array.from(globalVulnMap.entries())
-      .map(([vid, entry]) => ({
-        vulnerabilityId: vid,
-        type: entry.type,
-        severity: entry.severity,
-        occurrenceCount: entry.occurrenceCount,
-        impactedApplications: entry.impactedApplications.size,
-        impactedOrganizations: entry.impactedOrganizations.size,
-        occurrences: entry.occurrences,
-        waived: entry.occurrences.some(o => o.status === "Waived"),
-        lastSeen: entry.lastSeen,
-      }))
-      .sort((a, b) => b.occurrenceCount - a.occurrenceCount)
-      .slice(0, 50);
-
-    const totalMs = Date.now() - t0;
-    const result = {
-      totalOrganizations,
-      totalApplications,
-      totalScanReports,
-      applicationsWithScan,
-      applicationsWithoutScan,
-      applicationsInactive,
-      distinctOpenVulnerabilities,
-      totalOpenOccurrences,
-      waivedVulnerabilities,
-      criticalDistinctOpen,
-      highDistinctOpen,
-      topVulnerabilities,
-      errors,
-      timings: { ...t, totalMs },
+    return {
+      totalOrganizations: orgs.length,
+      totalApplications: apps.length,
     };
-
-    // Cache for 5 minutes
-    await setCache(cacheKey, result, 300);
-
-    return result;
   },
 
   async triggerSync(data: { mode: string; targetUrl?: string }) {
