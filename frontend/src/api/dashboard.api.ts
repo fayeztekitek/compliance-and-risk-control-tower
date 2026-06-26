@@ -43,12 +43,12 @@ export interface TrendsData {
 }
 
 export interface ExecutiveDashboard {
-  snapshot: Record<string, unknown> | null;
+  snapshot: ExecutiveSnapshot | null;
   kpis: KpiData;
   kris: KriData[];
-  heatmap: HeatmapData;
   trends: TrendsData;
   recentAlerts: unknown[];
+  orgPostures: unknown[];
   lastUpdated: string;
 }
 
@@ -134,9 +134,49 @@ export interface LiveNexusTopVuln {
   lastSeen: string;
 }
 
-export interface LiveNexusKpis {
+export interface ExecutiveSnapshot {
+  snapshotDate: string;
   totalOrganizations: number;
   totalApplications: number;
+  activeApplications: number;
+  inactiveApplications: number;
+  neverScanned: number;
+  scanCoverageRate: number;
+  averageScanAgeDays: number;
+  openCritical: number;
+  openHigh: number;
+  openMedium: number;
+  openLow: number;
+  totalOpenVulnerabilities: number;
+  distinctVulnerabilities: number;
+  occurrences: number;
+  mitigatedVulnerabilities: number;
+  acceptedRisks: number;
+  falsePositives: number;
+  newVulnerabilities30d: number;
+  fixedVulnerabilities30d: number;
+  recurringVulnerabilities: number;
+  mttrDays: number;
+  avgTimeToCloseDays: number;
+  closedThisMonth: number;
+  applicationsOutOfSla: number;
+  acceptedRisksExpiringSoon: number;
+  expiredAcceptedRisks: number;
+  applicationsWithoutRecentScan: number;
+  criticalAppsWithoutScan: number;
+  complianceRate: number;
+  slaComplianceRate: number;
+  appsWithCriticalVulns: number;
+  appsWithHighVulns: number;
+  averageRiskScore: number;
+  productsRedCount: number;
+  productsOrangeCount: number;
+  productsGreenCount: number;
+  previousTotal: number;
+  previousCritical: number;
+  previousHigh: number;
+  previousRiskScore: number;
+  trendDirection: string;
 }
 
 export const dashboardApi = {

@@ -231,4 +231,42 @@ router.get("/nexus-lifecycle-occurrences/:vulnId", async (req: Request, res: Res
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /dashboard/recalculate:
+ *   post:
+ *     tags: [Dashboard]
+ *     summary: Trigger KPI recalculation (ADMIN only)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Recalculation completed
+ */
+router.post("/recalculate", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await kpiService.recalculate();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/latest-snapshot:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Get latest executive KPI snapshot
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Latest precomputed KPI snapshot
+ */
+router.get("/latest-snapshot", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await kpiService.getLatestSnapshot();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
 export default router;

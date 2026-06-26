@@ -85,6 +85,13 @@ import("./services/vegSlaWorker.js").then(({ startVegSlaWorker, scheduleVegSlaDa
   logger.warn({ err }, "Failed to start VEG SLA worker (Redis may be unavailable)");
 });
 
+import("./services/kpiSyncWorker.js").then(({ startKpiSyncWorker, scheduleKpiSync }) => {
+  startKpiSyncWorker();
+  scheduleKpiSync();
+}).catch((err) => {
+  logger.warn({ err }, "Failed to start KPI sync worker (Redis may be unavailable)");
+});
+
 app.listen(env.PORT, "0.0.0.0", () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, "Server started");
 });

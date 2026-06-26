@@ -3,22 +3,22 @@ import { nexusRepo } from "../repositories/nexus.repo.js";
 
 export const dashboardService = {
   async getExecutiveDashboard() {
-    const [kpis, kris, heatmap, trends, alerts, snapshot] = await Promise.all([
+    const [snapshot, kpis, kris, trends, alerts, orgPostures] = await Promise.all([
+      kpiService.getLatestSnapshot(),
       kpiService.get16Kpis(),
       kpiService.get4Kris(),
-      kpiService.get5x5Heatmap(),
       kpiService.getMonthlyTrends(12),
       nexusRepo.listAlerts(10),
-      nexusRepo.getLatestKpiSnapshot(),
+      nexusRepo.listAllCompliancePostures(),
     ]);
 
     return {
       snapshot,
       kpis,
       kris,
-      heatmap,
       trends,
       recentAlerts: alerts,
+      orgPostures,
       lastUpdated: new Date().toISOString(),
     };
   },

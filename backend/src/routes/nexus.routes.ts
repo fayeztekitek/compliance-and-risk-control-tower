@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { nexusService } from "../services/nexus.service.js";
+import { kpiService } from "../services/kpi.service.js";
 import { nexusReportRepo } from "../repositories/nexusReport.repo.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
@@ -797,10 +798,11 @@ router.get("/occurrences/:id/detail", async (req: Request, res: Response, next: 
   } catch (err) { next(err); }
 });
 
-router.post("/kpis/executive/live", async (req: Request, res: Response, next: NextFunction) => {
+// Returns precomputed executive KPIs from latest snapshot (fast, no live API calls)
+router.post("/kpis/executive/live", async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await nexusService.fetchExecutiveLiveKpis(req.body);
-    res.json({ data: result });
+    const result = await kpiService.getLatestSnapshot();
+    res.json({ data: result || { error: "No snapshot available. Run a sync first." } });
   } catch (err) { next(err); }
 });
 

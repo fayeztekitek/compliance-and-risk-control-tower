@@ -137,20 +137,26 @@ export const nexusRepo = {
 
   // ---- Applications ----
   async listApplications(productId?: string, search?: string) {
-    let sql = `SELECT ${APP_COLS.join(",")} FROM nexus_applications`;
-    const params: any[] = []; const conds: string[] = [];
+    let sql: string;
+    const params: any[] = [];
     if (productId) {
       sql = `SELECT a.${APP_COLS.join(",a.")} FROM nexus_applications a
              JOIN product_application_mapping m ON m.application_id = a.application_id
              WHERE m.product_id = $1`;
       params.push(productId);
+      if (search) {
+        sql += ` AND a.application_name ILIKE $2`;
+        params.push(`%${search}%`);
+      }
+      sql += " ORDER BY a.application_name";
+    } else {
+      sql = `SELECT ${APP_COLS.join(",")} FROM nexus_applications`;
+      if (search) {
+        sql += ` WHERE application_name ILIKE $1`;
+        params.push(`%${search}%`);
+      }
+      sql += " ORDER BY application_name";
     }
-    if (search) {
-      conds.push(`a.application_name ILIKE $${params.length + 1}`);
-      params.push(`%${search}%`);
-    }
-    if (conds.length) sql += ` AND ${conds.join(" AND ")}`;
-    sql += " ORDER BY a.application_name";
     const r = await query(sql, params);
     return r.rows.map(appRow);
   },
