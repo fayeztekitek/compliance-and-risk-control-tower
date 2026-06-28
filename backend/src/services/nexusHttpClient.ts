@@ -84,20 +84,11 @@ export class NexusHttpClient {
     const targetUrl = `${this.config.url.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
     this.log(`Initiating ${method} request to ${targetUrl}`);
 
-    const isMock = this.config.url.includes("mock-nexus-server");
-
     let attempt = 0;
     while (attempt < this.config.maxRetries) {
       attempt++;
       try {
         this.log(`Attempt ${attempt} of ${this.config.maxRetries}`);
-        if (isMock) {
-          const delay = 400 + Math.random() * 500;
-          if (delay > this.config.timeoutMs) throw new Error("SocketTimeoutException: Connection timed out");
-          await new Promise(r => setTimeout(r, delay));
-          this.log("Request completed (Mock mode)");
-          return {} as T;
-        }
 
         const authHeader = `Basic ${Buffer.from(`${this.config.username}:${this.config.token}`).toString("base64")}`;
 
@@ -146,7 +137,7 @@ export async function createClientFromConfig(): Promise<NexusHttpClient> {
   if (cfg) {
     return new NexusHttpClient({ url: cfg.url, username: cfg.username, token: cfg.tokenEncrypted || "", timeoutMs: cfg.timeoutMs, maxRetries: cfg.maxRetries });
   }
-  return new NexusHttpClient({ url: "https://mock-nexus-server.local/", username: "mock", token: "mock-token" });
+  throw new Error("Nexus IQ configuration not found. Please configure Nexus IQ server URL, username, and token in the settings.");
 }
 
 export function createClientFromCredentials(creds: { url: string; username: string; token: string }): NexusHttpClient {

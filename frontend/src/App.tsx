@@ -11,6 +11,12 @@ import { SkeletonPage } from "./components/ui/Skeleton";
 const VegGovernanceWorkspace = lazy(() => import("./pages/VegGovernanceWorkspace"));
 const SecurityGovernanceWorkspace = lazy(() => import("./pages/SecurityGovernanceWorkspace"));
 const ExecutiveDashboard = lazy(() => import("./pages/ExecutiveDashboard"));
+const OrganizationsPage = lazy(() => import("./pages/OrganizationsPage"));
+const ApplicationsPage = lazy(() => import("./pages/ApplicationsPage"));
+const VulnerabilitiesPage = lazy(() => import("./pages/VulnerabilitiesPage"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage"));
+const RiskManagementPage = lazy(() => import("./pages/RiskManagementPage"));
+const WaivedAcceptedRisksPage = lazy(() => import("./pages/WaivedAcceptedRisksPage"));
 const RoadmapWorkspace = lazy(() => import("./pages/RoadmapWorkspace"));
 const SaaSGovernanceWorkspace = lazy(() => import("./pages/SaaSGovernanceWorkspace"));
 const AuditWorkspace = lazy(() => import("./pages/AuditWorkspace"));
@@ -74,6 +80,12 @@ export default function App() {
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="/404" element={<AuthLayout><NotFoundPage /></AuthLayout>} />
         <Route path="/dashboard" element={<AuthLayout><ExecutiveDashboard /></AuthLayout>} />
+        <Route path="/organizations" element={<AuthLayout><OrganizationsPage /></AuthLayout>} />
+        <Route path="/applications" element={<AuthLayout><ApplicationsPage /></AuthLayout>} />
+        <Route path="/vulnerabilities" element={<AuthLayout><VulnerabilitiesPage /></AuthLayout>} />
+        <Route path="/reports" element={<AuthLayout><ReportsPage /></AuthLayout>} />
+        <Route path="/risk-management" element={<AuthLayout><RiskManagementPage /></AuthLayout>} />
+        <Route path="/waived-accepted-risks" element={<AuthLayout><WaivedAcceptedRisksPage /></AuthLayout>} />
         <Route path="/security" element={<AuthLayout><SecurityGovernanceWorkspace /></AuthLayout>} />
         <Route path="/roadmaps" element={<AuthLayout><RoadmapWorkspace /></AuthLayout>} />
         <Route path="/saas" element={<AuthLayout><SaaSGovernanceWorkspace /></AuthLayout>} />

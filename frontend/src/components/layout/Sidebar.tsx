@@ -3,7 +3,8 @@ import { useAuthStore, UserRole } from "../../store/auth.store";
 import {
   LayoutDashboard, Briefcase, ShieldAlert, Radar, Map, Cloud,
   FileCheck, Users, Settings, LogOut, FileSignature, Scale, Shield,
-  ChevronDown, ChevronRight, Sun, Moon,
+  ChevronDown, ChevronRight, Sun, Moon, Building2, AppWindow, Bug,
+  FileText, ShieldQuestion, AlertOctagon, CheckSquare, PanelLeftClose, User,
 } from "lucide-react";
 import { useState } from "react";
 import { useDarkMode } from "../../hooks/useDarkMode";
@@ -18,13 +19,18 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "PRODUCT_OWNER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "exec-dashboard", label: "Executive Dashboard", icon: LayoutDashboard, path: "/dashboard", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "PRODUCT_OWNER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "organizations", label: "Organizations", icon: Building2, path: "/organizations", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "applications", label: "Applications", icon: AppWindow, path: "/applications", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "vulnerabilities", label: "Vulnerabilities", icon: Bug, path: "/vulnerabilities", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "reports", label: "Reports", icon: FileText, path: "/reports", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "risk-mgmt", label: "Risk Management", icon: ShieldQuestion, path: "/risk-management", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "waived", label: "Waived / Accepted Risks", icon: CheckSquare, path: "/waived-accepted-risks", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "compliance", label: "Compliance", icon: Scale, path: "/compliance", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+  { id: "settings", label: "Settings", icon: Settings, path: "/admin", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER"] },
   { id: "nexus", label: "Nexus IQ", icon: Radar, path: "/nexus", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"],
     children: [
       { label: "Overview", path: "/nexus" },
-      { label: "Applications", path: "/nexus" },
-      { label: "Reports", path: "/nexus" },
-      { label: "Vulnerabilities", path: "/nexus" },
     ],
   },
   { id: "veg", label: "VEG Governance", icon: Briefcase, path: "/veg", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "PRODUCT_OWNER", "EXECUTIVE_READ_ONLY"],
@@ -39,8 +45,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: "audits", label: "Audits", icon: FileCheck, path: "/audits", allowedRoles: ["ADMIN", "AUDITOR", "COMPLIANCE_OFFICER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
   { id: "committees", label: "Committees", icon: Users, path: "/committees", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "PRODUCT_OWNER", "EXECUTIVE_READ_ONLY"] },
   { id: "policy-rules", label: "Policy Rules", icon: Shield, path: "/policy-rules", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
-  { id: "compliance", label: "Compliance", icon: Scale, path: "/compliance", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
-  { id: "admin", label: "Administration", icon: Settings, path: "/admin", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER"] },
 ];
 
 const ROLE_HIERARCHY: Record<string, number> = {
@@ -74,11 +78,11 @@ export default function Sidebar() {
       <div className="px-5 py-5 border-b border-slate-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold text-sm">RC</div>
-            <div>
-              <p className="font-bold text-sm tracking-tight">RiskTower</p>
-              <p className="text-[10px] text-slate-400 font-medium">Compliance Control</p>
-            </div>
+          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold text-sm">SD</div>
+          <div>
+            <p className="font-bold text-sm tracking-tight">Security Dashboard</p>
+            <p className="text-[10px] text-slate-400 font-medium">Nexus IQ Lifecycle</p>
+          </div>
           </div>
           <button onClick={toggleDark} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" title={dark ? "Light mode" : "Dark mode"}>
             {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -143,13 +147,23 @@ export default function Sidebar() {
 
       <div className="px-4 py-4 border-t border-slate-800">
         <div className="flex items-center justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-white truncate">{user.name}</p>
-            <p className="text-[11px] text-slate-400 font-medium">{user.role.replace(/_/g, " ")}</p>
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
+              <User className="w-4 h-4 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white truncate">Security Officer</p>
+              <p className="text-[11px] text-slate-400 font-medium">Administrator</p>
+            </div>
           </div>
-          <button onClick={logout} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" title="Logout">
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-0.5">
+            <button onClick={logout} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" title="Logout">
+              <LogOut className="w-4 h-4" />
+            </button>
+            <button className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" title="Collapse sidebar">
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>

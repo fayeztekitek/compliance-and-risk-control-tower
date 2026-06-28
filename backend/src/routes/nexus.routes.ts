@@ -502,6 +502,27 @@ router.post("/sync", async (req: Request, res: Response, next: NextFunction) => 
 
 /**
  * @openapi
+ * /nexus/sync/full:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Run full sync from Nexus IQ (orgs, apps, reports, vulns) then recalculate KPIs
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Full sync result
+ */
+router.post("/sync/full", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.fullSync({ batchId: req.body?.batchId });
+    res.json({ data: result });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
+ * @openapi
  * /nexus/sync/status/{batchId}:
  *   get:
  *     tags: [Nexus]

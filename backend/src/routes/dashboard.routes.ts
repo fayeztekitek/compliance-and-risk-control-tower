@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { dashboardService } from "../services/dashboard.service.js";
 import { kpiService } from "../services/kpi.service.js";
+import { nexusRepo } from "../repositories/nexus.repo.js";
 import { vulnerabilityAggregationService } from "../services/vulnerabilityAggregation.service.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
@@ -190,6 +191,25 @@ router.get("/compliance-posture", async (_req: Request, res: Response, next: Nex
 
 /**
  * @openapi
+ * /dashboard/org-hierarchy:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Organization hierarchy with app counts and vulnerability stats
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of orgs with parent/child relationships and aggregated metrics
+ */
+router.get("/org-hierarchy", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusRepo.getOrgHierarchy();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
  * /dashboard/nexus-lifecycle-summary:
  *   get:
  *     tags: [Dashboard]
@@ -233,6 +253,80 @@ router.get("/nexus-lifecycle-occurrences/:vulnId", async (req: Request, res: Res
 
 /**
  * @openapi
+ * /dashboard/top-risky-apps:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Top applications by vulnerability severity
+ */
+router.get("/top-risky-apps", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const limit = parseInt(_req.query.limit as string) || 20;
+    const result = await nexusRepo.getTopRiskyApps(limit);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/top-components:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Top vulnerable components
+ */
+router.get("/top-components", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const limit = parseInt(_req.query.limit as string) || 20;
+    const result = await nexusRepo.getTopVulnerableComponents(limit);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/apps-requiring-action:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Applications with critical/high vulns needing immediate action
+ */
+router.get("/apps-requiring-action", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const limit = parseInt(_req.query.limit as string) || 20;
+    const result = await nexusRepo.getAppsRequiringAction(limit);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/latest-scan-summary:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Latest imported scan reports summary
+ */
+router.get("/latest-scan-summary", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const limit = parseInt(_req.query.limit as string) || 20;
+    const result = await nexusRepo.getLatestScanSummary(limit);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/org-risk-heatmap:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Organization risk heatmap
+ */
+router.get("/org-risk-heatmap", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusRepo.getOrgRiskHeatmap();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
  * /dashboard/recalculate:
  *   post:
  *     tags: [Dashboard]
@@ -265,6 +359,34 @@ router.post("/recalculate", async (_req: Request, res: Response, next: NextFunct
 router.get("/latest-snapshot", async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await kpiService.getLatestSnapshot();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /dashboard/org-drilldown/{orgId}:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Drill-down data for a specific organization
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orgId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Organization drill-down with apps, vulns, scans
+ */
+router.get("/org-drilldown/:orgId", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusRepo.getOrgDrilldown(req.params.orgId);
+    if (!result) {
+      res.status(404).json({ error: "Organization not found" });
+      return;
+    }
     res.json({ data: result });
   } catch (err) { next(err); }
 });

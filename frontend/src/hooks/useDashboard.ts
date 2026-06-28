@@ -123,6 +123,54 @@ export function useNexusLifecycleOccurrences(vulnId: string | null) {
   });
 }
 
+export function useOrgHierarchy() {
+  return useQuery({
+    queryKey: ["dashboard", "org-hierarchy"],
+    queryFn: async () => { const { data } = await dashboardApi.orgHierarchy(); return data.data; },
+    staleTime: 60_000,
+  });
+}
+
+export function useTopRiskyApps(limit = 20) {
+  return useQuery({
+    queryKey: ["dashboard", "top-risky-apps", limit],
+    queryFn: async () => { const { data } = await dashboardApi.topRiskyApps(limit); return data.data; },
+    staleTime: 60_000,
+  });
+}
+
+export function useTopComponents(limit = 20) {
+  return useQuery({
+    queryKey: ["dashboard", "top-components", limit],
+    queryFn: async () => { const { data } = await dashboardApi.topComponents(limit); return data.data; },
+    staleTime: 60_000,
+  });
+}
+
+export function useAppsRequiringAction(limit = 20) {
+  return useQuery({
+    queryKey: ["dashboard", "apps-action", limit],
+    queryFn: async () => { const { data } = await dashboardApi.appsRequiringAction(limit); return data.data; },
+    staleTime: 60_000,
+  });
+}
+
+export function useLatestScanSummary(limit = 20) {
+  return useQuery({
+    queryKey: ["dashboard", "latest-scans", limit],
+    queryFn: async () => { const { data } = await dashboardApi.latestScanSummary(limit); return data.data; },
+    staleTime: 60_000,
+  });
+}
+
+export function useOrgRiskHeatmap() {
+  return useQuery({
+    queryKey: ["dashboard", "org-heatmap"],
+    queryFn: async () => { const { data } = await dashboardApi.orgRiskHeatmap(); return data.data; },
+    staleTime: 60_000,
+  });
+}
+
 export function useLiveNexusKpis(sessionToken: string | null) {
   return useQuery({
     queryKey: ["dashboard", "nexus-live-kpis", sessionToken],

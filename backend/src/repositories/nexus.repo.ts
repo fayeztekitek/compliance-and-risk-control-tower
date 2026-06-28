@@ -264,6 +264,90 @@ export const nexusRepo = {
     return r.rows.map(waiverRow);
   },
 
+  // ---- Scan Reports ----
+  async upsertScanReport(data: {
+    scanId: string;
+    applicationId: string;
+    applicationPublicId?: string;
+    stage: string;
+    scanDate: string;
+    reportUrl?: string;
+    totalComponents?: number;
+    affectedComponents?: number;
+    criticalCount?: number;
+    highCount?: number;
+    mediumCount?: number;
+    lowCount?: number;
+    syncBatchId?: string;
+  }) {
+    const r = await query(
+      `INSERT INTO nexus_scan_reports (scan_id, application_id, application_public_id, stage, scan_date, report_url, total_components, affected_components, critical_count, high_count, medium_count, low_count, sync_batch_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+       ON CONFLICT (scan_id) DO UPDATE SET
+         total_components = COALESCE($7, nexus_scan_reports.total_components),
+         affected_components = COALESCE($8, nexus_scan_reports.affected_components),
+         critical_count = COALESCE($9, nexus_scan_reports.critical_count),
+         high_count = COALESCE($10, nexus_scan_reports.high_count),
+         medium_count = COALESCE($11, nexus_scan_reports.medium_count),
+         low_count = COALESCE($12, nexus_scan_reports.low_count),
+         updated_at = NOW()
+       RETURNING id`,
+      [data.scanId, data.applicationId, data.applicationPublicId || null, data.stage, data.scanDate, data.reportUrl || null, data.totalComponents || 0, data.affectedComponents || 0, data.criticalCount || 0, data.highCount || 0, data.mediumCount || 0, data.lowCount || 0, data.syncBatchId || null]
+    );
+    return r.rows.length ? r.rows[0].id : null;
+  },
+
+  async bulkUpsertVulnerabilitiesFromNexus(vulns: any[]) {
+    if (!vulns.length) return;
+    const BATCH_SIZE = 100;
+    const client = await getClient();
+    try {
+      await client.query("BEGIN");
+      for (let i = 0; i < vulns.length; i += BATCH_SIZE) {
+        const batch = vulns.slice(i, i + BATCH_SIZE);
+        const values: any[] = [];
+        const params: any[] = [];
+        let idx = 1;
+        const rows: string[] = [];
+        for (const v of batch) {
+          rows.push(`($${idx},$${idx+1},$${idx+2},$${idx+3},$${idx+4},$${idx+5},$${idx+6},$${idx+7},$${idx+8},$${idx+9},$${idx+10},$${idx+11},$${idx+12})`);
+          params.push(
+            v.vulnerabilityId,
+            v.refId || null,
+            v.cvssScore || 0,
+            v.severity || "MEDIUM",
+            v.componentName,
+            v.componentVersion,
+            v.packageUrl || null,
+            v.status || "Open",
+            v.applicationId,
+            v.scanId,
+            v.syncBatchId || null,
+            v.firstSeenDate || new Date().toISOString().split("T")[0],
+            v.lastSeenDate || new Date().toISOString().split("T")[0]
+          );
+          idx += 13;
+        }
+        await client.query(
+          `INSERT INTO nexus_vulnerabilities (vulnerability_id, ref_id, cvss_score, severity, component_name, component_version, package_url, status, application_id, scan_id, sync_batch_id, first_seen_date, last_seen_date) VALUES ${rows.join(",")} ON CONFLICT (vulnerability_id) DO UPDATE SET cvss_score = COALESCE(EXCLUDED.cvss_score, nexus_vulnerabilities.cvss_score), severity = COALESCE(EXCLUDED.severity, nexus_vulnerabilities.severity), status = COALESCE(EXCLUDED.status, nexus_vulnerabilities.status), last_seen_date = COALESCE(EXCLUDED.last_seen_date, nexus_vulnerabilities.last_seen_date), updated_at = NOW()`,
+          params
+        );
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // ---- Application UUID lookup ----
+  async getAppIdToUuidMap(): Promise<Map<string, string>> {
+    const r = await query("SELECT id, application_id FROM nexus_applications");
+    return new Map(r.rows.map((row: any) => [row.application_id, row.id]));
+  },
+
   // ---- Sync Logs ----
   async listSyncLogs(page = 1, limit = 20) {
     const offset = (page - 1) * limit;
@@ -292,7 +376,7 @@ export const nexusRepo = {
 
   // ---- KPI Snapshots ----
   async getLatestKpiSnapshot() {
-    const r = await query("SELECT * FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC LIMIT 1");
+    const r = await query("SELECT * FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC, created_at DESC LIMIT 1");
     if (!r.rows.length) return null;
     const s = r.rows[0];
     return {
@@ -342,6 +426,44 @@ export const nexusRepo = {
   async getOrganization(organizationId: string) {
     const r = await query(`SELECT ${ORG_COLS.join(",")} FROM nexus_organizations WHERE organization_id = $1`, [organizationId]);
     return r.rows.length ? orgRow(r.rows[0]) : null;
+  },
+
+  async getOrgHierarchy() {
+    const r = await query(`
+      SELECT
+        o.organization_id, o.organization_name, o.parent_organization_id,
+        p.organization_name AS parent_organization_name,
+        COUNT(DISTINCT a.id) AS total_apps,
+        COUNT(DISTINCT sr.id) AS scanned_apps,
+        (SELECT COUNT(*) FROM nexus_organizations child WHERE child.parent_organization_id = o.organization_id) AS sub_org_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS open_critical,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS open_high,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'MEDIUM' THEN uf.id END) AS open_medium,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'LOW' THEN uf.id END) AS open_low,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open
+      FROM nexus_organizations o
+      LEFT JOIN nexus_organizations p ON o.parent_organization_id = p.organization_id
+      LEFT JOIN nexus_applications a ON a.organization_id = o.organization_id
+      LEFT JOIN nexus_scan_reports sr ON sr.application_id = a.application_id
+      LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+      GROUP BY o.organization_id, o.organization_name, o.parent_organization_id, p.organization_name
+      ORDER BY o.parent_organization_id NULLS FIRST, o.organization_name
+    `);
+    return r.rows.map((row: any) => ({
+      organizationId: row.organization_id,
+      organizationName: row.organization_name,
+      parentOrganizationId: row.parent_organization_id,
+      parentOrganizationName: row.parent_organization_name || null,
+      totalApps: Number(row.total_apps),
+      scannedApps: Number(row.scanned_apps),
+      subOrganizationCount: Number(row.sub_org_count),
+      scanCoverageRate: Number(row.total_apps) > 0 ? Math.round((Number(row.scanned_apps) / Number(row.total_apps)) * 10000) / 100 : 0,
+      openCritical: Number(row.open_critical),
+      openHigh: Number(row.open_high),
+      openMedium: Number(row.open_medium),
+      openLow: Number(row.open_low),
+      totalOpen: Number(row.total_open),
+    }));
   },
 
   async upsertOrganization(data: any) {
@@ -427,5 +549,238 @@ export const nexusRepo = {
       productId: a.product_id, applicationId: a.application_id,
       timestamp: a.timestamp, archived: a.archived,
     }));
+  },
+
+  // ---- Dashboard Extended Queries ----
+
+  async getTopRiskyApps(limit = 20) {
+    const r = await query(`
+      SELECT a.application_id, a.application_name, a.organization_id, o.organization_name,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS critical_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS high_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'MEDIUM' THEN uf.id END) AS medium_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open
+      FROM nexus_applications a
+      LEFT JOIN nexus_organizations o ON a.organization_id = o.organization_id
+      LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+      GROUP BY a.application_id, a.application_name, a.organization_id, o.organization_name
+      HAVING COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) > 0
+      ORDER BY critical_count DESC, high_count DESC, total_open DESC
+      LIMIT $1
+    `, [limit]);
+    return r.rows.map((row: any) => ({
+      applicationId: row.application_id,
+      applicationName: row.application_name,
+      organizationId: row.organization_id,
+      organizationName: row.organization_name,
+      criticalCount: Number(row.critical_count),
+      highCount: Number(row.high_count),
+      mediumCount: Number(row.medium_count),
+      totalOpen: Number(row.total_open),
+    }));
+  },
+
+  async getTopVulnerableComponents(limit = 20) {
+    const r = await query(`
+      SELECT uf.component_name, uf.component_version, uf.package_url,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS critical_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS high_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open,
+        COUNT(DISTINCT uf.application_id) AS affected_apps
+      FROM unified_findings uf
+      WHERE uf.deleted_at IS NULL AND uf.component_name IS NOT NULL
+      GROUP BY uf.component_name, uf.component_version, uf.package_url
+      HAVING COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) > 0
+      ORDER BY critical_count DESC, high_count DESC, total_open DESC
+      LIMIT $1
+    `, [limit]);
+    return r.rows.map((row: any) => ({
+      componentName: row.component_name,
+      componentVersion: row.component_version,
+      packageUrl: row.package_url,
+      criticalCount: Number(row.critical_count),
+      highCount: Number(row.high_count),
+      totalOpen: Number(row.total_open),
+      affectedApps: Number(row.affected_apps),
+    }));
+  },
+
+  async getAppsRequiringAction(limit = 20) {
+    const r = await query(`
+      SELECT a.application_id, a.application_name, a.business_criticality, o.organization_name,
+        COALESCE(c.critical_count, 0) AS critical_count,
+        COALESCE(h.high_count, 0) AS high_count,
+        latest.scan_date AS last_scan_date
+      FROM nexus_applications a
+      LEFT JOIN nexus_organizations o ON a.organization_id = o.organization_id
+      LEFT JOIN LATERAL (SELECT scan_date FROM nexus_scan_reports sr WHERE sr.application_id = a.application_id ORDER BY sr.scan_date DESC LIMIT 1) latest ON TRUE
+      LEFT JOIN LATERAL (SELECT COUNT(*) AS critical_count FROM unified_findings uf WHERE uf.application_id = a.id AND uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' AND uf.deleted_at IS NULL) c ON TRUE
+      LEFT JOIN LATERAL (SELECT COUNT(*) AS high_count FROM unified_findings uf WHERE uf.application_id = a.id AND uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' AND uf.deleted_at IS NULL) h ON TRUE
+      WHERE COALESCE(c.critical_count, 0) > 0 OR COALESCE(h.high_count, 0) > 0
+      ORDER BY c.critical_count DESC, h.high_count DESC, latest.scan_date ASC NULLS FIRST
+      LIMIT $1
+    `, [limit]);
+    return r.rows.map((row: any) => ({
+      applicationId: row.application_id,
+      applicationName: row.application_name,
+      businessCriticality: row.business_criticality,
+      organizationName: row.organization_name,
+      criticalCount: Number(row.critical_count),
+      highCount: Number(row.high_count),
+      lastScanDate: row.last_scan_date,
+    }));
+  },
+
+  async getLatestScanSummary(limit = 20) {
+    const r = await query(`
+      SELECT sr.scan_id, sr.application_id, a.application_name, sr.scan_date, sr.stage,
+        sr.total_components, sr.critical_count, sr.high_count, sr.medium_count, sr.low_count,
+        sr.total_violations, sr.policy_evaluation_status
+      FROM nexus_scan_reports sr
+      LEFT JOIN nexus_applications a ON sr.application_id = a.application_id
+      ORDER BY sr.scan_date DESC
+      LIMIT $1
+    `, [limit]);
+    return r.rows.map((row: any) => ({
+      scanId: row.scan_id,
+      applicationId: row.application_id,
+      applicationName: row.application_name,
+      scanDate: row.scan_date,
+      stage: row.stage,
+      totalComponents: Number(row.total_components),
+      criticalCount: Number(row.critical_count),
+      highCount: Number(row.high_count),
+      mediumCount: Number(row.medium_count),
+      lowCount: Number(row.low_count),
+      totalViolations: Number(row.total_violations),
+      policyEvaluationStatus: row.policy_evaluation_status,
+    }));
+  },
+
+  async getOrgRiskHeatmap() {
+    const r = await query(`
+      SELECT o.organization_id, o.organization_name,
+        COUNT(DISTINCT a.id) AS total_apps,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS critical_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS high_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open
+      FROM nexus_organizations o
+      LEFT JOIN nexus_applications a ON a.organization_id = o.organization_id
+      LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+      GROUP BY o.organization_id, o.organization_name
+      ORDER BY total_open DESC
+    `);
+    return r.rows.map((row: any) => ({
+      organizationId: row.organization_id,
+      organizationName: row.organization_name,
+      totalApps: Number(row.total_apps),
+      criticalCount: Number(row.critical_count),
+      highCount: Number(row.high_count),
+      totalOpen: Number(row.total_open),
+      riskLevel: Number(row.total_open) === 0 ? "GREEN" : Number(row.critical_count) > 0 || Number(row.high_count) > 10 ? "RED" : Number(row.high_count) > 0 ? "ORANGE" : "GREEN",
+    }));
+  },
+
+  async getOrgDrilldown(orgId: string) {
+    const r = await query(`
+      WITH RECURSIVE org_tree AS (
+        SELECT o.organization_id, o.organization_name, o.parent_organization_id
+        FROM nexus_organizations o WHERE o.organization_id = $1
+        UNION ALL
+        SELECT c.organization_id, c.organization_name, c.parent_organization_id
+        FROM nexus_organizations c INNER JOIN org_tree ot ON ot.organization_id = c.parent_organization_id
+      )
+      SELECT
+        ot.organization_id, ot.organization_name, ot.parent_organization_id,
+        (SELECT COUNT(*) FROM nexus_organizations child WHERE child.parent_organization_id = ot.organization_id) AS direct_sub_count,
+        COUNT(DISTINCT a.id) AS total_apps,
+        COUNT(DISTINCT sr.id) AS total_scan_reports,
+        COUNT(DISTINCT CASE WHEN sr.application_id IS NOT NULL THEN a.id END) AS scanned_apps,
+        COUNT(DISTINCT CASE WHEN a.id IS NOT NULL AND sr.application_id IS NULL THEN a.id END) AS never_scanned,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS open_critical,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS open_high,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'MEDIUM' THEN uf.id END) AS open_medium,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'LOW' THEN uf.id END) AS open_low,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open,
+        COUNT(DISTINCT CASE WHEN uf.status = 'WAIVED' THEN uf.id END) AS waived_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'ACCEPTED' THEN uf.id END) AS accepted_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'FIXED' THEN uf.id END) AS resolved_count
+      FROM org_tree ot
+      LEFT JOIN nexus_applications a ON a.organization_id = ot.organization_id
+      LEFT JOIN nexus_scan_reports sr ON sr.application_id = a.application_id
+      LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+      GROUP BY ot.organization_id, ot.organization_name, ot.parent_organization_id
+      ORDER BY CASE WHEN ot.organization_id = $1 THEN 0 ELSE 1 END, ot.organization_name
+    `, [orgId]);
+
+    const row = r.rows[0];
+    if (!row) return null;
+
+    const orgIds = r.rows.map((r: any) => r.organization_id);
+
+    const topRisky = await query(`
+      SELECT a.application_name,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS critical_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS high_count,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open
+      FROM nexus_applications a
+      LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+      WHERE a.organization_id = ANY($1::text[])
+      GROUP BY a.application_name, a.id
+      ORDER BY total_open DESC
+      LIMIT 5
+    `, [orgIds]);
+
+    const latestScans = await query(`
+      SELECT a.application_name, o.organization_name, sr.scan_date, sr.stage, sr.policy_evaluation_status,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS open_critical,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS open_high,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'MEDIUM' THEN uf.id END) AS open_medium,
+        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'LOW' THEN uf.id END) AS open_low,
+        COUNT(DISTINCT CASE WHEN uf.status IN ('WAIVED','ACCEPTED') THEN uf.id END) AS waived_accepted
+      FROM nexus_scan_reports sr
+      INNER JOIN nexus_applications a ON a.application_id = sr.application_id
+      INNER JOIN nexus_organizations o ON o.organization_id = a.organization_id
+      LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+      WHERE a.organization_id = ANY($1::text[])
+      GROUP BY sr.id, a.application_name, o.organization_name, sr.scan_date, sr.stage, sr.policy_evaluation_status
+      ORDER BY sr.scan_date DESC
+      LIMIT 10
+    `, [orgIds]);
+
+    return {
+      organizationId: row.organization_id,
+      organizationName: row.organization_name,
+      directSubOrganizationCount: Number(row.direct_sub_count),
+      totalApplications: Number(row.total_apps),
+      scannedApplications: Number(row.scanned_apps),
+      neverScanned: Number(row.never_scanned),
+      totalScanReports: Number(row.total_scan_reports),
+      openCritical: Number(row.open_critical),
+      openHigh: Number(row.open_high),
+      openMedium: Number(row.open_medium),
+      openLow: Number(row.open_low),
+      waiveVulnerabilities: Number(row.waived_count),
+      acceptedRisks: Number(row.accepted_count),
+      resolvedVulnerabilities: Number(row.resolved_count),
+      topRiskyApplications: topRisky.rows.map((r: any) => ({
+        applicationName: r.application_name,
+        totalOpen: Number(r.total_open),
+        criticalCount: Number(r.critical_count),
+        highCount: Number(r.high_count),
+        riskScore: Math.round((Number(r.critical_count) * 10 + Number(r.high_count) * 5) * 10) / 10,
+      })),
+      latestScanReports: latestScans.rows.map((r: any) => ({
+        applicationName: r.application_name,
+        organizationName: r.organization_name,
+        lastScanDate: r.scan_date,
+        openCritical: Number(r.open_critical),
+        openHigh: Number(r.open_high),
+        openMedium: Number(r.open_medium),
+        openLow: Number(r.open_low),
+        waivedAccepted: Number(r.waived_accepted),
+        status: r.policy_evaluation_status,
+      })),
+    };
   },
 };

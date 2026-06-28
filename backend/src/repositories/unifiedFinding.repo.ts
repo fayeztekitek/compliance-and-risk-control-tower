@@ -188,31 +188,28 @@ export const unifiedFindingRepo = {
 
   async bulkUpsertFindings(findings: any[]) {
     if (!findings.length) return;
+    const BATCH_SIZE = 100;
     const client = await getClient();
     try {
       await client.query("BEGIN");
-      for (const f of findings) {
-        await client.query(
-          `INSERT INTO unified_findings (
-            source_tool, source_id, source_table, title, unified_severity,
-            cvss_score, cve_id, status, component_name, component_version,
-            package_url, scan_id, application_id, fix_available,
-            recommended_version, metadata
-          ) VALUES (
-            $1::finding_source, $2, $3, $4, $5::severity,
-            $6, $7, $8::unified_finding_status, $9, $10,
-            $11, $12, $13, $14,
-            $15, $16::jsonb
-          ) ON CONFLICT (id) DO UPDATE SET
-            cvss_score = EXCLUDED.cvss_score,
-            status = EXCLUDED.status,
-            updated_at = NOW()`,
-          [
+      for (let i = 0; i < findings.length; i += BATCH_SIZE) {
+        const batch = findings.slice(i, i + BATCH_SIZE);
+        const params: any[] = [];
+        const rows: string[] = [];
+        let idx = 1;
+        for (const f of batch) {
+          rows.push(`($${idx}::finding_source,$${idx+1},$${idx+2},$${idx+3},$${idx+4}::severity,$${idx+5},$${idx+6},$${idx+7}::unified_finding_status,$${idx+8},$${idx+9},$${idx+10},$${idx+11},$${idx+12},$${idx+13},$${idx+14},$${idx+15}::jsonb)`);
+          params.push(
             f.sourceTool, f.sourceId, f.sourceTable, f.title, f.unifiedSeverity,
             f.cvssScore, f.cveId, f.status || "OPEN", f.componentName, f.componentVersion,
             f.packageUrl, f.scanId, f.applicationId, f.fixAvailable || false,
             f.recommendedVersion, JSON.stringify(f.metadata || {}),
-          ]
+          );
+          idx += 16;
+        }
+        await client.query(
+          `INSERT INTO unified_findings (source_tool, source_id, source_table, title, unified_severity, cvss_score, cve_id, status, component_name, component_version, package_url, scan_id, application_id, fix_available, recommended_version, metadata) VALUES ${rows.join(",")} ON CONFLICT (source_tool, source_id) WHERE source_tool IS NOT NULL AND source_id IS NOT NULL DO UPDATE SET cvss_score = EXCLUDED.cvss_score, status = EXCLUDED.status, updated_at = NOW()`,
+          params
         );
       }
       await client.query("COMMIT");

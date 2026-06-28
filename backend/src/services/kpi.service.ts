@@ -21,6 +21,7 @@ interface ExecutiveSnapshot {
   occurrences: number;
   mitigatedVulnerabilities: number;
   acceptedRisks: number;
+  waivedCount: number;
   falsePositives: number;
   newVulnerabilities30d: number;
   fixedVulnerabilities30d: number;
@@ -66,7 +67,7 @@ export const kpiService = {
         MAX(sr.scan_date) as last_scan_date,
         CASE
           WHEN COUNT(sr.id) = 0 THEN 'never_scanned'
-          WHEN MAX(sr.scan_date) < CURRENT_DATE - INTERVAL '6 months' THEN 'inactive'
+          WHEN MAX(sr.scan_date) < CURRENT_DATE - INTERVAL '3 months' THEN 'inactive'
           ELSE 'active'
         END as scan_status
       FROM nexus_applications a
@@ -109,7 +110,7 @@ export const kpiService = {
 
     let openCritical = 0, openHigh = 0, openMedium = 0, openLow = 0;
     let totalOpenVulns = 0, distinctVulns = 0, occurrences = 0;
-    let falsePositives = 0;
+    let falsePositives = 0, waivedCount = 0;
     const appsWithCritical = new Set<string>();
     const appsWithHigh = new Set<string>();
 
@@ -132,11 +133,15 @@ export const kpiService = {
       if (status === 'False Positive') {
         falsePositives += cnt;
       }
-      if (status === 'Open' || status === 'Accepted' || status === 'Waived') {
+      if (status === 'Open') {
         totalOpenVulns += cnt;
-        if (sev === 'CRITICAL' && r.affected_apps) appsWithCritical.add(r.application_id);
-        if (sev === 'HIGH' && r.affected_apps) appsWithHigh.add(r.application_id);
       }
+      if (status === 'Open' || status === 'Accepted' || status === 'Waived') {
+        if (sev === 'CRITICAL') appsWithCritical.add(r.application_id);
+        if (sev === 'HIGH') appsWithHigh.add(r.application_id);
+      }
+      if (status === 'Waived') waivedCount += cnt;
+      if (status === 'Accepted') acceptedCount += cnt;
     }
 
     // Average risk score from products
@@ -253,7 +258,7 @@ export const kpiService = {
     const prevSnapshot = await query(
       `SELECT total_vulnerabilities as prev_total, critical_vulnerabilities as prev_critical,
               high_vulnerabilities as prev_high, global_security_risk_score as prev_risk
-       FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC LIMIT 1 OFFSET 1`
+        FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC, created_at DESC LIMIT 1 OFFSET 1`
     );
     const prev = prevSnapshot.rows[0] || {};
     const previousTotal = parseInt(prev.prev_total || '0', 10);
@@ -276,7 +281,7 @@ export const kpiService = {
         open_critical, open_high, open_medium, open_low,
         total_open_vulnerabilities, distinct_vulnerabilities, occurrences,
         total_vulnerabilities, critical_vulnerabilities, high_vulnerabilities,
-        mitigated_vulnerabilities, accepted_risks, false_positives,
+        mitigated_vulnerabilities, accepted_risks, false_positives, waived_count,
         new_vulnerabilities_30d, fixed_vulnerabilities_30d, recurring_vulnerabilities,
         mttr_days, avg_time_to_close_days, closed_this_month,
         applications_out_of_sla, accepted_risks_expiring_soon, expired_accepted_risks,
@@ -295,18 +300,18 @@ export const kpiService = {
         $9, $10, $11, $12,
         $13, $14, $15,
         $16, $17, $18,
-        $19, $20, $21,
-        $22, $23, $24,
-        $25, $26, $27,
-        $28, $29, $30,
-        $31, $32,
-        $33, $34,
-        $35, $36,
-        $37, $38,
-        $39, $40, $41,
-        $42, $43,
-        $44, $45, $46, $47,
-        $48
+        $19, $20, $21, $22,
+        $23, $24, $25,
+        $26, $27, $28,
+        $29, $30, $31,
+        $32, $33,
+        $34, $35,
+        $36, $37,
+        $38, $39,
+        $40, $41, $42,
+        $43, $44,
+        $45, $46, $47, $48,
+        $49
       )`,
       [
         snapshotDate,
@@ -314,8 +319,8 @@ export const kpiService = {
         neverScanned, scanCoverageRate, averageScanAgeDays,
         openCritical, openHigh, openMedium, openLow,
         totalOpenVulns, distinctVulns, occurrences,
-        totalVulns, openCritical + (openHigh || 0), openHigh,
-        mitigatedVulnerabilities, acceptedRisks, falsePositives,
+        totalVulns, openCritical, openHigh,
+        mitigatedVulnerabilities, acceptedRisks, falsePositives, waivedCount,
         newVulnerabilities30d, fixedVulnerabilities30d, recurringVulnerabilities,
         mttrDays, avgTimeToCloseDays, closedThisMonth,
         applicationsOutOfSla, acceptedRisksExpiringSoon, expiredAcceptedRisks,
@@ -334,7 +339,7 @@ export const kpiService = {
   },
 
   async getLatestSnapshot(): Promise<ExecutiveSnapshot | null> {
-    const r = await query("SELECT * FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC LIMIT 1");
+    const r = await query("SELECT * FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC, created_at DESC LIMIT 1");
     if (!r.rows.length) return null;
     const s = r.rows[0];
     return {
@@ -355,6 +360,7 @@ export const kpiService = {
       occurrences: s.occurrences || 0,
       mitigatedVulnerabilities: s.mitigated_vulnerabilities || 0,
       acceptedRisks: s.accepted_risks || 0,
+      waivedCount: s.waived_count || 0,
       falsePositives: s.false_positives || 0,
       newVulnerabilities30d: s.new_vulnerabilities_30d || 0,
       fixedVulnerabilities30d: s.fixed_vulnerabilities_30d || 0,
@@ -396,7 +402,7 @@ export const kpiService = {
       slaOverdueVulnerabilities: snapshot.applicationsOutOfSla,
       falsePositives: snapshot.falsePositives,
       fixedVulnerabilities: snapshot.mitigatedVulnerabilities,
-      waivedVulnerabilities: snapshot.acceptedRisks,
+      waivedVulnerabilities: snapshot.waivedCount,
       acceptedRisks: snapshot.acceptedRisks,
       totalProjects: 0,
       deviatingProjects: 0,
@@ -530,7 +536,7 @@ export const kpiService = {
               open_critical, open_high, open_medium, open_low,
               total_open_vulnerabilities, distinct_vulnerabilities, occurrences,
               scan_coverage_rate, active_applications
-       FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC LIMIT $1`,
+       FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC, created_at DESC LIMIT $1`,
       [months]
     );
     return {

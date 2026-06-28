@@ -21,7 +21,7 @@ export async function startWorkers() {
   new Worker("nexus-sync", async (job: Job) => {
     logger.info({ jobId: job.id, data: job.data }, "Nexus sync job started");
     const { nexusService } = await import("./nexus.service.js");
-    await nexusService.executeSync(job.data);
+    await nexusService.fullSync(job.data);
     logger.info({ jobId: job.id }, "Nexus sync job completed");
   }, { connection });
 
@@ -53,6 +53,7 @@ export async function startWorkers() {
 
 export async function scheduleRecurringJobs() {
   const { queues } = await import("./queue.service.js");
+  await queues.nexusSync.add("nexus-sync-hourly", {}, { repeat: { pattern: "0 */2 * * *" } });
   await queues.slaBreach.add("sla-breach-hourly", {}, { repeat: { pattern: "0 * * * *" } });
   await queues.waiverExpiry.add("waiver-expiry-hourly", {}, { repeat: { pattern: "0 * * * *" } });
   await queues.kpiRecalc.add("kpi-recalc-15min", {}, { repeat: { pattern: "*/15 * * * *" } });

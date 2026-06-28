@@ -92,6 +92,12 @@ import("./services/kpiSyncWorker.js").then(({ startKpiSyncWorker, scheduleKpiSyn
   logger.warn({ err }, "Failed to start KPI sync worker (Redis may be unavailable)");
 });
 
+import("./services/nexusSyncWorker.js").then(({ scheduleNexusSync }) => {
+  scheduleNexusSync();
+}).catch((err) => {
+  logger.warn({ err }, "Failed to schedule Nexus sync (Redis may be unavailable)");
+});
+
 app.listen(env.PORT, "0.0.0.0", () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, "Server started");
 });

@@ -16,6 +16,7 @@
     "sourceMap": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
+    "ignoreDeprecations": "5.0",
     "paths": {
       "@/*": ["./src/*"]
     },

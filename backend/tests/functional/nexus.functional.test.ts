@@ -12,17 +12,16 @@ describe("Nexus Functional Tests", () => {
     expect(["RED", "ORANGE"]).toContain(grade);
   });
 
-  it("Mock client should create logs with masked tokens", async () => {
-    const client = new NexusHttpClient({ url: "https://mock-nexus-server.local", username: "test", token: "mySecretPass123", timeoutMs: 50, maxRetries: 1 });
+  it("Client should create logs with masked tokens", async () => {
+    const client = new NexusHttpClient({ url: "https://nexus.example.com", username: "test", token: "mySecretPass123", timeoutMs: 50, maxRetries: 1 });
     client.clearLogs();
     try { await client.executeRequest("api/v2/organizations"); } catch {}
     const logs = client.getMaskedLogs();
     expect(logs).toContain("[ERROR]");
-    expect(logs).toContain("mock-nexus-server");
   });
 
   it("Connection test should return result (even if failed)", async () => {
-    const client = new NexusHttpClient({ url: "https://mock-nexus-server.local", username: "test", token: "test", timeoutMs: 1000, maxRetries: 1 });
+    const client = new NexusHttpClient({ url: "https://nexus.example.com", username: "test", token: "test", timeoutMs: 1000, maxRetries: 1 });
     const result = await client.testConnection();
     expect(result).toHaveProperty("success");
     expect(result).toHaveProperty("message");

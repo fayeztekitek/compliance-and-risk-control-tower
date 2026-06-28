@@ -8,6 +8,15 @@ import { getCached, setCache } from "./redis.js";
 import crypto from "crypto";
 import { env } from "../config/env.js";
 
+async function execWithLog(client: NexusHttpClient, endpoint: string): Promise<any> {
+  try {
+    return await client.executeRequest<any>(endpoint);
+  } catch (err: any) {
+    err.message = `[${endpoint}] ${err.message}`;
+    throw err;
+  }
+}
+
 export const nexusService = {
   // ---- Config ----
   async getConfig() { return nexusRepo.getConfig(); },
@@ -53,6 +62,7 @@ export const nexusService = {
     const remoteOrgs = orgList.map((o: any) => ({
       organizationId: o.id || o.organizationId,
       organizationName: o.name || o.organizationName,
+      parentOrganizationId: o.parentOrganizationId || null,
     }));
     let sessionToken: string | null = null;
     if (creds) {
@@ -361,41 +371,184 @@ export const nexusService = {
     return nexusRepo.listSyncLogs(page, limit);
   },
 
-  async executeSync(data: any) {
+  async fullSync(data: { batchId?: string } = {}) {
     const client = await createClientFromConfig();
     const batchId = data.batchId || crypto.randomUUID();
+    const errors: { step: string; app?: string; message: string }[] = [];
+
+    const mapStage = (stage?: string): string => {
+      const valid = ["develop", "build", "release", "operate"];
+      const s = (stage || "release").toLowerCase().replace(/^stage-/, "");
+      return valid.includes(s) ? s : "release";
+    };
+
+    await nexusRepo.createSyncLog({
+      batchId,
+      executedBy: "system",
+      status: "IN_PROGRESS",
+      syncBatchId: batchId,
+    });
+
+    const mapStatus = (status?: string): string => {
+      switch ((status || "OPEN").toLowerCase()) {
+        case "open": return "OPEN";
+        case "fixed": return "FIXED";
+        case "waived": return "WAIVED";
+        case "accepted": return "ACCEPTED";
+        case "false positive": return "FALSE_POSITIVE";
+        default: return "OPEN";
+      }
+    };
 
     try {
-      const orgs = await client.executeRequest<any[]>("api/v2/organizations");
-      const apps = await client.executeRequest<any[]>("api/v2/applications");
-      const vulns = await client.executeRequest<any[]>("api/v2/vulnerabilities");
+      // 1. Fetch & upsert organizations
+      const orgsRaw: any = await execWithLog(client, "api/v2/organizations") || [];
+      const orgList: any[] = Array.isArray(orgsRaw) ? orgsRaw : (orgsRaw?.organizations || orgsRaw?.items || []);
+      let orgsCount = 0;
+      for (const org of orgList) {
+        const orgName = org.name || org.organizationName || org.orgName || org.displayName || (`Organization-${org.id || org.organizationId}`).slice(0, 30);
+        await nexusRepo.upsertOrganization({
+          organizationId: org.id || org.organizationId,
+          organizationName: orgName,
+          parentOrganizationId: org.parentOrganizationId || null,
+          syncBatchId: batchId,
+        });
+        orgsCount++;
+      }
+      console.log(`[fullSync] Synced ${orgsCount} organizations`);
 
-      if (Array.isArray(vulns)) {
-        await unifiedFindingRepo.bulkUpsertFindings(vulns.map((v: any) => ({
-          sourceTool: "NEXUS",
-          sourceId: v.vulnerabilityId,
-          sourceTable: "nexus_vulnerabilities",
-          title: v.cveId || `${v.componentName}:${v.componentVersion}`,
-          unifiedSeverity: v.severity,
-          cvssScore: v.cvssScore,
-          cveId: v.cveId,
-          status: v.status || "OPEN",
-          componentName: v.componentName,
-          componentVersion: v.componentVersion,
-          packageUrl: v.packageUrl,
-          scanId: v.scanId,
-          applicationId: v.applicationId,
-          fixAvailable: v.fixAvailable || false,
-          recommendedVersion: v.recommendedVersion,
-          metadata: { refId: v.refId, syncBatchId },
-        })));
+      // 2. Fetch & upsert applications
+      const appsRaw: any = await execWithLog(client, "api/v2/applications") || [];
+      const appList: any[] = Array.isArray(appsRaw) ? appsRaw : (appsRaw?.applications || appsRaw?.items || []);
+      let appsCount = 0;
+      for (const app of appList) {
+        const orgId = app.organizationId || app.organization?.id;
+        const appPubId = String(app.publicId || app.id || app.applicationId || `app-${appsCount}`).slice(0, 100);
+        const appName = String(app.name || app.applicationName || app.publicId || app.id || `App-${appsCount}`).slice(0, 255);
+        await nexusRepo.upsertApplication({
+          applicationId: String(app.id || app.applicationId).slice(0, 100),
+          applicationPublicId: appPubId,
+          applicationName: appName,
+          organizationId: orgId,
+        });
+        appsCount++;
+      }
+      console.log(`[fullSync] Synced ${appsCount} applications`);
+
+      // 3. Fetch bulk reports (all apps with their latest scan info in one call)
+      let reportsCount = 0;
+      let vulnsCount = 0;
+      const bulkReportsRaw: any = await execWithLog(client, "api/v2/reports/applications") || {};
+      const bulkReports: any[] = Array.isArray(bulkReportsRaw) ? bulkReportsRaw : (bulkReportsRaw?.applications || bulkReportsRaw?.items || []);
+      console.log(`[fullSync] Bulk reports returned ${bulkReports.length} entries`);
+
+      // Map appId -> latest report info for quick lookup
+      const appReportMap = new Map<string, any>();
+      for (const entry of bulkReports) {
+        const appId = entry.applicationId;
+        if (!appId) continue;
+        const existing = appReportMap.get(appId);
+        if (!existing || new Date(entry.evaluationDate) > new Date(existing.evaluationDate)) {
+          appReportMap.set(appId, entry);
+        }
       }
 
+      // Build lookup: application_id (varchar) -> id (uuid) for FK in unified_findings
+      const appIdToUuid = await nexusRepo.getAppIdToUuidMap();
+
+      // 4. Process reports & vulnerabilities in parallel batches
+      const CONCURRENCY = 10;
+      const reportEntries = Array.from(appReportMap.entries());
+      for (let i = 0; i < reportEntries.length; i += CONCURRENCY) {
+        const batch = reportEntries.slice(i, i + CONCURRENCY);
+        const results = await Promise.allSettled(batch.map(async ([appId, entry]: [string, any]) => {
+          const scanId = entry.reportId?.toString?.() || entry.id?.toString() || entry.latestReportId;
+          const scanDate = entry.evaluationDate || entry.scanDate || entry.timePeriod || new Date().toISOString().split("T")[0];
+          const reportUrl = entry.latestReportHtmlUrl || entry.reportHtmlUrl || entry.embeddableReportHtmlUrl;
+          // Upsert the scan report
+          await nexusRepo.upsertScanReport({
+            scanId: scanId || `report-${appId}`,
+            applicationId: appId,
+            applicationPublicId: null,
+            stage: mapStage(entry.stage),
+            scanDate: new Date(scanDate).toISOString().split("T")[0],
+            reportUrl,
+            syncBatchId: batchId,
+          });
+          // Fetch vulns via the raw data URL
+          const rawUrl = entry.reportDataUrl || `api/v2/scan/${scanId}/raw`;
+          const vulnData: any = await execWithLog(client, rawUrl);
+          const rawVulns: any[] = vulnData?.components || vulnData?.vulnerabilities || vulnData?.results || [];
+          return { appId, appUuid: appIdToUuid.get(appId), scanId, rawVulns };
+        }));
+        for (const result of results) {
+          if (result.status === "rejected") {
+            errors.push({ step: "process_report", message: result.reason?.message });
+            continue;
+          }
+          const { appId, appUuid, scanId, rawVulns } = result.value;
+          reportsCount++;
+          if (rawVulns.length > 0) {
+            const nexusVulns = rawVulns.map((v: any, idx: number) => ({
+              vulnerabilityId: v.vulnerabilityId || v.id || `${scanId}-${idx}`,
+              refId: v.referenceId || v.refId,
+              cvssScore: v.cvssScore || v.score || v.cvss?.score || 0,
+              severity: (v.severity || "MEDIUM").toUpperCase(),
+              componentName: v.componentName || v.component?.name || v.component?.displayName || "unknown",
+              componentVersion: v.componentVersion || v.component?.version || v.component?.displayVersion || "unknown",
+              packageUrl: v.packageUrl || v.component?.packageUrl,
+              status: v.status || v.state || v.threatCategory || "Open",
+              applicationId: appId,
+              scanId,
+              syncBatchId: batchId,
+              firstSeenDate: v.firstSeenDate,
+              lastSeenDate: v.lastSeenDate,
+            }));
+            await nexusRepo.bulkUpsertVulnerabilitiesFromNexus(nexusVulns);
+            vulnsCount += nexusVulns.length;
+            if (appUuid) {
+              const unifiedEntries = nexusVulns.map((v: any) => ({
+                sourceTool: "NEXUS",
+                sourceId: v.vulnerabilityId,
+                sourceTable: "nexus_vulnerabilities",
+                title: v.cveId || `${v.componentName}:${v.componentVersion}`,
+                unifiedSeverity: v.severity,
+                cvssScore: v.cvssScore,
+                status: mapStatus(v.status),
+                componentName: v.componentName,
+                componentVersion: v.componentVersion,
+                packageUrl: v.packageUrl,
+                scanId,
+                applicationId: appUuid,
+                metadata: { refId: v.refId, syncBatchId: batchId },
+              }));
+              for (let j = 0; j < unifiedEntries.length; j += 500) {
+                await unifiedFindingRepo.bulkUpsertFindings(unifiedEntries.slice(j, j + 500));
+              }
+            }
+          }
+        }
+        if ((i / CONCURRENCY) % 20 === 0) {
+          console.log(`[fullSync] Processed ${Math.min(i + CONCURRENCY, reportEntries.length)}/${reportEntries.length} reports, ${reportsCount} reports, ${vulnsCount} vulns`);
+        }
+      }
+
+      // 5. Trigger KPI recalculation
+      try {
+        const { kpiService } = await import("./kpi.service.js");
+        await kpiService.recalculate();
+      } catch (err: any) {
+        errors.push({ step: "kpi_recalculate", message: err.message });
+      }
+
+      const summary = `Synced ${orgsCount} orgs, ${appsCount} apps, ${reportsCount} reports, ${vulnsCount} vulnerabilities`;
       await nexusRepo.updateSyncLog(batchId, {
-        status: "SUCCESS",
+        status: errors.length ? "COMPLETED_WITH_ERRORS" : "SUCCESS",
         endTime: new Date().toISOString(),
-        summary: `Synced ${vulns?.length || 0} vulnerabilities, ${apps?.length || 0} applications`,
+        summary,
       });
+
+      return { batchId, orgsCount, appsCount, reportsCount, vulnsCount, errors };
     } catch (err: any) {
       await nexusRepo.updateSyncLog(batchId, {
         status: "FAILED",
