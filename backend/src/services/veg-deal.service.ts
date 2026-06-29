@@ -48,24 +48,70 @@ export const vegDealService = {
     return { aggregates, decisions, businessLines, regions, topClients, topOwners };
   },
 
+  async getDashboardData(filters?: any) {
+    const [kpis, decisions, tcvByClient, tcvByRegion, tcvByBusinessLine, tcvByProduct,
+      topClients, topOpportunities, workloadByProduct, workloadByOwner, workloadByRegion,
+      governanceQuality, riskDistribution, dealRows] = await Promise.all([
+      vegDealRepo.getDashboardKpis(filters),
+      vegDealRepo.getDashboardDecisions(filters),
+      vegDealRepo.getDashboardRevenueByDimension("client", filters),
+      vegDealRepo.getDashboardRevenueByDimension("region", filters),
+      vegDealRepo.getDashboardRevenueByDimension("business_line", filters),
+      vegDealRepo.getDashboardRevenueByDimension("products", filters),
+      vegDealRepo.getDashboardTopClients(10, filters),
+      vegDealRepo.getDashboardTopOpportunities(10, filters),
+      vegDealRepo.getDashboardWorkloadByDimension("products", filters),
+      vegDealRepo.getDashboardWorkloadByDimension("business_owner", filters),
+      vegDealRepo.getDashboardWorkloadByDimension("region", filters),
+      vegDealRepo.getDashboardGovernanceQuality(filters),
+      vegDealRepo.getDashboardRiskDistribution(filters),
+      vegDealRepo.getDashboardDealRows(filters),
+    ]);
+    return {
+      kpis: kpis.rows[0],
+      decisions: decisions.rows,
+      tcvByClient: tcvByClient.rows,
+      tcvByRegion: tcvByRegion.rows,
+      tcvByBusinessLine: tcvByBusinessLine.rows,
+      tcvByProduct: tcvByProduct.rows,
+      topClients: topClients.rows,
+      topOpportunities: topOpportunities.rows,
+      workloadByProduct: workloadByProduct.rows,
+      workloadByOwner: workloadByOwner.rows,
+      workloadByRegion: workloadByRegion.rows,
+      governanceQuality: governanceQuality.rows[0],
+      riskDistribution: riskDistribution.rows,
+      dealRows: dealRows.rows,
+    };
+  },
+
   async getDecisionsOverview() {
-    return vegDealRepo.getDecisionsOverview();
+    const result = await vegDealRepo.getDecisionsOverview();
+    return result;
   },
 
   async getBusinessLinesOverview() {
-    return vegDealRepo.getBusinessLinesOverview();
+    const result = await vegDealRepo.getBusinessLinesOverview();
+    return result;
   },
 
   async getRegionOverview() {
-    return vegDealRepo.getRegionOverview();
+    const result = await vegDealRepo.getRegionOverview();
+    return result;
   },
 
   async getMonthlyTCVTrend() {
-    return vegDealRepo.getMonthlyTCVTrend();
+    const result = await vegDealRepo.getMonthlyTCVTrend();
+    return result;
   },
 
   async getYearOverYear() {
-    return vegDealRepo.getYearOverYear();
+    const result = await vegDealRepo.getYearOverYear();
+    return result;
+  },
+
+  async importFromExcel(data: any[]) {
+    return vegDealRepo.bulkInsertNew(data);
   },
 
   async exportCsv(filters: Omit<VegDealFilters, "page" | "limit">) {

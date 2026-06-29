@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { dashboardApi, OrgHierarchyItem, TopRiskyApp, LatestScanSummary } from "../api/dashboard.api";
+import { dashboardApi, DashboardFilterParams } from "../api/dashboard.api";
 import {
   DashboardData, KpiCardData, OrgCardData, OrgDrilldownData,
   SeverityDistribution, TrendPoint, TopRiskyAppItem,
   RiskStatusDistribution, LatestScanRow,
 } from "../types/nexus";
+import { OrgHierarchyItem, TopRiskyApp, LatestScanSummary } from "../api/dashboard.api";
 
 const ROOT_ORG_ID = "ROOT_ORGANIZATION_ID";
 
@@ -12,13 +13,14 @@ interface UseDashboardResult {
   dashboard: DashboardData;
   isFetching: boolean;
   isError: boolean;
+  refetchAll: () => void;
 }
 
 function buildKpiCards(snapshot: any, kpis: any): KpiCardData[] {
   return [
-    { icon: "building", title: "Total Organizations", value: snapshot?.totalOrganizations || 0, delta: 0, deltaLabel: "vs last month", deltaDirection: "flat" },
+    { icon: "building", title: "Total Organizations", value: snapshot?.totalOrganizations || 0, delta: snapshot?.previousTotal ? snapshot.totalOrganizations - snapshot.previousTotal : 0, deltaLabel: "vs last month", deltaDirection: "flat" },
     { icon: "appwindow", title: "Total Applications", value: snapshot?.totalApplications || 0, delta: 0, deltaLabel: "vs last month", deltaDirection: "flat" },
-    { icon: "bug", title: "Total Vulnerabilities", value: kpis?.totalVulnerabilities || snapshot?.totalOpenVulnerabilities || 0, delta: 0, deltaLabel: "vs last month", deltaDirection: "flat" },
+    { icon: "bug", title: "Total Vulnerabilities", value: kpis?.totalVulnerabilities || snapshot?.totalOpenVulnerabilities || 0, delta: snapshot?.previousTotal ? snapshot.totalOpenVulnerabilities - snapshot.previousTotal : 0, deltaLabel: "vs last month", deltaDirection: "flat" },
     { icon: "alert", title: "Open Vulnerabilities", value: snapshot?.totalOpenVulnerabilities || 0, delta: 0, deltaLabel: "vs last month", deltaDirection: "flat" },
   ];
 }
@@ -112,11 +114,11 @@ function buildLatestScans(scans: LatestScanSummary[]): LatestScanRow[] {
   }));
 }
 
-export function useExecutiveDashboardData(): UseDashboardResult {
+export function useExecutiveDashboardData(filterParams?: DashboardFilterParams): UseDashboardResult {
   const executive = useQuery({
-    queryKey: ["dashboard", "executive"],
+    queryKey: ["dashboard", "executive", filterParams],
     queryFn: async () => {
-      const { data } = await dashboardApi.executive();
+      const { data } = await dashboardApi.executive(filterParams);
       return data.data;
     },
     staleTime: 60_000,
@@ -124,9 +126,9 @@ export function useExecutiveDashboardData(): UseDashboardResult {
   });
 
   const orgHierarchy = useQuery({
-    queryKey: ["dashboard", "org-hierarchy"],
+    queryKey: ["dashboard", "org-hierarchy", filterParams],
     queryFn: async () => {
-      const { data } = await dashboardApi.orgHierarchy();
+      const { data } = await dashboardApi.orgHierarchy(filterParams);
       return data.data;
     },
     staleTime: 60_000,
@@ -134,9 +136,9 @@ export function useExecutiveDashboardData(): UseDashboardResult {
   });
 
   const topApps = useQuery({
-    queryKey: ["dashboard", "top-risky-apps", 5],
+    queryKey: ["dashboard", "top-risky-apps", 5, filterParams],
     queryFn: async () => {
-      const { data } = await dashboardApi.topRiskyApps(5);
+      const { data } = await dashboardApi.topRiskyApps(5, filterParams);
       return data.data;
     },
     staleTime: 60_000,
@@ -144,9 +146,9 @@ export function useExecutiveDashboardData(): UseDashboardResult {
   });
 
   const scans = useQuery({
-    queryKey: ["dashboard", "latest-scans", 10],
+    queryKey: ["dashboard", "latest-scans", 10, filterParams],
     queryFn: async () => {
-      const { data } = await dashboardApi.latestScanSummary(10);
+      const { data } = await dashboardApi.latestScanSummary(10, filterParams);
       return data.data;
     },
     staleTime: 60_000,
@@ -178,5 +180,15 @@ export function useExecutiveDashboardData(): UseDashboardResult {
     orgDrilldowns: {},
   };
 
-  return { dashboard, isFetching, isError };
+  return {
+    dashboard,
+    isFetching,
+    isError,
+    refetchAll: () => {
+      executive.refetch();
+      orgHierarchy.refetch();
+      topApps.refetch();
+      scans.refetch();
+    },
+  };
 }

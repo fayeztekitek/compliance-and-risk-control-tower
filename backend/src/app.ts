@@ -47,6 +47,18 @@ import queueRoutes from "./routes/queue.routes.js";
 import fortifyRoutes from "./routes/fortify.routes.js";
 import sonarqubeRoutes from "./routes/sonarqube.routes.js";
 import veracodeRoutes from "./routes/veracode.routes.js";
+import searchRoutes from "./routes/search.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
+import engineReportRoutes from "./routes/engine-report.routes.js";
+import complianceDashboardRoutes from "./routes/compliance-dashboard.routes.js";
+import riskDashboardRoutes from "./routes/risk-dashboard.routes.js";
+import auditDashboardRoutes from "./routes/audit-dashboard.routes.js";
+import committeesDashboardRoutes from "./routes/committees-dashboard.routes.js";
+import saasDashboardRoutes from "./routes/saas-dashboard.routes.js";
+import roadmapsDashboardRoutes from "./routes/roadmaps-dashboard.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
+import promptLibraryRoutes from "./routes/promptLibrary.routes.js";
+import agentRoutes from "./routes/agent.routes.js";
 
 const app = express();
 
@@ -116,6 +128,18 @@ app.use("/api/veracode", veracodeRoutes);
 app.use("/api/archive", archiveRoutes);
 app.use("/api/alert-rules", alertRoutes);
 app.use("/api/admin/queues", queueRoutes);
+app.use("/api", searchRoutes);
+app.use("/api", notificationRoutes);
+app.use("/api", engineReportRoutes);
+app.use("/api", complianceDashboardRoutes);
+app.use("/api", riskDashboardRoutes);
+app.use("/api", auditDashboardRoutes);
+app.use("/api", committeesDashboardRoutes);
+app.use("/api", saasDashboardRoutes);
+app.use("/api", roadmapsDashboardRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/prompts", promptLibraryRoutes);
+app.use("/api/ai/agents", agentRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);

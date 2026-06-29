@@ -128,6 +128,7 @@ export const createVegDealSchema = z.object({
   internalFlag: z.boolean().optional(),
   vegYear: z.number().int(),
   duplicateCheck: z.boolean().optional(),
+  invstStartDate: z.string().optional(),
 });
 
 export const updateVegDealSchema = createVegDealSchema.partial();

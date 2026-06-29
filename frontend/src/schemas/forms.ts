@@ -35,6 +35,7 @@ export const vegDealSchema = z.object({
   wlPsMd: z.number(),
   wlInvestmentMd: z.number(),
   vegYear: z.number(),
+  invstStartDate: z.string().optional().default(""),
 });
 export type VegDealForm = z.infer<typeof vegDealSchema>;
 

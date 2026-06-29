@@ -15,6 +15,8 @@ export const queues = {
   kpiRecalc: new Queue("kpi-recalc", { connection }),
   enrichment: new Queue("enrichment", { connection }),
   vegSlaCheck: new Queue("veg-sla-check", { connection }),
+  notificationDispatch: new Queue("notification-dispatch", { connection }),
+  reportGenerate: new Queue("report-generate", { connection }),
 };
 
 export async function startWorkers() {
@@ -45,9 +47,23 @@ export async function startWorkers() {
 
   new Worker("kpi-recalc", async (job: Job) => {
     logger.info({ jobId: job.id }, "KPI recalculation job started");
-    const { kpiService } = await import("./kpi.service.js");
-    await kpiService.recalculate();
+    const { kpiEngine } = await import("./engines/kpi.engine.js");
+    await kpiEngine.calculateAndStore();
     logger.info({ jobId: job.id }, "KPI recalculation completed");
+  }, { connection });
+
+  new Worker("notification-dispatch", async (job: Job) => {
+    logger.info({ jobId: job.id, data: job.data }, "Notification dispatch job started");
+    const { notificationEngine } = await import("./engines/notification.engine.js");
+    await notificationEngine.processEvent(job.data.event);
+    logger.info({ jobId: job.id }, "Notification dispatch completed");
+  }, { connection });
+
+  new Worker("report-generate", async (job: Job) => {
+    logger.info({ jobId: job.id, data: job.data }, "Report generation job started");
+    const { reportingEngine } = await import("./engines/reporting.engine.js");
+    const result = await reportingEngine.generateReport(job.data);
+    logger.info({ jobId: job.id, status: result.status }, "Report generation completed");
   }, { connection });
 }
 
@@ -57,6 +73,8 @@ export async function scheduleRecurringJobs() {
   await queues.slaBreach.add("sla-breach-hourly", {}, { repeat: { pattern: "0 * * * *" } });
   await queues.waiverExpiry.add("waiver-expiry-hourly", {}, { repeat: { pattern: "0 * * * *" } });
   await queues.kpiRecalc.add("kpi-recalc-15min", {}, { repeat: { pattern: "*/15 * * * *" } });
+  await queues.notificationDispatch.add("notification-dispatch-cleanup", { type: "cleanup" }, { repeat: { pattern: "0 0 * * *" } });
+  await queues.reportGenerate.add("report-generate-daily", { type: "daily-summary" }, { repeat: { pattern: "0 7 * * *" } });
 }
 
 export async function getJobStatuses() {

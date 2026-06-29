@@ -1,316 +1,99 @@
-import { apiClient } from "./client";
+import apiClient from "./client";
 
-export interface KpiData {
-  totalVulnerabilities: number;
-  criticalVulnerabilities: number;
-  highVulnerabilities: number;
-  openVulnerabilities: number;
-  slaOverdueVulnerabilities: number;
-  falsePositives: number;
-  fixedVulnerabilities: number;
-  waivedVulnerabilities: number;
-  acceptedRisks: number;
-  totalProjects: number;
-  deviatingProjects: number;
-  budgetOverrunProjects: number;
-  activeWaivers: number;
-  productsRed: number;
-  productsOrange: number;
-  productsGreen: number;
-  globalRiskScore: number;
-  complianceScore: number;
-  securityDebtScore: number;
+export interface ComplianceDashboardData {
+  kpis: {
+    total_controls: number; passed: number; failed: number; untested: number;
+    pass_rate: number; total_breaches: number; recent_breaches: number; open_breaches: number;
+  };
+  classificationDistribution: { classification: string; count: number }[];
+  upcomingDeadlines: { id: string; title: string; type: string; due_date: string | null }[];
 }
 
-export interface KriData {
-  id: string;
-  name: string;
-  value: number;
-  threshold: number;
-  unit: string;
-  status: "OK" | "WARNING" | "BREACHED";
+export interface RiskDashboardData {
+  kpis: {
+    total_vulnerabilities: number; critical: number; high: number;
+    open_vulns: number; open_critical: number;
+    total_sla_breaches: number; open_sla_breaches: number;
+  };
+  severityDistribution: { severity: string; count: number }[];
+  waiversExpiringSoon: { id: string; vulnerability_id: string; rationale: string; expiry_date: string }[];
 }
 
-export interface HeatmapData {
-  severityLevels: string[];
-  ageRanges: string[];
-  cells: { x: number; y: number; count: number; productId?: string }[];
+export interface AuditDashboardData {
+  kpis: {
+    total_audits: number; in_progress: number; planned: number; completed: number;
+    total_findings: number; critical_findings: number; high_findings: number; open_findings: number;
+    total_capa: number; open_capa: number; completed_capa: number;
+  };
+  upcomingAudits: { id: string; title: string; scheduled_date: string; status: string }[];
+  recentFindings: { id: string; title: string; severity: string; status: string; audit_title: string }[];
 }
 
-export interface TrendsData {
-  securityTrends: { date: string; riskScore: number; total: number; critical: number; high: number }[];
-  projectTrends: { date: string; total: number; deviating: number }[];
+export async function fetchComplianceDashboard(): Promise<ComplianceDashboardData> {
+  const { data } = await apiClient.get<{ data: ComplianceDashboardData }>("/api/dashboard/compliance");
+  return data.data;
 }
 
-export interface ExecutiveDashboard {
-  snapshot: ExecutiveSnapshot | null;
-  kpis: KpiData;
-  kris: KriData[];
-  trends: TrendsData;
-  recentAlerts: unknown[];
-  orgPostures: unknown[];
-  lastUpdated: string;
+export async function fetchRiskDashboard(): Promise<RiskDashboardData> {
+  const { data } = await apiClient.get<{ data: RiskDashboardData }>("/api/dashboard/risk");
+  return data.data;
 }
 
-export interface MttrData {
-  overall: number;
-  bySeverity: Record<string, number>;
+export async function fetchAuditDashboard(): Promise<AuditDashboardData> {
+  const { data } = await apiClient.get<{ data: AuditDashboardData }>("/api/dashboard/audit");
+  return data.data;
 }
 
-export interface SlaBreachData {
-  total: number;
-  breached: number;
-  breachRate: number;
+export interface CommitteesDashboardData {
+  kpis: {
+    total_committees: number; planned: number; held: number; cancelled: number;
+    veg_committee: number; vuln_committee: number; saas_steering: number;
+    exec_security: number; exec_arbitration: number;
+    total_decisions: number; approved: number; rejected: number; deferred: number;
+  };
+  upcomingCommittees: { id: string; name: string; date: string; type: string; status: string }[];
+  recentDecisions: { id: string; title: string; outcome: string; committee_name: string; created_at: string }[];
 }
 
-export interface DistinctVsOccurrencesData {
-  distinctFindings: number;
-  totalOccurrences: number;
+export interface SaaSDashboardData {
+  kpis: {
+    total_apps: number; avg_readiness: number;
+    onboarding: number; go_live: number; offboarding: number;
+    gdpr_low: number; gdpr_medium: number; gdpr_high: number;
+    privacy_compliant: number; privacy_pending: number; privacy_non_compliant: number;
+    steering_passed: number; steering_failed: number;
+  };
+  lifecycleDistribution: { lifecycle_stage: string; count: number }[];
+  gdprRiskDistribution: { risk_level: string; count: number }[];
+  privacyDesignStatus: { status: string; count: number }[];
 }
 
-export interface CompliancePostureData {
-  complianceScore: number;
-  slaBreachRate: number;
-  mttrDays: number;
-  totalVulnerabilities: number;
-  openVulnerabilities: number;
-  fixedRate: number;
-  grade: "GREEN" | "AMBER" | "RED";
+export interface RoadmapsDashboardData {
+  kpis: {
+    total_roadmaps: number; avg_progress: number;
+    strategic: number; budgetary: number; regulatory: number;
+    on_time: number; delayed: number; critical: number;
+    total_projects: number; on_track: number; deviating: number; high_risk: number;
+    avg_rtd: number; avg_rtd_deviation: number;
+    total_budget: number; total_consumed: number;
+  };
+  milestoneStatusDistribution: { status: string; count: number }[];
+  projectStatusDistribution: { status: string; count: number }[];
+  budgetStats: { total_budget: number; total_consumed: number }[];
+  goLiveReadiness: { state: string; count: number }[];
 }
 
-export interface NexusLifecycleTopVuln {
-  vulnerabilityId: string;
-  type: "CVE" | "Sonatype";
-  severity: string;
-  occurrences: number;
-  applicationsImpacted: number;
-  organizationsImpacted: number;
-  firstSeen: string;
-  lastSeen: string;
+export async function fetchCommitteesDashboard(): Promise<CommitteesDashboardData> {
+  const { data } = await apiClient.get<{ data: CommitteesDashboardData }>("/api/dashboard/committees");
+  return data.data;
 }
 
-export interface NexusLifecycleSummary {
-  totalOrganizations: number;
-  totalApplications: number;
-  totalLatestReports: number;
-  distinctVulnerabilities: number;
-  totalOccurrences: number;
-  criticalDistinct: number;
-  highDistinct: number;
-  mediumDistinct: number;
-  lowDistinct: number;
-  topVulnerabilities: NexusLifecycleTopVuln[];
+export async function fetchSaaSDashboard(): Promise<SaaSDashboardData> {
+  const { data } = await apiClient.get<{ data: SaaSDashboardData }>("/api/dashboard/saas");
+  return data.data;
 }
 
-export interface NexusLifecycleOccurrence {
-  organizationName: string;
-  organizationId: string;
-  applicationName: string;
-  applicationId: string;
-  componentName: string;
-  reportDate: string;
+export async function fetchRoadmapsDashboard(): Promise<RoadmapsDashboardData> {
+  const { data } = await apiClient.get<{ data: RoadmapsDashboardData }>("/api/dashboard/roadmaps");
+  return data.data;
 }
-
-export interface LiveNexusTopVuln {
-  vulnerabilityId: string;
-  type: "CVE" | "SONATYPE";
-  severity: string;
-  occurrenceCount: number;
-  impactedApplications: number;
-  impactedOrganizations: number;
-  occurrences: Array<{
-    organizationId: string;
-    organizationName: string;
-    applicationId: string;
-    applicationName: string;
-    reportId: string;
-    reportDate: string;
-    componentName: string;
-    packageUrl: string;
-    path: string;
-    status: string;
-  }>;
-  waived: boolean;
-  lastSeen: string;
-}
-
-export interface TopRiskyApp {
-  applicationId: string;
-  applicationName: string;
-  organizationId: string;
-  organizationName: string;
-  criticalCount: number;
-  highCount: number;
-  mediumCount: number;
-  totalOpen: number;
-}
-
-export interface TopVulnerableComponent {
-  componentName: string;
-  componentVersion: string;
-  packageUrl: string;
-  criticalCount: number;
-  highCount: number;
-  totalOpen: number;
-  affectedApps: number;
-}
-
-export interface AppRequiringAction {
-  applicationId: string;
-  applicationName: string;
-  businessCriticality: string;
-  organizationName: string;
-  criticalCount: number;
-  highCount: number;
-  lastScanDate: string;
-}
-
-export interface LatestScanSummary {
-  scanId: string;
-  applicationId: string;
-  applicationName: string;
-  scanDate: string;
-  stage: string;
-  totalComponents: number;
-  criticalCount: number;
-  highCount: number;
-  mediumCount: number;
-  lowCount: number;
-  totalViolations: number;
-  policyEvaluationStatus: string;
-}
-
-export interface OrgRiskHeatmap {
-  organizationId: string;
-  organizationName: string;
-  totalApps: number;
-  criticalCount: number;
-  highCount: number;
-  totalOpen: number;
-  riskLevel: "GREEN" | "ORANGE" | "RED";
-}
-
-export interface OrgHierarchyItem {
-  organizationId: string;
-  organizationName: string;
-  parentOrganizationId: string | null;
-  parentOrganizationName: string | null;
-  totalApps: number;
-  scannedApps: number;
-  subOrganizationCount: number;
-  scanCoverageRate: number;
-  openCritical: number;
-  openHigh: number;
-  openMedium: number;
-  openLow: number;
-  totalOpen: number;
-}
-
-export interface ExecutiveSnapshot {
-  snapshotDate: string;
-  totalOrganizations: number;
-  totalApplications: number;
-  activeApplications: number;
-  inactiveApplications: number;
-  neverScanned: number;
-  scanCoverageRate: number;
-  averageScanAgeDays: number;
-  openCritical: number;
-  openHigh: number;
-  openMedium: number;
-  openLow: number;
-  totalOpenVulnerabilities: number;
-  distinctVulnerabilities: number;
-  occurrences: number;
-  mitigatedVulnerabilities: number;
-  acceptedRisks: number;
-  waivedCount: number;
-  falsePositives: number;
-  newVulnerabilities30d: number;
-  fixedVulnerabilities30d: number;
-  recurringVulnerabilities: number;
-  mttrDays: number;
-  avgTimeToCloseDays: number;
-  closedThisMonth: number;
-  applicationsOutOfSla: number;
-  acceptedRisksExpiringSoon: number;
-  expiredAcceptedRisks: number;
-  applicationsWithoutRecentScan: number;
-  criticalAppsWithoutScan: number;
-  complianceRate: number;
-  slaComplianceRate: number;
-  appsWithCriticalVulns: number;
-  appsWithHighVulns: number;
-  averageRiskScore: number;
-  productsRedCount: number;
-  productsOrangeCount: number;
-  productsGreenCount: number;
-  previousTotal: number;
-  previousCritical: number;
-  previousHigh: number;
-  previousRiskScore: number;
-  trendDirection: string;
-}
-
-export const dashboardApi = {
-  executive() {
-    return apiClient.get<{ data: ExecutiveDashboard }>("/api/dashboard/executive");
-  },
-  kpis() {
-    return apiClient.get<{ data: KpiData }>("/api/dashboard/kpi");
-  },
-  kris() {
-    return apiClient.get<{ data: KriData[] }>("/api/dashboard/kri");
-  },
-  heatmap() {
-    return apiClient.get<{ data: HeatmapData }>("/api/dashboard/heatmap");
-  },
-  trends(months = 12) {
-    return apiClient.get<{ data: TrendsData }>("/api/dashboard/trends", { params: { months } });
-  },
-  mttr() {
-    return apiClient.get<{ data: MttrData }>("/api/dashboard/mttr");
-  },
-  slaBreach() {
-    return apiClient.get<{ data: SlaBreachData }>("/api/dashboard/sla-breach");
-  },
-  distinctVsOccurrences() {
-    return apiClient.get<{ data: DistinctVsOccurrencesData }>("/api/dashboard/distinct-vs-occurrences");
-  },
-  compliancePosture() {
-    return apiClient.get<{ data: CompliancePostureData }>("/api/dashboard/compliance-posture");
-  },
-  nexusLifecycleSummary() {
-    return apiClient.get<{ data: NexusLifecycleSummary }>("/api/dashboard/nexus-lifecycle-summary");
-  },
-  nexusLifecycleOccurrences(vulnId: string) {
-    return apiClient.get<{ data: NexusLifecycleOccurrence[] }>(`/api/dashboard/nexus-lifecycle-occurrences/${encodeURIComponent(vulnId)}`);
-  },
-  topRiskyApps(limit = 20) {
-    return apiClient.get<{ data: TopRiskyApp[] }>("/api/dashboard/top-risky-apps", { params: { limit } });
-  },
-  topComponents(limit = 20) {
-    return apiClient.get<{ data: TopVulnerableComponent[] }>("/api/dashboard/top-components", { params: { limit } });
-  },
-  appsRequiringAction(limit = 20) {
-    return apiClient.get<{ data: AppRequiringAction[] }>("/api/dashboard/apps-requiring-action", { params: { limit } });
-  },
-  latestScanSummary(limit = 20) {
-    return apiClient.get<{ data: LatestScanSummary[] }>("/api/dashboard/latest-scan-summary", { params: { limit } });
-  },
-  orgRiskHeatmap() {
-    return apiClient.get<{ data: OrgRiskHeatmap[] }>("/api/dashboard/org-risk-heatmap");
-  },
-  orgHierarchy() {
-    return apiClient.get<{ data: OrgHierarchyItem[] }>("/api/dashboard/org-hierarchy");
-  },
-  orgDrilldown(orgId: string) {
-    return apiClient.get<{ data: any }>(`/api/dashboard/org-drilldown/${encodeURIComponent(orgId)}`);
-  },
-  fetchLiveNexusKpis(sessionToken: string) {
-    return apiClient.post<{ data: LiveNexusKpis }>("/api/nexus/kpis/executive/live", { sessionToken }, { timeout: 30000 });
-  },
-  dashboardPage(page: string) {
-    return apiClient.get<{ data: any }>(`/api/dashboard-pages/${page}`);
-  },
-};

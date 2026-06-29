@@ -74,6 +74,100 @@ router.get("/stats", async (_req: Request, res: Response, next: NextFunction) =>
 
 /**
  * @openapi
+ * /veg-deals/dashboard:
+ *   get:
+ *     tags: [VEG Deals]
+ *     summary: COMEX VEG Governance Dashboard data
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: year
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: client
+ *         schema: { type: string }
+ *       - in: query
+ *         name: region
+ *         schema: { type: string }
+ *       - in: query
+ *         name: businessLine
+ *         schema: { type: string }
+ *       - in: query
+ *         name: decision
+ *         schema: { type: string }
+ *       - in: query
+ *         name: salesStatus
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dealType
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vegDateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vegDateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: tcvMin
+ *         schema: { type: number }
+ *       - in: query
+ *         name: tcvMax
+ *         schema: { type: number }
+ *     responses:
+ *       200:
+ *         description: Dashboard data
+ */
+router.get("/dashboard", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const filters = {
+      year: req.query.year ? parseInt(req.query.year as string) : undefined,
+      client: req.query.client as string | undefined,
+      opportunityCrm: req.query.opportunityCrm as string | undefined,
+      businessOwner: req.query.businessOwner as string | undefined,
+      region: req.query.region as string | undefined,
+      businessLine: req.query.businessLine as string | undefined,
+      products: req.query.products as string | undefined,
+      committeeType: req.query.committeeType as string | undefined,
+      decision: req.query.decision as string | undefined,
+      salesStatus: req.query.salesStatus as string | undefined,
+      dealType: req.query.dealType as string | undefined,
+      duplicateCheck: req.query.duplicateCheck !== undefined ? req.query.duplicateCheck === "true" : undefined,
+      vegDateFrom: req.query.vegDateFrom as string | undefined,
+      vegDateTo: req.query.vegDateTo as string | undefined,
+      closingDateFrom: req.query.closingDateFrom as string | undefined,
+      closingDateTo: req.query.closingDateTo as string | undefined,
+      tcvMin: req.query.tcvMin ? parseFloat(req.query.tcvMin as string) : undefined,
+      tcvMax: req.query.tcvMax ? parseFloat(req.query.tcvMax as string) : undefined,
+      wlMin: req.query.wlMin ? parseFloat(req.query.wlMin as string) : undefined,
+      wlMax: req.query.wlMax ? parseFloat(req.query.wlMax as string) : undefined,
+    };
+    const data = await vegDealService.getDashboardData(filters);
+    res.json({ data });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /veg-deals/import:
+ *   post:
+ *     tags: [VEG Deals]
+ *     summary: Bulk import VEG deals from array of records
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Import result
+ */
+router.post("/import", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await vegDealService.importFromExcel(req.body.rows || []);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
  * /veg-deals/decisions:
  *   get:
  *     tags: [VEG Deals]

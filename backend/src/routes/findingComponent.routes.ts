@@ -38,4 +38,27 @@ router.delete("/:id", async (req: Request, res: Response) => {
   res.status(204).send();
 });
 
+router.get("/top-vulnerable", async (req: Request, res: Response) => {
+  const { limit = "20", search, minSeverity } = req.query;
+  const result = await findingComponentService.getTopVulnerableComponents(
+    Math.min(parseInt(limit as string, 10), 100),
+    { search: search as string, minSeverity: minSeverity as string }
+  );
+  res.json({ data: result });
+});
+
+router.get("/detail/:id", async (req: Request, res: Response) => {
+  const detail = await findingComponentService.getComponentDetail(req.params.id);
+  res.json(detail);
+});
+
+router.get("/by-finding/:findingId", async (req: Request, res: Response) => {
+  const { page = "1", limit = "20" } = req.query;
+  const result = await findingComponentService.getComponentsByFinding(req.params.findingId, {
+    page: parseInt(page as string, 10),
+    limit: Math.min(parseInt(limit as string, 10), 100),
+  });
+  res.json(result);
+});
+
 export default router;

@@ -38,4 +38,23 @@ export const findingComponentService = {
     if (!existing) throw new NotFoundError("FindingComponent", id);
     await findingComponentRepo.delete(id);
   },
+
+  async getTopVulnerableComponents(limit = 20, filters?: {
+    search?: string; minSeverity?: string;
+  }) {
+    return findingComponentRepo.getTopVulnerable(limit, filters);
+  },
+
+  async getComponentDetail(id: string) {
+    const detail = await findingComponentRepo.getComponentDetail(id);
+    if (!detail) throw new NotFoundError("FindingComponent", id);
+    return detail;
+  },
+
+  async getComponentsByFinding(findingId: string, filters: { page: number; limit: number }) {
+    const { unifiedFindingRepo } = await import("../repositories/unifiedFinding.repo.js");
+    const finding = await unifiedFindingRepo.getFinding(findingId);
+    if (!finding) throw new NotFoundError("UnifiedFinding", findingId);
+    return findingComponentRepo.listByFinding(findingId, filters);
+  },
 };

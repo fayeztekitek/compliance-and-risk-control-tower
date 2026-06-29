@@ -4,6 +4,7 @@ import { pool } from "./config/database.js";
 import { logger } from "./core/logger.js";
 import { authService } from "./services/auth.service.js";
 import { query } from "./config/database.js";
+import { notificationEngine } from "./services/engines/notification.engine.js";
 
 async function gracefulShutdown(signal: string) {
   logger.info({ signal }, "Shutting down gracefully...");
@@ -72,6 +73,10 @@ authService.seedDefaultUsers().then(() => seedReferenceData()).catch((err) => {
 
 import("./services/redis.js").then(({ connectRedis }) => connectRedis()).catch(() => {});
 
+notificationEngine.initialize().catch((err) => {
+  logger.warn({ err }, "Failed to initialize notification engine");
+});
+
 import("./services/enrichmentWorker.js").then(({ startEnrichmentWorker }) => {
   startEnrichmentWorker();
 }).catch((err) => {
@@ -92,7 +97,15 @@ import("./services/kpiSyncWorker.js").then(({ startKpiSyncWorker, scheduleKpiSyn
   logger.warn({ err }, "Failed to start KPI sync worker (Redis may be unavailable)");
 });
 
-import("./services/nexusSyncWorker.js").then(({ scheduleNexusSync }) => {
+import("./services/sonarqubeSyncWorker.js").then(({ startSonarqubeSyncWorker, scheduleSonarqubeSync }) => {
+  startSonarqubeSyncWorker();
+  scheduleSonarqubeSync();
+}).catch((err) => {
+  logger.warn({ err }, "Failed to start SonarQube sync worker (Redis may be unavailable)");
+});
+
+import("./services/nexusSyncWorker.js").then(({ scheduleNexusSync, startNexusSyncWorker }) => {
+  startNexusSyncWorker();
   scheduleNexusSync();
 }).catch((err) => {
   logger.warn({ err }, "Failed to schedule Nexus sync (Redis may be unavailable)");

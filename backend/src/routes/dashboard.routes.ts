@@ -6,11 +6,28 @@ import { vulnerabilityAggregationService } from "../services/vulnerabilityAggreg
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { rbacMiddleware } from "../middleware/rbac.middleware.js";
 import { getCached, setCache } from "../services/redis.js";
+import { DashboardFilters } from "../types/dashboard.js";
 
 const router = Router();
 
 router.use(authMiddleware);
 router.use(rbacMiddleware(["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "PRODUCT_OWNER", "AUDITOR", "EXECUTIVE_READ_ONLY"]));
+
+function extractFilters(req: Request): DashboardFilters {
+  return {
+    organizationIds: req.query.organizationIds ? String(req.query.organizationIds).split(",") : undefined,
+    applicationIds: req.query.applicationIds ? String(req.query.applicationIds).split(",") : undefined,
+    severities: req.query.severities ? String(req.query.severities).split(",") : undefined,
+    statuses: req.query.statuses ? String(req.query.statuses).split(",") : undefined,
+    reportPeriod: req.query.reportPeriod ? String(req.query.reportPeriod) : undefined,
+    reportDateFrom: req.query.reportDateFrom ? String(req.query.reportDateFrom) : undefined,
+    reportDateTo: req.query.reportDateTo ? String(req.query.reportDateTo) : undefined,
+    scanStatus: req.query.scanStatus ? String(req.query.scanStatus).split(",") : undefined,
+    riskLevel: req.query.riskLevel ? String(req.query.riskLevel).split(",") : undefined,
+    scanReportScope: req.query.scanReportScope ? String(req.query.scanReportScope) : undefined,
+    searchQuery: req.query.searchQuery ? String(req.query.searchQuery) : undefined,
+  };
+}
 
 /**
  * @openapi
@@ -27,15 +44,25 @@ router.use(rbacMiddleware(["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECUR
 const CACHE_KEY = "dashboard:executive";
 const CACHE_TTL = 60;
 
-router.get("/executive", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/executive", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const cached = await getCached<object>(CACHE_KEY);
-    if (cached) {
-      res.json({ data: cached, cached: true });
-      return;
+    const filters = extractFilters(req);
+    const hasFilters = Object.values(filters).some(v => v !== undefined);
+
+    if (!hasFilters) {
+      const cached = await getCached<object>(CACHE_KEY);
+      if (cached) {
+        res.json({ data: cached, cached: true });
+        return;
+      }
     }
-    const result = await dashboardService.getExecutiveDashboard();
-    await setCache(CACHE_KEY, result, CACHE_TTL);
+
+    const result = await dashboardService.getExecutiveDashboard(filters);
+
+    if (!hasFilters) {
+      await setCache(CACHE_KEY, result, CACHE_TTL);
+    }
+
     res.json({ data: result });
   } catch (err) { next(err); }
 });
@@ -201,9 +228,10 @@ router.get("/compliance-posture", async (_req: Request, res: Response, next: Nex
  *       200:
  *         description: List of orgs with parent/child relationships and aggregated metrics
  */
-router.get("/org-hierarchy", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/org-hierarchy", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await nexusRepo.getOrgHierarchy();
+    const filters = extractFilters(req);
+    const result = await nexusRepo.getOrgHierarchy(filters);
     res.json({ data: result });
   } catch (err) { next(err); }
 });
@@ -258,10 +286,11 @@ router.get("/nexus-lifecycle-occurrences/:vulnId", async (req: Request, res: Res
  *     tags: [Dashboard]
  *     summary: Top applications by vulnerability severity
  */
-router.get("/top-risky-apps", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/top-risky-apps", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(_req.query.limit as string) || 20;
-    const result = await nexusRepo.getTopRiskyApps(limit);
+    const filters = extractFilters(req);
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await nexusRepo.getTopRiskyApps(limit, filters);
     res.json({ data: result });
   } catch (err) { next(err); }
 });
@@ -273,10 +302,11 @@ router.get("/top-risky-apps", async (_req: Request, res: Response, next: NextFun
  *     tags: [Dashboard]
  *     summary: Top vulnerable components
  */
-router.get("/top-components", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/top-components", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(_req.query.limit as string) || 20;
-    const result = await nexusRepo.getTopVulnerableComponents(limit);
+    const filters = extractFilters(req);
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await nexusRepo.getTopVulnerableComponents(limit, filters);
     res.json({ data: result });
   } catch (err) { next(err); }
 });
@@ -288,10 +318,11 @@ router.get("/top-components", async (_req: Request, res: Response, next: NextFun
  *     tags: [Dashboard]
  *     summary: Applications with critical/high vulns needing immediate action
  */
-router.get("/apps-requiring-action", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/apps-requiring-action", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(_req.query.limit as string) || 20;
-    const result = await nexusRepo.getAppsRequiringAction(limit);
+    const filters = extractFilters(req);
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await nexusRepo.getAppsRequiringAction(limit, filters);
     res.json({ data: result });
   } catch (err) { next(err); }
 });
@@ -303,10 +334,11 @@ router.get("/apps-requiring-action", async (_req: Request, res: Response, next: 
  *     tags: [Dashboard]
  *     summary: Latest imported scan reports summary
  */
-router.get("/latest-scan-summary", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/latest-scan-summary", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const limit = parseInt(_req.query.limit as string) || 20;
-    const result = await nexusRepo.getLatestScanSummary(limit);
+    const filters = extractFilters(req);
+    const limit = parseInt(req.query.limit as string) || 20;
+    const result = await nexusRepo.getLatestScanSummary(limit, filters);
     res.json({ data: result });
   } catch (err) { next(err); }
 });
@@ -318,9 +350,10 @@ router.get("/latest-scan-summary", async (_req: Request, res: Response, next: Ne
  *     tags: [Dashboard]
  *     summary: Organization risk heatmap
  */
-router.get("/org-risk-heatmap", async (_req: Request, res: Response, next: NextFunction) => {
+router.get("/org-risk-heatmap", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await nexusRepo.getOrgRiskHeatmap();
+    const filters = extractFilters(req);
+    const result = await nexusRepo.getOrgRiskHeatmap(filters);
     res.json({ data: result });
   } catch (err) { next(err); }
 });
@@ -382,7 +415,8 @@ router.get("/latest-snapshot", async (_req: Request, res: Response, next: NextFu
  */
 router.get("/org-drilldown/:orgId", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await nexusRepo.getOrgDrilldown(req.params.orgId);
+    const filters = extractFilters(req);
+    const result = await nexusRepo.getOrgDrilldown(req.params.orgId, filters);
     if (!result) {
       res.status(404).json({ error: "Organization not found" });
       return;

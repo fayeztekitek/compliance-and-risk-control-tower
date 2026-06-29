@@ -96,21 +96,25 @@ export const kpiService = {
     const averageScanAgeDays = Number(avgScanAge.rows[0]?.avg_age || 0);
 
     // ── Security Posture KPIs ───────────────────────────────────────
+    // Uses unified_findings (canonical status source) not nexus_vulnerabilities
+    // because manual waivers update unified_findings.status but not nexus_vulnerabilities.status
     const vulnStats = await query(`
       SELECT
-        nv.severity,
-        nv.status,
-        COUNT(DISTINCT nv.vulnerability_id) as distinct_count,
+        uf.unified_severity as severity,
+        uf.status,
+        COUNT(DISTINCT uf.source_id) as distinct_count,
         COUNT(*) as occurrence_count,
-        COUNT(DISTINCT nv.application_id) as affected_apps
-      FROM nexus_vulnerabilities nv
-      WHERE nv.status IN ('Open', 'Accepted', 'Waived', 'False Positive')
-      GROUP BY nv.severity, nv.status
+        COUNT(DISTINCT uf.application_id) as affected_apps
+      FROM unified_findings uf
+      WHERE uf.status IN ('OPEN', 'WAIVED', 'ACCEPTED', 'FALSE_POSITIVE')
+        AND uf.source_tool = 'NEXUS'
+        AND uf.deleted_at IS NULL
+      GROUP BY uf.unified_severity, uf.status
     `);
 
     let openCritical = 0, openHigh = 0, openMedium = 0, openLow = 0;
     let totalOpenVulns = 0, distinctVulns = 0, occurrences = 0;
-    let falsePositives = 0, waivedCount = 0;
+    let falsePositives = 0, waivedCount = 0, acceptedCount = 0;
     const appsWithCritical = new Set<string>();
     const appsWithHigh = new Set<string>();
 
@@ -120,28 +124,28 @@ export const kpiService = {
       const occ = parseInt(r.occurrence_count, 10);
       const status = r.status;
 
-      if (status === 'Open') {
+      if (status === 'OPEN') {
         if (sev === 'CRITICAL') { openCritical += cnt; }
         else if (sev === 'HIGH') { openHigh += cnt; }
         else if (sev === 'MEDIUM') { openMedium += cnt; }
         else if (sev === 'LOW') { openLow += cnt; }
       }
-      if (status !== 'False Positive') {
+      if (status !== 'FALSE_POSITIVE') {
         distinctVulns += cnt;
         occurrences += occ;
       }
-      if (status === 'False Positive') {
+      if (status === 'FALSE_POSITIVE') {
         falsePositives += cnt;
       }
-      if (status === 'Open') {
+      if (status === 'OPEN') {
         totalOpenVulns += cnt;
       }
-      if (status === 'Open' || status === 'Accepted' || status === 'Waived') {
+      if (status === 'OPEN' || status === 'ACCEPTED' || status === 'WAIVED') {
         if (sev === 'CRITICAL') appsWithCritical.add(r.application_id);
         if (sev === 'HIGH') appsWithHigh.add(r.application_id);
       }
-      if (status === 'Waived') waivedCount += cnt;
-      if (status === 'Accepted') acceptedCount += cnt;
+      if (status === 'WAIVED') waivedCount += cnt;
+      if (status === 'ACCEPTED') acceptedCount += cnt;
     }
 
     // Average risk score from products

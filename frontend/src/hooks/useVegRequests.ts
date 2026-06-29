@@ -162,7 +162,15 @@ export function useVegDealStats() {
     queryKey: ["veg-deals", "stats"],
     queryFn: async () => {
       const { data } = await vegDealApi.getStats();
-      return data.data;
+      const raw = data.data;
+      return {
+        aggregates: raw.aggregates || { total_deals: "0", total_tcv: "0", avg_tcv: "0", won_deals: "0", lost_deals: "0", open_deals: "0" },
+        decisions: Array.isArray(raw.decisions) ? raw.decisions : [],
+        businessLines: Array.isArray(raw.businessLines) ? raw.businessLines : [],
+        regions: Array.isArray(raw.regions) ? raw.regions : [],
+        topClients: Array.isArray(raw.topClients) ? raw.topClients : [],
+        topOwners: Array.isArray(raw.topOwners) ? raw.topOwners : [],
+      };
     },
     staleTime: 5 * 60 * 1000,
   });

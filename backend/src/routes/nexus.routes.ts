@@ -514,8 +514,14 @@ router.post("/sync", async (req: Request, res: Response, next: NextFunction) => 
  */
 router.post("/sync/full", async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await nexusService.fullSync({ batchId: req.body?.batchId });
-    res.json({ data: result });
+    const { nexusSyncQueue } = await import("../services/nexusSyncWorker.js");
+    const job = await nexusSyncQueue.add("full-sync-manual", {
+      batchId: req.body?.batchId,
+      triggeredBy: (req as any).user?.id || "manual",
+      status: "queued",
+      progress: 0,
+    });
+    res.status(202).json({ data: { jobId: job.id, status: "queued" } });
   } catch (err: any) {
     next(err);
   }
@@ -559,6 +565,36 @@ router.get("/sync/logs", async (req: Request, res: Response, next: NextFunction)
     const result = await nexusService.listSyncLogs(page, limit);
     res.json(result);
   } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
+ * /nexus/sync/job/{jobId}:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get BullMQ job status for an async sync
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Job status with progress
+ */
+router.get("/sync/job/:jobId", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { getJobStatus } = await import("../services/nexusSyncWorker.js");
+    const status = await getJobStatus(req.params.jobId);
+    if (!status) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+    res.json({ data: status });
+  } catch (err: any) {
+    next(err);
+  }
 });
 
 /**

@@ -1,4 +1,48 @@
 import { query, getClient } from "../config/database.js";
+import { DashboardFilters } from "../types/dashboard.js";
+
+// Filter helpers
+function buildWhereClause(filters?: DashboardFilters): { clause: string; params: any[] } {
+  if (!filters) return { clause: "", params: [] };
+  const parts: string[] = [];
+  const params: any[] = [];
+  let idx = 1;
+
+  if (filters.organizationIds && filters.organizationIds.length > 0) {
+    parts.push(`o.organization_id = ANY($${idx}::text[])`);
+    params.push(filters.organizationIds);
+    idx++;
+  }
+
+  if (filters.applicationIds && filters.applicationIds.length > 0) {
+    parts.push(`a.application_id = ANY($${idx}::text[])`);
+    params.push(filters.applicationIds);
+    idx++;
+  }
+
+  if (filters.severities && filters.severities.length > 0 && filters.severities.length < 4) {
+    parts.push(`uf.unified_severity = ANY($${idx}::text[])`);
+    params.push(filters.severities);
+    idx++;
+  }
+
+  if (filters.statuses && filters.statuses.length > 0 && filters.statuses.length < 6) {
+    parts.push(`uf.status = ANY($${idx}::text[])`);
+    params.push(filters.statuses);
+    idx++;
+  }
+
+  if (filters.searchQuery) {
+    parts.push(`(a.application_name ILIKE $${idx} OR uf.cve ILIKE $${idx} OR uf.component_name ILIKE $${idx})`);
+    params.push(`%${filters.searchQuery}%`);
+    idx++;
+  }
+
+  return {
+    clause: parts.length > 0 ? ` AND ${parts.join(" AND ")}` : "",
+    params,
+  };
+}
 
 // ========== Products ==========
 const PRODUCT_COLS = ["id","created_at","updated_at","source_system","sync_batch_id","product_id","name","status","business_criticality","security_owner","product_owner"];
@@ -428,7 +472,8 @@ export const nexusRepo = {
     return r.rows.length ? orgRow(r.rows[0]) : null;
   },
 
-  async getOrgHierarchy() {
+  async getOrgHierarchy(filters?: DashboardFilters) {
+    const { clause, params } = buildWhereClause(filters);
     const r = await query(`
       SELECT
         o.organization_id, o.organization_name, o.parent_organization_id,
@@ -446,9 +491,10 @@ export const nexusRepo = {
       LEFT JOIN nexus_applications a ON a.organization_id = o.organization_id
       LEFT JOIN nexus_scan_reports sr ON sr.application_id = a.application_id
       LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+      WHERE 1=1${clause}
       GROUP BY o.organization_id, o.organization_name, o.parent_organization_id, p.organization_name
       ORDER BY o.parent_organization_id NULLS FIRST, o.organization_name
-    `);
+    `, params.length > 0 ? params : undefined);
     return r.rows.map((row: any) => ({
       organizationId: row.organization_id,
       organizationName: row.organization_name,
@@ -553,7 +599,8 @@ export const nexusRepo = {
 
   // ---- Dashboard Extended Queries ----
 
-  async getTopRiskyApps(limit = 20) {
+  async getTopRiskyApps(limit = 20, filters?: DashboardFilters) {
+    const { clause, params } = buildWhereClause(filters);
     const r = await query(`
       SELECT a.application_id, a.application_name, a.organization_id, o.organization_name,
         COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS critical_count,
@@ -561,13 +608,13 @@ export const nexusRepo = {
         COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'MEDIUM' THEN uf.id END) AS medium_count,
         COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open
       FROM nexus_applications a
-      LEFT JOIN nexus_organizations o ON a.organization_id = o.organization_id
+      JOIN nexus_organizations o ON o.organization_id = a.organization_id
       LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
-      GROUP BY a.application_id, a.application_name, a.organization_id, o.organization_name
-      HAVING COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) > 0
-      ORDER BY critical_count DESC, high_count DESC, total_open DESC
-      LIMIT $1
-    `, [limit]);
+      WHERE 1=1${clause}
+      GROUP BY a.id, a.application_id, a.application_name, a.organization_id, o.organization_name
+      ORDER BY critical_count DESC, high_count DESC
+      LIMIT $${params.length + 1}
+    `, [...params, limit]);
     return r.rows.map((row: any) => ({
       applicationId: row.application_id,
       applicationName: row.application_name,
@@ -580,7 +627,7 @@ export const nexusRepo = {
     }));
   },
 
-  async getTopVulnerableComponents(limit = 20) {
+  async getTopVulnerableComponents(limit = 20, filters?: DashboardFilters) {
     const r = await query(`
       SELECT uf.component_name, uf.component_version, uf.package_url,
         COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS critical_count,
@@ -605,7 +652,7 @@ export const nexusRepo = {
     }));
   },
 
-  async getAppsRequiringAction(limit = 20) {
+  async getAppsRequiringAction(limit = 20, filters?: DashboardFilters) {
     const r = await query(`
       SELECT a.application_id, a.application_name, a.business_criticality, o.organization_name,
         COALESCE(c.critical_count, 0) AS critical_count,
@@ -631,7 +678,7 @@ export const nexusRepo = {
     }));
   },
 
-  async getLatestScanSummary(limit = 20) {
+  async getLatestScanSummary(limit = 20, filters?: DashboardFilters) {
     const r = await query(`
       SELECT sr.scan_id, sr.application_id, a.application_name, sr.scan_date, sr.stage,
         sr.total_components, sr.critical_count, sr.high_count, sr.medium_count, sr.low_count,
@@ -657,7 +704,7 @@ export const nexusRepo = {
     }));
   },
 
-  async getOrgRiskHeatmap() {
+  async getOrgRiskHeatmap(filters?: DashboardFilters) {
     const r = await query(`
       SELECT o.organization_id, o.organization_name,
         COUNT(DISTINCT a.id) AS total_apps,
@@ -681,7 +728,7 @@ export const nexusRepo = {
     }));
   },
 
-  async getOrgDrilldown(orgId: string) {
+  async getOrgDrilldown(orgId: string, filters?: DashboardFilters) {
     const r = await query(`
       WITH RECURSIVE org_tree AS (
         SELECT o.organization_id, o.organization_name, o.parent_organization_id

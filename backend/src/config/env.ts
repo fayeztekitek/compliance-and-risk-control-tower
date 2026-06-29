@@ -30,4 +30,10 @@ export const env = {
   NEXUS_IQ_TLS_INSECURE: process.env.NEXUS_IQ_TLS_INSECURE === "true",
 
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
+
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
+  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+
+  SONARQUBE_URL: process.env.SONARQUBE_URL || "",
+  SONARQUBE_TOKEN: process.env.SONARQUBE_TOKEN || "",
 };
