@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig } from 'vite'
+import { visualizer } from "rollup-plugin-visualizer";
 function blockMockDataPlugin(): import('vite').Plugin {
   return {
     name: 'block-mock-data',
@@ -26,7 +27,14 @@ function blockMockDataPlugin(): import('vite').Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), blockMockDataPlugin()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    blockMockDataPlugin(),
+    ...(process.env.NODE_ENV === "production"
+      ? [visualizer({ filename: "dist/stats.html", open: false, gzipSize: true })]
+      : []),
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

@@ -1,78 +1,47 @@
-name: CI/CD
+name: Deploy
 
 on:
   push:
     branches: [main]
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_BACKEND: ${{ github.repository }}/backend
-  IMAGE_FRONTEND: ${{ github.repository }}/frontend
-  COMPOSE_FILE: docker-compose.prod.yml
-
 jobs:
-  build-and-push:
+  deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Log in to GHCR
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to DockerHub
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build & push backend
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and push backend
         uses: docker/build-push-action@v5
         with:
-          context: backend
-          file: backend/Dockerfile.prod
+          context: ./backend
+          file: ./backend/Dockerfile.prod
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_BACKEND }}:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_BACKEND }}:latest
-
-      - name: Build & push frontend
+          tags: ${{ secrets.DOCKER_USERNAME }}/ct-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
-          context: frontend
-          file: frontend/Dockerfile.prod
+          context: ./frontend
+          file: ./frontend/Dockerfile.prod
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_FRONTEND }}:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_FRONTEND }}:latest
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: secrets.DEPLOY_HOST != ''
-
-    steps:
-      - uses: actions/checkout@v4
-
+          tags: ${{ secrets.DOCKER_USERNAME }}/ct-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          key: ${{ secrets.DEPLOY_KEY }}
           script: |
-            set -e
-            cd ${{ secrets.DEPLOY_PATH || '/opt/compliance-tower' }}
-
-            # Pull latest compose file
-            git pull origin main
-
-            # Log in to GHCR
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-            # Pull new images
-            docker compose -f ${{ env.COMPOSE_FILE }} pull
-
-            # Restart services with new images
-            docker compose -f ${{ env.COMPOSE_FILE }} up -d --remove-orphans
-
-            # Clean up old images
-            docker image prune -f
+            cd /opt/compliance-tower
+            docker compose pull
+            docker compose up -d --force-recreate

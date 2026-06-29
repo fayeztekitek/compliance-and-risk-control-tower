@@ -1,5 +1,6 @@
 import pg from "pg";
 import { env } from "./env.js";
+import { logger } from "../core/logger.js";
 
 const { Pool } = pg;
 
@@ -11,10 +12,11 @@ export const pool = new Pool({
   password: env.DB_PASSWORD,
   max: env.DB_POOL_MAX,
   idleTimeoutMillis: env.DB_IDLE_TIMEOUT,
+  connectionTimeoutMillis: 5000,
 });
 
 pool.on("error", (err) => {
-  console.error("Unexpected database pool error:", err);
+  logger.error({ err }, "Unexpected database pool error");
 });
 
 export async function query<T extends pg.QueryResultRow = any>(
@@ -25,7 +27,7 @@ export async function query<T extends pg.QueryResultRow = any>(
   const result = await pool.query<T>(text, params);
   const duration = Date.now() - start;
   if (env.NODE_ENV === "development") {
-    console.log(`Query [${duration}ms]: ${text.substring(0, 100)}`);
+    logger.debug({ duration, query: text.substring(0, 100) }, "Query");
   }
   return result;
 }

@@ -43,7 +43,6 @@ services:
       JWT_SECRET: prod-secret-change-me
       CORS_ORIGIN: http://localhost:5173
       LOG_LEVEL: info
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
     ports:
       - "3000:3000"
     extra_hosts:
@@ -58,6 +57,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     container_name: ct-frontend
+    environment:
+      VITE_API_URL: http://api:3000
     ports:
       - "5173:80"
     depends_on:

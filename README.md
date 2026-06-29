@@ -46,13 +46,11 @@ node node_modules/vite/bin/vite.js --port 5173
 
 App runs at **http://localhost:5173**.
 
-### Seed Data
+### Data Source
 
-The backend auto-seeds on first startup:
-- **7 RBAC users** — admin: `fayez.tekitek@vermeg.com` / `admin123!`
-- **VEG deal register** — 2037 committee-reviewed deals
-- **Security findings** — sample vulnerabilities with waivers and risk acceptances
-- **Roadmaps & projects** — reference data for dashboard KPIs
+This application uses **only real synced data** — no mock or seed data is included. All dashboard pages show a `DATABASE_CACHE` badge indicating data comes from the synced PostgreSQL database. Configure a Nexus IQ server connection in the admin settings to start syncing.
+
+The first user (`fayez.tekitek@vermeg.com` / `admin123!`) is created via migration for initial access.
 
 ### Running Tests
 

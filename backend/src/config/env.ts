@@ -24,11 +24,10 @@ export const env = {
   RATE_LIMIT_WINDOW_MS: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10),
   RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
 
-  USE_MOCK_DATA: process.env.USE_MOCK_DATA === "true",
-
   NEXUS_IQ_URL: process.env.NEXUS_IQ_URL || "",
   NEXUS_IQ_USERNAME: process.env.NEXUS_IQ_USERNAME || "",
   NEXUS_IQ_TOKEN: process.env.NEXUS_IQ_TOKEN || "",
+  NEXUS_IQ_TLS_INSECURE: process.env.NEXUS_IQ_TLS_INSECURE === "true",
 
   LOG_LEVEL: process.env.LOG_LEVEL || "info",
 };

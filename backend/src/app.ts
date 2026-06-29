@@ -5,6 +5,7 @@ import swaggerUi from "swagger-ui-express";
 import { env } from "./config/env.js";
 import { swaggerSpec } from "./config/swagger.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
+import { correlationMiddleware } from "./middleware/correlation.middleware.js";
 import { generalLimiter, authLimiter } from "./middleware/rateLimit.middleware.js";
 import { logger } from "./core/logger.js";
 
@@ -51,6 +52,9 @@ const app = express();
 
 // Security headers
 app.use(helmet());
+
+// Correlation ID
+app.use(correlationMiddleware);
 
 // CORS
 app.use(cors({
