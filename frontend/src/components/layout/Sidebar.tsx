@@ -5,7 +5,7 @@ import {
   FileCheck, Users, Settings, LogOut, FileSignature, Scale, Shield,
   ChevronDown, ChevronRight, Sun, Moon, Building2, AppWindow, Bug,
   FileText, ShieldQuestion, AlertOctagon, CheckSquare, PanelLeftClose, PanelRightClose, User,
-  Star, Clock, Command, BarChart3, ScrollText, Siren, Bot, BookOpen, Plug, FileSpreadsheet, GitBranch, Camera,
+  Star, Clock, Command, BarChart3, ScrollText, Siren, Bot, BookOpen, Plug, FileSpreadsheet, GitBranch, Camera, Bell,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useDarkMode } from "../../hooks/useDarkMode";
@@ -141,6 +141,12 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "ai-agents", label: "AI Agents", icon: Bot, path: "/ai/agents", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
       { id: "ai-kb", label: "Knowledge Base", icon: BookOpen, path: "/ai/knowledge-base", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
       { id: "ai-connectors", label: "MCP Connectors", icon: Plug, path: "/ai/connectors", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER"] },
+    ],
+  },
+  {
+    title: "Notifications",
+    items: [
+      { id: "notifications", label: "Notification Center", icon: Bell, path: "/notifications", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "PRODUCT_OWNER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
     ],
   },
   {

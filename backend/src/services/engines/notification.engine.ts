@@ -133,18 +133,35 @@ class NotificationEngine {
     return result.rows[0].id;
   }
 
-  async getNotifications(limit = 50, offset = 0) {
+  async getNotifications(limit = 50, offset = 0, userId?: string) {
+    const params: any[] = [limit, offset];
+    let whereClause = "";
+    if (userId) { whereClause = "WHERE recipient = $3"; params.push(userId); }
     const result = await query(`
-      SELECT id, created_at, channel, recipient, subject, body, status, read_at, delivered_at
+      SELECT id, created_at, channel, recipient, subject, body, status, read_at, delivered_at,
+             type, link, entity_type, entity_id
       FROM notifications
+      ${whereClause}
       ORDER BY created_at DESC
       LIMIT $1 OFFSET $2
-    `, [limit, offset]);
+    `, params);
     return result.rows;
+  }
+
+  async getUnreadCount(userId: string): Promise<number> {
+    const result = await query(
+      `SELECT COUNT(*) FROM notifications WHERE recipient = $1 AND status NOT IN ('READ')`,
+      [userId]
+    );
+    return parseInt(result.rows[0].count, 10);
   }
 
   async markAsRead(notificationId: string): Promise<void> {
     await query(`UPDATE notifications SET status = 'READ', read_at = NOW() WHERE id = $1`, [notificationId]);
+  }
+
+  async markAllRead(userId: string): Promise<void> {
+    await query(`UPDATE notifications SET status = 'READ', read_at = NOW() WHERE recipient = $1 AND status NOT IN ('READ')`, [userId]);
   }
 }
 

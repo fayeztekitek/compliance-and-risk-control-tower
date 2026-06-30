@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { apiClient } from "../api/client";
 
 export interface AppNotification {
   id: string;
@@ -8,26 +9,85 @@ export interface AppNotification {
   read: boolean;
   createdAt: string;
   link?: string;
+  entityType?: string;
+  entityId?: string;
 }
 
 interface NotificationState {
   notifications: AppNotification[];
   unreadCount: number;
-  addNotification: (n: AppNotification) => void;
-  markRead: (id: string) => void;
-  markAllRead: () => void;
+  loading: boolean;
+  fetchNotifications: (filter?: string) => Promise<void>;
+  fetchUnreadCount: () => Promise<void>;
+  markRead: (id: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
   clearNotifications: () => void;
 }
 
+function mapBackendNotification(n: any): AppNotification {
+  return {
+    id: n.id,
+    title: n.subject || n.title || "",
+    body: n.body || "",
+    type: n.type || "info",
+    read: n.status === "READ" || !!n.read_at,
+    createdAt: n.created_at || n.createdAt,
+    link: n.link,
+    entityType: n.entity_type,
+    entityId: n.entity_id,
+  };
+}
+
 export const useNotificationStore = create<NotificationState>((set, get) => ({
-  notifications: [
-    { id: "1", title: "SLA Breach Detected", body: "3 vulnerabilities exceeded SLA in Nexus IQ", type: "error", read: false, createdAt: new Date().toISOString(), link: "/security" },
-    { id: "2", title: "Waiver Expiring", body: "Waiver W-2024-089 expires in 3 days", type: "warning", read: false, createdAt: new Date().toISOString(), link: "/security" },
-    { id: "3", title: "VEG Decision Required", body: "Deal ACME-2025-042 ready for committee review", type: "info", read: false, createdAt: new Date().toISOString(), link: "/veg/workflow" },
-  ],
-  get unreadCount() { return get().notifications.filter((n) => !n.read).length; },
-  addNotification: (n) => set({ notifications: [n, ...get().notifications].slice(0, 50) }),
-  markRead: (id) => set({ notifications: get().notifications.map((n) => n.id === id ? { ...n, read: true } : n) }),
-  markAllRead: () => set({ notifications: get().notifications.map((n) => ({ ...n, read: true })) }),
-  clearNotifications: () => set({ notifications: [] }),
+  notifications: [],
+  unreadCount: 0,
+  loading: false,
+
+  fetchNotifications: async (filter?: string) => {
+    set({ loading: true });
+    try {
+      const params: Record<string, string> = { limit: "50" };
+      if (filter) params.filter = filter;
+      const r = await apiClient.get<{ data: any[] }>("/api/notifications", { params });
+      const mapped = r.data.data.map(mapBackendNotification);
+      set({ notifications: mapped, loading: false });
+    } catch {
+      set({ loading: false });
+    }
+  },
+
+  fetchUnreadCount: async () => {
+    try {
+      const r = await apiClient.get<{ count: number }>("/api/notifications/unread-count");
+      set({ unreadCount: r.data.count });
+    } catch {
+      // ignore
+    }
+  },
+
+  markRead: async (id: string) => {
+    try {
+      await apiClient.patch(`/api/notifications/${id}/read`);
+      set({
+        notifications: get().notifications.map((n) => n.id === id ? { ...n, read: true } : n),
+        unreadCount: Math.max(0, get().unreadCount - 1),
+      });
+    } catch {
+      // ignore
+    }
+  },
+
+  markAllRead: async () => {
+    try {
+      await apiClient.patch("/api/notifications/read-all");
+      set({
+        notifications: get().notifications.map((n) => ({ ...n, read: true })),
+        unreadCount: 0,
+      });
+    } catch {
+      // ignore
+    }
+  },
+
+  clearNotifications: () => set({ notifications: [], unreadCount: 0 }),
 }));

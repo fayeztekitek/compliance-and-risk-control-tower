@@ -61,6 +61,7 @@ const SteercoOverviewPage = lazy(() => import("./pages/SteercoOverviewPage"));
 const KpiDefinitionsPage = lazy(() => import("./pages/KpiDefinitionsPage"));
 const WorkflowPage = lazy(() => import("./pages/WorkflowPage"));
 const WorkflowInstancePage = lazy(() => import("./pages/WorkflowInstancePage"));
+const NotificationCenterPage = lazy(() => import("./pages/NotificationCenterPage"));
 const RoadmapsPage = lazy(() => import("./pages/RoadmapsPage"));
 const RoadmapDetailPage = lazy(() => import("./pages/RoadmapDetailPage"));
 const RoadmapExecutiveDashboardPage = lazy(() => import("./pages/RoadmapExecutiveDashboardPage"));
@@ -232,6 +233,7 @@ export default function App() {
         <Route path="/kpi-definitions" element={<AuthLayout><KpiDefinitionsPage /></AuthLayout>} />
         <Route path="/workflow" element={<AuthLayout><WorkflowPage /></AuthLayout>} />
         <Route path="/workflow/:id" element={<AuthLayout><WorkflowInstancePage /></AuthLayout>} />
+        <Route path="/notifications" element={<AuthLayout><NotificationCenterPage /></AuthLayout>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
