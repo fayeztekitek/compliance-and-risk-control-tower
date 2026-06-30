@@ -8,6 +8,8 @@ import NotFoundPage from "./pages/NotFoundPage";
 import ErrorBoundary from "./components/ui/ErrorBoundary";
 import ToastContainer from "./components/ui/Toast";
 import { SkeletonPage } from "./components/ui/Skeleton";
+import { usePageContextStore } from "./store/pageContext.store";
+import ChatbotWidget from "./components/layout/ChatbotWidget";
 
 const VegGovernanceWorkspace = lazy(() => import("./pages/VegGovernanceWorkspace"));
 const VegComexDashboard = lazy(() => import("./pages/VegComexDashboard"));
@@ -45,8 +47,30 @@ const RoadmapsDashboard = lazy(() => import("./pages/RoadmapsDashboard"));
 const AiHubPage = lazy(() => import("./pages/AiHubPage"));
 const PromptLibraryPage = lazy(() => import("./pages/PromptLibraryPage"));
 const AiAgentsPage = lazy(() => import("./pages/AiAgentsPage"));
+const CopilotChatPage = lazy(() => import("./pages/CopilotChatPage"));
+const KnowledgeBasePage = lazy(() => import("./pages/KnowledgeBasePage"));
 
 function AuthLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const setPage = usePageContextStore(s => s.setPage);
+
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith("/executive") || path === "/") setPage("executive");
+    else if (path.startsWith("/compliance")) setPage("compliance");
+    else if (path.startsWith("/risk")) setPage("risk");
+    else if (path.startsWith("/audit")) setPage("audit");
+    else if (path.startsWith("/committees")) setPage("committees");
+    else if (path.startsWith("/roadmaps")) setPage("roadmaps");
+    else if (path.startsWith("/saas")) setPage("saas");
+    else if (path.startsWith("/veg")) setPage("veg");
+    else if (path.startsWith("/finding")) setPage("finding-components");
+    else if (path.startsWith("/vulnerabilities")) setPage("vulnerabilities");
+    else if (path.startsWith("/ai")) setPage("ai-hub");
+    else if (path.startsWith("/admin")) setPage("admin");
+    else if (path.startsWith("/security")) setPage("risk");
+  }, [location]);
+
   return (
     <div className="flex h-screen w-screen bg-slate-50 dark:bg-slate-950 overflow-hidden font-sans">
       <Sidebar />
@@ -60,6 +84,7 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
           </div>
         </main>
       </div>
+      <ChatbotWidget />
     </div>
   );
 }
@@ -165,6 +190,8 @@ export default function App() {
         <Route path="/ai" element={<AuthLayout><AiHubPage /></AuthLayout>} />
         <Route path="/ai/prompts" element={<AuthLayout><PromptLibraryPage /></AuthLayout>} />
         <Route path="/ai/agents" element={<AuthLayout><AiAgentsPage /></AuthLayout>} />
+        <Route path="/ai/copilot/:type" element={<AuthLayout><CopilotChatPage /></AuthLayout>} />
+        <Route path="/ai/knowledge-base" element={<AuthLayout><KnowledgeBasePage /></AuthLayout>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

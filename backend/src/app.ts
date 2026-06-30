@@ -59,6 +59,9 @@ import roadmapsDashboardRoutes from "./routes/roadmaps-dashboard.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import promptLibraryRoutes from "./routes/promptLibrary.routes.js";
 import agentRoutes from "./routes/agent.routes.js";
+import copilotRoutes from "./routes/copilot.routes.js";
+import knowledgeBaseRoutes from "./routes/knowledgeBase.routes.js";
+import chatbotRoutes from "./routes/chatbot.routes.js";
 
 const app = express();
 
@@ -140,6 +143,9 @@ app.use("/api", roadmapsDashboardRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/prompts", promptLibraryRoutes);
 app.use("/api/ai/agents", agentRoutes);
+app.use("/api/ai/copilots", copilotRoutes);
+app.use("/api/knowledge-base", knowledgeBaseRoutes);
+app.use("/api/chatbot", chatbotRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);
