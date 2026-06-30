@@ -62,6 +62,7 @@ import projectsExecutiveDashboardRoutes from "./routes/projects-executive-dashbo
 import roadmapMonitoringRoutes from "./routes/roadmap-monitoring.routes.js";
 import roadmapExecutiveDashboardRoutes from "./routes/roadmap-executive-dashboard.routes.js";
 import snapshotRoutes from "./routes/snapshot.routes.js";
+import traceabilityRoutes from "./routes/traceability.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import promptLibraryRoutes from "./routes/promptLibrary.routes.js";
 import agentRoutes from "./routes/agent.routes.js";
@@ -154,6 +155,7 @@ app.use("/api", projectsExecutiveDashboardRoutes);
 app.use("/api", roadmapMonitoringRoutes);
 app.use("/api", roadmapExecutiveDashboardRoutes);
 app.use("/api", snapshotRoutes);
+app.use("/api", traceabilityRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/prompts", promptLibraryRoutes);
 app.use("/api/ai/agents", agentRoutes);

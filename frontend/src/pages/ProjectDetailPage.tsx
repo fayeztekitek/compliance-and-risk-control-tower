@@ -10,6 +10,7 @@ import { Add, Edit, Delete, ArrowUpward, ArrowDownward, Remove, Camera } from "@
 import { projectApi, Project, ProjectMilestone, ProjectRisk } from "../api/project.api";
 import { PageHeader, StatCard } from "../components/ui/DashboardGrid";
 import RAGBadge from "../components/ui/RAGBadge";
+import RelatedItemsPanel from "../components/traceability/RelatedItemsPanel";
 import { format } from "date-fns";
 
 const RAG_FIELDS = ["planning", "quality", "scope", "governance", "security", "clientMood", "resources", "globalRisk"] as const;
@@ -133,6 +134,11 @@ const ProjectDetailPage: React.FC = () => {
           </Grid>
         ))}
       </Grid>
+
+      {/* Related Items */}
+      <Box mb={3}>
+        <RelatedItemsPanel entityType="project" entityId={id || ""} />
+      </Box>
 
       <Grid container spacing={3}>
         {/* Milestones */}
