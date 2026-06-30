@@ -58,6 +58,7 @@ const ProjectsExecutiveDashboardPage = lazy(() => import("./pages/ProjectsExecut
 const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
 const SteercoPage = lazy(() => import("./pages/SteercoPage"));
 const SteercoOverviewPage = lazy(() => import("./pages/SteercoOverviewPage"));
+const KpiDefinitionsPage = lazy(() => import("./pages/KpiDefinitionsPage"));
 const RoadmapsPage = lazy(() => import("./pages/RoadmapsPage"));
 const RoadmapDetailPage = lazy(() => import("./pages/RoadmapDetailPage"));
 const RoadmapExecutiveDashboardPage = lazy(() => import("./pages/RoadmapExecutiveDashboardPage"));
@@ -226,6 +227,7 @@ export default function App() {
         <Route path="/ai/connectors" element={<AuthLayout><McpConnectorsPage /></AuthLayout>} />
         <Route path="/reports/engine" element={<AuthLayout><ReportEnginePage /></AuthLayout>} />
         <Route path="/pipelines" element={<AuthLayout><PipelinesPage /></AuthLayout>} />
+        <Route path="/kpi-definitions" element={<AuthLayout><KpiDefinitionsPage /></AuthLayout>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
