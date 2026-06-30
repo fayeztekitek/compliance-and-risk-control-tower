@@ -52,6 +52,8 @@ const KnowledgeBasePage = lazy(() => import("./pages/KnowledgeBasePage"));
 const McpConnectorsPage = lazy(() => import("./pages/McpConnectorsPage"));
 const ReportEnginePage = lazy(() => import("./pages/ReportEnginePage"));
 const PipelinesPage = lazy(() => import("./pages/PipelinesPage"));
+const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
+const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
 
 function AuthLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -65,6 +67,7 @@ function AuthLayout({ children }: { children: React.ReactNode }) {
     else if (path.startsWith("/audit")) setPage("audit");
     else if (path.startsWith("/committees")) setPage("committees");
     else if (path.startsWith("/roadmaps")) setPage("roadmaps");
+    else if (path.startsWith("/projects")) setPage("projects");
     else if (path.startsWith("/saas")) setPage("saas");
     else if (path.startsWith("/veg")) setPage("veg");
     else if (path.startsWith("/finding")) setPage("finding-components");
@@ -164,6 +167,10 @@ export default function App() {
         {/* Roadmaps */}
         <Route path="/roadmaps" element={<AuthLayout><RoadmapWorkspace /></AuthLayout>} />
         <Route path="/roadmaps/dashboard" element={<AuthLayout><RoadmapsDashboard /></AuthLayout>} />
+
+        {/* Projects Monitoring */}
+        <Route path="/projects" element={<AuthLayout><ProjectsPage /></AuthLayout>} />
+        <Route path="/projects/dashboard" element={<AuthLayout><ProjectsDashboard /></AuthLayout>} />
 
         {/* SaaS */}
         <Route path="/saas" element={<AuthLayout><SaaSGovernanceWorkspace /></AuthLayout>} />

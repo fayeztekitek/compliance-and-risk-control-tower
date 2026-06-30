@@ -88,6 +88,22 @@ export async function fetchCommitteesDashboard(): Promise<CommitteesDashboardDat
   return data.data;
 }
 
+export interface ProjectsDashboardData {
+  kpis: {
+    total_projects: number; on_track: number; deviating: number; high_risk: number;
+    avg_rtd: number; avg_rtd_deviation: number;
+    avg_slippage_md: number; avg_test_automation: number;
+    total_budget: number; total_consumed: number; utilization_pct: number;
+  };
+  statusDistribution: { status: string; count: number }[];
+  goLiveReadiness: { state: string; count: number }[];
+}
+
+export async function fetchProjectsDashboard(): Promise<ProjectsDashboardData> {
+  const { data } = await apiClient.get<{ data: ProjectsDashboardData }>("/api/dashboard/projects");
+  return data.data;
+}
+
 export async function fetchSaaSDashboard(): Promise<SaaSDashboardData> {
   const { data } = await apiClient.get<{ data: SaaSDashboardData }>("/api/dashboard/saas");
   return data.data;

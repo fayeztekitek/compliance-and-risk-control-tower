@@ -89,8 +89,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Projects Monitoring",
     items: [
-      { id: "proj-dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/roadmaps/dashboard", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"], comingSoon: true },
-      { id: "projects", label: "Projects", icon: Briefcase, path: "/roadmaps", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"], comingSoon: true },
+      { id: "proj-dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/projects/dashboard", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
+      { id: "projects", label: "Projects", icon: Briefcase, path: "/projects", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
     ],
   },
   {
