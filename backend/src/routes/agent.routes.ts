@@ -23,6 +23,52 @@ router.get("/", async (_req: Request, res: Response, next: NextFunction) => {
   } catch (err) { next(err); }
 });
 
+router.get("/runs", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const agentType = req.query.agentType as string | undefined;
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+    const result = await agentService.getRunLogs(agentType, page, limit);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+router.get("/recommendations", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const agentType = req.query.agentType as string | undefined;
+    const unreadOnly = req.query.unreadOnly === "true";
+    const page = parseInt(req.query.page as string, 10) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string, 10) || 20, 100);
+    const result = await agentService.getRecommendations(agentType, unreadOnly, page, limit);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
+router.post("/recommendations/:id/read", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await agentService.markRecommendationRead(req.params.id);
+    res.json({ data: { success: true } });
+  } catch (err) { next(err); }
+});
+
+router.post("/recommendations/:id/dismiss", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await agentService.dismissRecommendation(req.params.id);
+    res.json({ data: { success: true } });
+  } catch (err) { next(err); }
+});
+
+router.post("/:agentType/run", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { agentType } = req.params;
+    if (!AGENT_DEFINITIONS[agentType as AgentType]) {
+      throw new ValidationError(`Unknown agent: ${agentType}`);
+    }
+    const result = await agentService.runAutonomous(agentType as AgentType, "manual");
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
 router.post("/:agentType/chat", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { agentType } = req.params;

@@ -54,3 +54,5 @@ export async function invalidateCache(key: string): Promise<void> {
     // non-fatal
   }
 }
+
+export const ioRedis = getRedis();

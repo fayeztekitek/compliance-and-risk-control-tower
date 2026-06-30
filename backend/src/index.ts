@@ -111,6 +111,12 @@ import("./services/nexusSyncWorker.js").then(({ scheduleNexusSync, startNexusSyn
   logger.warn({ err }, "Failed to schedule Nexus sync (Redis may be unavailable)");
 });
 
+import("./services/queues/agentScheduleWorker.js").then(({ registerAgentSchedules }) => {
+  registerAgentSchedules();
+}).catch((err) => {
+  logger.warn({ err }, "Failed to start agent schedule worker (Redis may be unavailable)");
+});
+
 app.listen(env.PORT, "0.0.0.0", () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, "Server started");
 });
