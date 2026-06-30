@@ -82,6 +82,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: "Roadmaps Monitoring",
     items: [
+      { id: "roadmaps-exec-dashboard", label: "Executive Dashboard", icon: BarChart3, path: "/roadmaps/executive-dashboard", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
       { id: "roadmaps-dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/roadmaps/dashboard", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
       { id: "roadmaps", label: "Roadmaps", icon: Map, path: "/roadmaps", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
       { id: "snapshots", label: "Snapshots", icon: Camera, path: "/snapshots", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },

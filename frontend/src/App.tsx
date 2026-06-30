@@ -56,6 +56,7 @@ const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
 const RoadmapsPage = lazy(() => import("./pages/RoadmapsPage"));
 const RoadmapDetailPage = lazy(() => import("./pages/RoadmapDetailPage"));
+const RoadmapExecutiveDashboardPage = lazy(() => import("./pages/RoadmapExecutiveDashboardPage"));
 const SnapshotOverviewPage = lazy(() => import("./pages/SnapshotOverviewPage"));
 const SnapshotDetailPage = lazy(() => import("./pages/SnapshotDetailPage"));
 const SnapshotComparePage = lazy(() => import("./pages/SnapshotComparePage"));
@@ -173,6 +174,7 @@ export default function App() {
         <Route path="/roadmaps" element={<AuthLayout><RoadmapsPage /></AuthLayout>} />
         <Route path="/roadmaps/:id" element={<AuthLayout><RoadmapDetailPage /></AuthLayout>} />
         <Route path="/roadmaps/dashboard" element={<AuthLayout><RoadmapsDashboard /></AuthLayout>} />
+        <Route path="/roadmaps/executive-dashboard" element={<AuthLayout><RoadmapExecutiveDashboardPage /></AuthLayout>} />
 
         {/* Snapshots */}
         <Route path="/snapshots" element={<AuthLayout><SnapshotOverviewPage /></AuthLayout>} />

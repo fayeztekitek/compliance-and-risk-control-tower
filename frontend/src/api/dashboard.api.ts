@@ -114,6 +114,29 @@ export async function fetchRoadmapsDashboard(): Promise<RoadmapsDashboardData> {
   return data.data;
 }
 
+export interface RoadmapExecutiveDashboardData {
+  kpis: {
+    totalRoadmaps: number; avgProgress: number;
+    totalProjects: number; onTrack: number; deviating: number; highRisk: number;
+    capacityGap: number; capacityUtilization: number;
+    avgRtd: number; avgRtdDeviation: number;
+    totalBudget: number; totalConsumed: number; burnRate: number;
+    overrunCount: number; totalOverrun: number;
+  };
+  milestoneStatusDistribution: { name: string; value: number }[];
+  typeDistribution: { name: string; value: number }[];
+  rtdByRoadmap: { roadmap_name: string; project_count: number; avg_rtd: number; avg_deviation: number; progress: number; milestone_status: string }[];
+  snapshotTrend: {
+    period: string; avg_rtd: number; avg_deviation: number;
+    total_projects: number; on_track: number; deviating: number; high_risk: number;
+  }[];
+}
+
+export async function fetchRoadmapExecutiveDashboard(): Promise<RoadmapExecutiveDashboardData> {
+  const { data } = await apiClient.get<{ data: RoadmapExecutiveDashboardData }>("/api/roadmaps/executive-dashboard");
+  return data.data;
+}
+
 export interface OrgDrilldownData {
   kpis: Record<string, number>;
   severityDistribution: { severity: string; count: number }[];
