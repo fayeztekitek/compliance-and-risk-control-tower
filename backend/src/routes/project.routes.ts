@@ -496,4 +496,20 @@ router.post("/contractual-obligations/:id/verify", async (req, res, next) => {
   catch (err: any) { next(err.name === "ZodError" ? new ValidationError("Invalid input", err.flatten().fieldErrors) : err); }
 });
 
+// ========== Milestones ==========
+router.get("/projects/:id/milestones", zodHandler(r => projectService.listMilestones(r.params.id)));
+router.post("/projects/:id/milestones", zodHandler(r => projectService.createMilestone(r.params.id, r.body)));
+router.patch("/milestones/:id", zodHandler(r => projectService.updateMilestone(r.params.id, r.body)));
+router.delete("/milestones/:id", zodHandler(r => projectService.deleteMilestone(r.params.id)));
+
+// ========== Risks ==========
+router.get("/projects/:id/risks", zodHandler(r => projectService.listRisks(r.params.id)));
+router.post("/projects/:id/risks", zodHandler(r => projectService.createRisk(r.params.id, r.body)));
+router.patch("/risks/:id", zodHandler(r => projectService.updateRisk(r.params.id, r.body)));
+router.delete("/risks/:id", zodHandler(r => projectService.deleteRisk(r.params.id)));
+
+// ========== Status Snapshots ==========
+router.get("/projects/:id/status-snapshots", zodHandler(r => projectService.listStatusSnapshots(r.params.id)));
+router.post("/projects/:id/status-snapshots", zodHandler(r => projectService.createStatusSnapshot(r.params.id)));
+
 export default router;

@@ -74,4 +74,20 @@ export const projectService = {
   async listObligations() { return projectRepo.listObligations(); },
   async createObligation(data: any) { return projectRepo.createObligation(data); },
   async verifyObligation(id: string, data: any) { return projectRepo.verifyObligation(id, data); },
+
+  // Milestones
+  async listMilestones(projectId: string) { return projectRepo.listMilestones(projectId); },
+  async createMilestone(projectId: string, data: any) { await this.getProject(projectId); return projectRepo.createMilestone(projectId, data); },
+  async updateMilestone(id: string, data: any) { const m = await projectRepo.updateMilestone(id, data); if (!m) throw new NotFoundError("Milestone", id); return m; },
+  async deleteMilestone(id: string) { return projectRepo.deleteMilestone(id); },
+
+  // Risks
+  async listRisks(projectId: string) { return projectRepo.listRisks(projectId); },
+  async createRisk(projectId: string, data: any) { await this.getProject(projectId); return projectRepo.createRisk(projectId, data); },
+  async updateRisk(id: string, data: any) { const r = await projectRepo.updateRisk(id, data); if (!r) throw new NotFoundError("Risk", id); return r; },
+  async deleteRisk(id: string) { return projectRepo.deleteRisk(id); },
+
+  // Status Snapshots
+  async listStatusSnapshots(projectId: string) { return projectRepo.listStatusSnapshots(projectId); },
+  async createStatusSnapshot(projectId: string) { await this.getProject(projectId); return projectRepo.createStatusSnapshot(projectId); },
 };

@@ -1,7 +1,7 @@
 import { query, getClient } from "../config/database.js";
 
 // ========== Projects ==========
-const PROJECT_COLS = ["id","created_at","updated_at","name","code","manager","initial_budget","consumed_budget","roadmap_id","status","rtd_value","rtd_deviation","slippage_md","test_automation_rate","go_live_readiness_state","deleted_at"];
+const PROJECT_COLS = ["id","created_at","updated_at","name","code","manager","initial_budget","consumed_budget","roadmap_id","status","rtd_value","rtd_deviation","slippage_md","test_automation_rate","go_live_readiness_state","deleted_at","planning","quality","scope","governance","security","client_mood","resources","global_risk","executive_message","planning_trend","quality_trend","scope_trend","governance_trend","security_trend","client_mood_trend","resources_trend","global_risk_trend"];
 
 function projectRow(r: any) {
   return {
@@ -12,6 +12,13 @@ function projectRow(r: any) {
     rtdValue: Number(r.rtd_value), rtdDeviation: Number(r.rtd_deviation),
     slippageMd: Number(r.slippage_md), testAutomationRate: Number(r.test_automation_rate),
     goLiveReadinessState: r.go_live_readiness_state,
+    planning: r.planning, quality: r.quality, scope: r.scope,
+    governance: r.governance, security: r.security, clientMood: r.client_mood,
+    resources: r.resources, globalRisk: r.global_risk,
+    executiveMessage: r.executive_message,
+    planningTrend: r.planning_trend, qualityTrend: r.quality_trend, scopeTrend: r.scope_trend,
+    governanceTrend: r.governance_trend, securityTrend: r.security_trend, clientMoodTrend: r.client_mood_trend,
+    resourcesTrend: r.resources_trend, globalRiskTrend: r.global_risk_trend,
   };
 }
 
@@ -54,7 +61,7 @@ export const projectRepo = {
 
   async update(id: string, data: any) {
     const fields: string[] = []; const params: any[] = []; let idx = 1;
-    const map: Record<string, string> = { name: "name", manager: "manager", status: "status", consumedBudget: "consumed_budget", slippageMd: "slippage_md", testAutomationRate: "test_automation_rate", goLiveReadinessState: "go_live_readiness_state" };
+    const map: Record<string, string> = { name: "name", manager: "manager", status: "status", consumedBudget: "consumed_budget", slippageMd: "slippage_md", testAutomationRate: "test_automation_rate", goLiveReadinessState: "go_live_readiness_state", planning: "planning", quality: "quality", scope: "scope", governance: "governance", security: "security", clientMood: "client_mood", resources: "resources", globalRisk: "global_risk", executiveMessage: "executive_message", planningTrend: "planning_trend", qualityTrend: "quality_trend", scopeTrend: "scope_trend", governanceTrend: "governance_trend", securityTrend: "security_trend", clientMoodTrend: "client_mood_trend", resourcesTrend: "resources_trend", globalRiskTrend: "global_risk_trend", initialBudget: "initial_budget", rtdValue: "rtd_value", rtdDeviation: "rtd_deviation" };
     for (const [k, c] of Object.entries(map)) { if (data[k] !== undefined) { fields.push(`${c}=$${idx++}`); params.push(data[k]); } }
     if (!fields.length) return null;
     params.push(id);
@@ -316,5 +323,71 @@ export const projectRepo = {
     const r = await query("UPDATE contractual_obligations SET status=$1, verified_by=$2, last_verified_date=CURRENT_DATE WHERE id=$3 RETURNING id,created_at,updated_at,title,source_contract,requirement,frequency,last_verified_date,status,verified_by",
       [data.status, data.verifiedBy || null, id]);
     return r.rows.length ? r.rows[0] : null;
+  },
+
+  // ========== Milestones ==========
+  async listMilestones(projectId: string) {
+    const r = await query("SELECT * FROM project_milestones WHERE project_id=$1 ORDER BY due_date ASC NULLS LAST", [projectId]);
+    return r.rows.map((row: any) => ({ id: row.id, projectId: row.project_id, title: row.title, description: row.description, dueDate: row.due_date, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }));
+  },
+
+  async createMilestone(projectId: string, data: any) {
+    const r = await query("INSERT INTO project_milestones (project_id, title, description, due_date, status) VALUES ($1,$2,$3,$4,$5) RETURNING *",
+      [projectId, data.title, data.description || null, data.dueDate || null, data.status || "PENDING"]);
+    return r.rows[0];
+  },
+
+  async updateMilestone(id: string, data: any) {
+    const fields: string[] = []; const params: any[] = []; let idx = 1;
+    const map: Record<string, string> = { title: "title", description: "description", dueDate: "due_date", status: "status" };
+    for (const [k, c] of Object.entries(map)) { if (data[k] !== undefined) { fields.push(`${c}=$${idx++}`); params.push(data[k]); } }
+    if (!fields.length) return null;
+    params.push(id);
+    const r = await query(`UPDATE project_milestones SET ${fields.join(",")} WHERE id=$${idx} RETURNING *`, params);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async deleteMilestone(id: string) {
+    await query("DELETE FROM project_milestones WHERE id=$1", [id]);
+  },
+
+  // ========== Risks ==========
+  async listRisks(projectId: string) {
+    const r = await query("SELECT * FROM project_risks WHERE project_id=$1 ORDER BY created_at DESC", [projectId]);
+    return r.rows.map((row: any) => ({ id: row.id, projectId: row.project_id, title: row.title, description: row.description, severity: row.severity, category: row.category, status: row.status, owner: row.owner, createdAt: row.created_at, updatedAt: row.updated_at }));
+  },
+
+  async createRisk(projectId: string, data: any) {
+    const r = await query("INSERT INTO project_risks (project_id, title, description, severity, category, status, owner) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *",
+      [projectId, data.title, data.description || null, data.severity || "AMBER", data.category || null, data.status || "OPEN", data.owner || null]);
+    return r.rows[0];
+  },
+
+  async updateRisk(id: string, data: any) {
+    const fields: string[] = []; const params: any[] = []; let idx = 1;
+    const map: Record<string, string> = { title: "title", description: "description", severity: "severity", category: "category", status: "status", owner: "owner" };
+    for (const [k, c] of Object.entries(map)) { if (data[k] !== undefined) { fields.push(`${c}=$${idx++}`); params.push(data[k]); } }
+    if (!fields.length) return null;
+    params.push(id);
+    const r = await query(`UPDATE project_risks SET ${fields.join(",")} WHERE id=$${idx} RETURNING *`, params);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async deleteRisk(id: string) {
+    await query("DELETE FROM project_risks WHERE id=$1", [id]);
+  },
+
+  // ========== Status Snapshots ==========
+  async listStatusSnapshots(projectId: string) {
+    const r = await query("SELECT * FROM project_status_snapshots WHERE project_id=$1 ORDER BY snapshot_date DESC", [projectId]);
+    return r.rows.map((row: any) => ({ id: row.id, projectId: row.project_id, snapshotDate: row.snapshot_date, planning: row.planning, quality: row.quality, scope: row.scope, governance: row.governance, security: row.security, clientMood: row.client_mood, resources: row.resources, globalRisk: row.global_risk, executiveMessage: row.executive_message, planningTrend: row.planning_trend, qualityTrend: row.quality_trend, scopeTrend: row.scope_trend, governanceTrend: row.governance_trend, securityTrend: row.security_trend, clientMoodTrend: row.client_mood_trend, resourcesTrend: row.resources_trend, globalRiskTrend: row.global_risk_trend, createdAt: row.created_at }));
+  },
+
+  async createStatusSnapshot(projectId: string) {
+    const project = await this.getById(projectId);
+    if (!project) return null;
+    const r = await query(`INSERT INTO project_status_snapshots (project_id, planning, quality, scope, governance, security, client_mood, resources, global_risk, executive_message, planning_trend, quality_trend, scope_trend, governance_trend, security_trend, client_mood_trend, resources_trend, global_risk_trend) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING *`,
+      [projectId, project.planning, project.quality, project.scope, project.governance, project.security, project.clientMood, project.resources, project.globalRisk, project.executiveMessage, project.planningTrend, project.qualityTrend, project.scopeTrend, project.governanceTrend, project.securityTrend, project.clientMoodTrend, project.resourcesTrend, project.globalRiskTrend]);
+    return r.rows[0];
   },
 };

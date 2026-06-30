@@ -54,6 +54,7 @@ const ReportEnginePage = lazy(() => import("./pages/ReportEnginePage"));
 const PipelinesPage = lazy(() => import("./pages/PipelinesPage"));
 const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
+const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
 const RoadmapsPage = lazy(() => import("./pages/RoadmapsPage"));
 const RoadmapDetailPage = lazy(() => import("./pages/RoadmapDetailPage"));
 const RoadmapExecutiveDashboardPage = lazy(() => import("./pages/RoadmapExecutiveDashboardPage"));
@@ -184,6 +185,7 @@ export default function App() {
         {/* Projects Monitoring */}
         <Route path="/projects" element={<AuthLayout><ProjectsPage /></AuthLayout>} />
         <Route path="/projects/dashboard" element={<AuthLayout><ProjectsDashboard /></AuthLayout>} />
+        <Route path="/projects/:id" element={<AuthLayout><ProjectDetailPage /></AuthLayout>} />
 
         {/* SaaS */}
         <Route path="/saas" element={<AuthLayout><SaaSGovernanceWorkspace /></AuthLayout>} />

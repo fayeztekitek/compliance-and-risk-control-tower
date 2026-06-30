@@ -15,6 +15,57 @@ export interface Project {
   testAutomationRate: number;
   goLiveReadinessState: "READY" | "RISKY" | "BLOCKED";
   createdAt?: string;
+
+  planning: "GREEN" | "AMBER" | "RED";
+  quality: "GREEN" | "AMBER" | "RED";
+  scope: "GREEN" | "AMBER" | "RED";
+  governance: "GREEN" | "AMBER" | "RED";
+  security: "GREEN" | "AMBER" | "RED";
+  clientMood: "GREEN" | "AMBER" | "RED";
+  resources: "GREEN" | "AMBER" | "RED";
+  globalRisk: "GREEN" | "AMBER" | "RED";
+  executiveMessage: string | null;
+  planningTrend: string;
+  qualityTrend: string;
+  scopeTrend: string;
+  governanceTrend: string;
+  securityTrend: string;
+  clientMoodTrend: string;
+  resourcesTrend: string;
+  globalRiskTrend: string;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface ProjectRisk {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  severity: "GREEN" | "AMBER" | "RED";
+  category: string | null;
+  status: string;
+  owner: string | null;
+  createdAt: string;
+}
+
+export interface StatusSnapshot {
+  id: string;
+  projectId: string;
+  snapshotDate: string;
+  planning: string; quality: string; scope: string;
+  governance: string; security: string; clientMood: string;
+  resources: string; globalRisk: string;
+  executiveMessage: string | null;
+  createdAt: string;
 }
 
 export interface Roadmap {
@@ -71,6 +122,39 @@ export const projectApi = {
   },
   listRoadmaps() {
     return apiClient.get<{ data: Roadmap[] }>("/api/roadmaps");
+  },
+  // Milestones
+  listMilestones(projectId: string) {
+    return apiClient.get<{ data: ProjectMilestone[] }>(`/api/projects/${projectId}/milestones`);
+  },
+  createMilestone(projectId: string, data: Partial<ProjectMilestone>) {
+    return apiClient.post<{ data: ProjectMilestone }>(`/api/projects/${projectId}/milestones`, data);
+  },
+  updateMilestone(id: string, data: Partial<ProjectMilestone>) {
+    return apiClient.patch<{ data: ProjectMilestone }>(`/api/milestones/${id}`, data);
+  },
+  deleteMilestone(id: string) {
+    return apiClient.delete(`/api/milestones/${id}`);
+  },
+  // Risks
+  listRisks(projectId: string) {
+    return apiClient.get<{ data: ProjectRisk[] }>(`/api/projects/${projectId}/risks`);
+  },
+  createRisk(projectId: string, data: Partial<ProjectRisk>) {
+    return apiClient.post<{ data: ProjectRisk }>(`/api/projects/${projectId}/risks`, data);
+  },
+  updateRisk(id: string, data: Partial<ProjectRisk>) {
+    return apiClient.patch<{ data: ProjectRisk }>(`/api/risks/${id}`, data);
+  },
+  deleteRisk(id: string) {
+    return apiClient.delete(`/api/risks/${id}`);
+  },
+  // Status Snapshots
+  listStatusSnapshots(projectId: string) {
+    return apiClient.get<{ data: StatusSnapshot[] }>(`/api/projects/${projectId}/status-snapshots`);
+  },
+  createStatusSnapshot(projectId: string) {
+    return apiClient.post<{ data: StatusSnapshot }>(`/api/projects/${projectId}/status-snapshots`);
   },
 };
 
