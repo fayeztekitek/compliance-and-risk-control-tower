@@ -73,3 +73,42 @@ export const projectApi = {
     return apiClient.get<{ data: Roadmap[] }>("/api/roadmaps");
   },
 };
+
+export interface EnrichedRoadmap extends Roadmap {
+  projectCount: number;
+  onTrackCount: number;
+  deviatingCount: number;
+  highRiskCount: number;
+  totalBudget: number;
+  totalConsumed: number;
+  avgRtd: number;
+  avgRtdDeviation: number;
+}
+
+export interface RoadmapProjectSummary {
+  id: string;
+  name: string;
+  code: string;
+  manager: string;
+  initialBudget: number;
+  consumedBudget: number;
+  status: string;
+  rtdValue: number;
+  rtdDeviation: number;
+  slippageMd: number;
+  testAutomationRate: number;
+  goLiveReadinessState: string;
+}
+
+export interface RoadmapDetailData extends Roadmap {
+  projects: RoadmapProjectSummary[];
+}
+
+export const roadmapMonitoringApi = {
+  list() {
+    return apiClient.get<{ data: EnrichedRoadmap[] }>("/api/roadmaps/enriched");
+  },
+  getDetail(id: string) {
+    return apiClient.get<{ data: RoadmapDetailData }>(`/api/roadmaps/${id}/detail`);
+  },
+};

@@ -54,6 +54,8 @@ const ReportEnginePage = lazy(() => import("./pages/ReportEnginePage"));
 const PipelinesPage = lazy(() => import("./pages/PipelinesPage"));
 const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
+const RoadmapsPage = lazy(() => import("./pages/RoadmapsPage"));
+const RoadmapDetailPage = lazy(() => import("./pages/RoadmapDetailPage"));
 
 function AuthLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -164,8 +166,9 @@ export default function App() {
         <Route path="/nexus/vuln/:vulnId" element={<AuthLayout><NexusVulnerabilityDetail /></AuthLayout>} />
         <Route path="/nexus/occurrence/:occId" element={<AuthLayout><NexusOccurrenceDetail /></AuthLayout>} />
 
-        {/* Roadmaps */}
-        <Route path="/roadmaps" element={<AuthLayout><RoadmapWorkspace /></AuthLayout>} />
+        {/* Roadmaps Monitoring */}
+        <Route path="/roadmaps" element={<AuthLayout><RoadmapsPage /></AuthLayout>} />
+        <Route path="/roadmaps/:id" element={<AuthLayout><RoadmapDetailPage /></AuthLayout>} />
         <Route path="/roadmaps/dashboard" element={<AuthLayout><RoadmapsDashboard /></AuthLayout>} />
 
         {/* Projects Monitoring */}
