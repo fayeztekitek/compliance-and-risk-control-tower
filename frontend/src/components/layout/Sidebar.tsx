@@ -18,6 +18,7 @@ interface NavItem {
   path: string;
   allowedRoles: UserRole[];
   children?: { label: string; path: string }[];
+  comingSoon?: boolean;
 }
 
 interface NavGroup {
@@ -30,8 +31,8 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Executive",
     items: [
       { id: "exec-dashboard", label: "Executive Dashboard", icon: LayoutDashboard, path: "/dashboard", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "PRODUCT_OWNER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
-      { id: "comex-dashboard", label: "COMEX Dashboard", icon: BarChart3, path: "/veg/dashboard", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "PRODUCT_OWNER", "EXECUTIVE_READ_ONLY"] },
       { id: "exec-reports", label: "Executive Reports", icon: FileText, path: "/executive/reports", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+      { id: "report-engine", label: "Report Engine", icon: FileSpreadsheet, path: "/reports/engine", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER"] },
       { id: "alerts", label: "Alerts & Notifications", icon: Siren, path: "/executive/alerts", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "EXECUTIVE_READ_ONLY"] },
     ],
   },
@@ -74,15 +75,22 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "waived", label: "Waived / Accepted Risks", icon: CheckSquare, path: "/waived-accepted-risks", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
       { id: "policy-rules", label: "Policy Rules", icon: Shield, path: "/policy-rules", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
       { id: "reports", label: "Security Reports", icon: FileText, path: "/reports", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
-      { id: "report-engine", label: "Report Engine", icon: FileSpreadsheet, path: "/reports/engine", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER"] },
       { id: "security", label: "Security Console", icon: ShieldAlert, path: "/security", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+      { id: "pipelines", label: "CI/CD Pipelines", icon: GitBranch, path: "/pipelines", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "SECURITY_MANAGER", "RISK_MANAGER"] },
     ],
   },
   {
-    title: "Roadmaps & Projects",
+    title: "Roadmaps Monitoring",
     items: [
       { id: "roadmaps-dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/roadmaps/dashboard", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
       { id: "roadmaps", label: "Roadmaps", icon: Map, path: "/roadmaps", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
+    ],
+  },
+  {
+    title: "Projects Monitoring",
+    items: [
+      { id: "proj-dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/roadmaps/dashboard", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"], comingSoon: true },
+      { id: "projects", label: "Projects", icon: Briefcase, path: "/roadmaps", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"], comingSoon: true },
     ],
   },
   {
@@ -122,20 +130,19 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: "Administration",
-    items: [
-      { id: "admin", label: "Settings", icon: Settings, path: "/admin", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER"] },
-    ],
-  },
-  {
-    title: "AI Assistant",
+    title: "AI Hub",
     items: [
       { id: "ai-hub", label: "AI Hub", icon: Command, path: "/ai", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
       { id: "ai-prompts", label: "Prompt Library", icon: FileText, path: "/ai/prompts", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER"] },
       { id: "ai-agents", label: "AI Agents", icon: Bot, path: "/ai/agents", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
       { id: "ai-kb", label: "Knowledge Base", icon: BookOpen, path: "/ai/knowledge-base", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
       { id: "ai-connectors", label: "MCP Connectors", icon: Plug, path: "/ai/connectors", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER"] },
-      { id: "pipelines", label: "CI/CD Pipelines", icon: GitBranch, path: "/pipelines", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "SECURITY_MANAGER", "RISK_MANAGER"] },
+    ],
+  },
+  {
+    title: "Administration",
+    items: [
+      { id: "admin", label: "Settings", icon: Settings, path: "/admin", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER"] },
     ],
   },
 ];
@@ -271,24 +278,28 @@ export default function Sidebar() {
                 const isExpanded = expanded.has(item.id);
                 const fav = isFavorite(item.path);
 
-                return (
-                  <div key={item.id}>
-                    <div className="flex items-center">
-                      <button
-                        onClick={() => {
-                          if (hasChildren) {
-                            toggleExpand(item.id);
-                          } else {
-                            navigate(item.path);
-                          }
-                        }}
-                        className={`flex-1 flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                          active ? "bg-indigo-600 text-white" : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                        }`}
-                      >
+                  return (
+                    <div key={item.id}>
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => {
+                            if (item.comingSoon) return;
+                            if (hasChildren) {
+                              toggleExpand(item.id);
+                            } else {
+                              navigate(item.path);
+                            }
+                          }}
+                          className={`flex-1 flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            active ? "bg-indigo-600 text-white" : item.comingSoon ? "text-slate-500 cursor-default" : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                          }`}
+                        >
                         <div className="flex items-center gap-2 min-w-0">
                           <Icon className="w-4 h-4 shrink-0" />
                           <span className="truncate">{item.label}</span>
+                          {item.comingSoon && (
+                            <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded shrink-0">Soon</span>
+                          )}
                         </div>
                         {hasChildren && (
                           isExpanded ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />
