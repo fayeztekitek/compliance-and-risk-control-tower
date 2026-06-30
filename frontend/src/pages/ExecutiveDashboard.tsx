@@ -75,7 +75,7 @@ export default function ExecutiveDashboard() {
         lastUpdated={lastUpdated}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {dashboard.kpiCards.map((kpi, i) => (
           <KpiCard key={i} {...kpi} />
         ))}
@@ -89,7 +89,7 @@ export default function ExecutiveDashboard() {
           </h2>
           <span className="text-xs text-slate-400">{dashboard.totalOrgs} organizations</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
           {dashboard.topLevelOrganizations.map((org) => (
             <OrganizationCard
               key={org.id}

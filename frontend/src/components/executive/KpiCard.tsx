@@ -64,19 +64,19 @@ export function KpiCard({ icon, title, value, delta, deltaLabel, deltaDirection 
   const deltaColor = deltaDirection === "up" ? "text-red-500" : deltaDirection === "down" ? "text-green-500" : "text-slate-400";
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-full ${colors.bg} flex items-center justify-center shrink-0`}>
-          <Icon className={`w-6 h-6 ${colors.icon}`} />
+    <div className="bg-white rounded-xl border border-slate-200 p-4 md:p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-3 md:gap-4">
+        <div className={`w-10 h-10 md:w-12 md:h-12 rounded-full shrink-0 flex items-center justify-center ${colors.bg}`}>
+          <Icon className={`w-5 h-5 md:w-6 md:h-6 ${colors.icon}`} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{title}</p>
-          <p className="text-2xl font-bold text-slate-900 mt-0.5">{value.toLocaleString()}</p>
+          <p className="text-[10px] md:text-xs font-medium text-slate-500 uppercase tracking-wider whitespace-normal break-words">{title}</p>
+          <p className="text-xl md:text-2xl font-bold text-slate-900 mt-0.5 break-words">{value.toLocaleString()}</p>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-slate-100">
-        <DeltaIcon className={`w-3.5 h-3.5 ${deltaColor}`} />
-        <span className={`text-xs font-medium ${deltaColor}`}>
+      <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-100">
+        <DeltaIcon className={`w-3 h-3 md:w-3.5 md:h-3.5 ${deltaColor} shrink-0`} />
+        <span className={`text-[11px] md:text-xs font-medium ${deltaColor} truncate`}>
           {delta >= 0 ? "+" : ""}{delta} {deltaLabel}
         </span>
       </div>
