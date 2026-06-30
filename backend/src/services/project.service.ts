@@ -90,4 +90,23 @@ export const projectService = {
   // Status Snapshots
   async listStatusSnapshots(projectId: string) { return projectRepo.listStatusSnapshots(projectId); },
   async createStatusSnapshot(projectId: string) { await this.getProject(projectId); return projectRepo.createStatusSnapshot(projectId); },
+
+  // SteerCo Meetings
+  async listSteercoMeetings(projectId?: string) { return projectRepo.listSteercoMeetings(projectId); },
+  async getSteercoMeeting(id: string) { const m = await projectRepo.getSteercoMeeting(id); if (!m) throw new NotFoundError("Meeting", id); return m; },
+  async createSteercoMeeting(projectId: string, data: any) { await this.getProject(projectId); return projectRepo.createSteercoMeeting(projectId, data); },
+  async updateSteercoMeeting(id: string, data: any) { const m = await projectRepo.updateSteercoMeeting(id, data); if (!m) throw new NotFoundError("Meeting", id); return m; },
+  async deleteSteercoMeeting(id: string) { return projectRepo.deleteSteercoMeeting(id); },
+
+  // SteerCo Decisions
+  async listSteercoDecisions(meetingId: string) { return projectRepo.listSteercoDecisions(meetingId); },
+  async createSteercoDecision(meetingId: string, data: any) { return projectRepo.createSteercoDecision(meetingId, data); },
+  async updateSteercoDecision(id: string, data: any) { const d = await projectRepo.updateSteercoDecision(id, data); if (!d) throw new NotFoundError("Decision", id); return d; },
+  async deleteSteercoDecision(id: string) { return projectRepo.deleteSteercoDecision(id); },
+
+  // SteerCo Action Items
+  async listSteercoActionItems(meetingId: string) { return projectRepo.listSteercoActionItems(meetingId); },
+  async createSteercoActionItem(meetingId: string, data: any) { return projectRepo.createSteercoActionItem(meetingId, data); },
+  async updateSteercoActionItem(id: string, data: any) { const a = await projectRepo.updateSteercoActionItem(id, data); if (!a) throw new NotFoundError("Action item", id); return a; },
+  async deleteSteercoActionItem(id: string) { return projectRepo.deleteSteercoActionItem(id); },
 };

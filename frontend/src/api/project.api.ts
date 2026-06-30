@@ -156,7 +156,84 @@ export const projectApi = {
   createStatusSnapshot(projectId: string) {
     return apiClient.post<{ data: StatusSnapshot }>(`/api/projects/${projectId}/status-snapshots`);
   },
+  // SteerCo Meetings
+  listSteercoMeetings(projectId?: string) {
+    const url = projectId ? `/api/projects/${projectId}/steerco-meetings` : "/api/steerco-meetings";
+    return apiClient.get<{ data: SteercoMeeting[] }>(url);
+  },
+  getSteercoMeeting(id: string) {
+    return apiClient.get<{ data: SteercoMeeting }>(`/api/steerco-meetings/${id}`);
+  },
+  createSteercoMeeting(projectId: string, data: Partial<SteercoMeeting>) {
+    return apiClient.post<{ data: SteercoMeeting }>(`/api/projects/${projectId}/steerco-meetings`, data);
+  },
+  updateSteercoMeeting(id: string, data: Partial<SteercoMeeting>) {
+    return apiClient.patch<{ data: SteercoMeeting }>(`/api/steerco-meetings/${id}`, data);
+  },
+  deleteSteercoMeeting(id: string) {
+    return apiClient.delete(`/api/steerco-meetings/${id}`);
+  },
+  // SteerCo Decisions
+  listSteercoDecisions(meetingId: string) {
+    return apiClient.get<{ data: SteercoDecision[] }>(`/api/steerco-meetings/${meetingId}/decisions`);
+  },
+  createSteercoDecision(meetingId: string, data: Partial<SteercoDecision>) {
+    return apiClient.post<{ data: SteercoDecision }>(`/api/steerco-meetings/${meetingId}/decisions`, data);
+  },
+  updateSteercoDecision(id: string, data: Partial<SteercoDecision>) {
+    return apiClient.patch<{ data: SteercoDecision }>(`/api/steerco-decisions/${id}`, data);
+  },
+  deleteSteercoDecision(id: string) {
+    return apiClient.delete(`/api/steerco-decisions/${id}`);
+  },
+  // SteerCo Action Items
+  listSteercoActionItems(meetingId: string) {
+    return apiClient.get<{ data: SteercoActionItem[] }>(`/api/steerco-meetings/${meetingId}/action-items`);
+  },
+  createSteercoActionItem(meetingId: string, data: Partial<SteercoActionItem>) {
+    return apiClient.post<{ data: SteercoActionItem }>(`/api/steerco-meetings/${meetingId}/action-items`, data);
+  },
+  updateSteercoActionItem(id: string, data: Partial<SteercoActionItem>) {
+    return apiClient.patch<{ data: SteercoActionItem }>(`/api/steerco-action-items/${id}`, data);
+  },
+  deleteSteercoActionItem(id: string) {
+    return apiClient.delete(`/api/steerco-action-items/${id}`);
+  },
 };
+
+export interface SteercoMeeting {
+  id: string;
+  projectId: string;
+  title: string;
+  date: string;
+  time: string | null;
+  status: string;
+  notes: string | null;
+  participants: string[];
+  createdAt: string;
+}
+
+export interface SteercoDecision {
+  id: string;
+  meetingId: string;
+  title: string;
+  description: string | null;
+  owner: string | null;
+  dueDate: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface SteercoActionItem {
+  id: string;
+  meetingId: string;
+  title: string;
+  assignee: string | null;
+  dueDate: string | null;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+}
 
 export interface EnrichedRoadmap extends Roadmap {
   projectCount: number;

@@ -93,6 +93,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "proj-dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/projects/dashboard", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
       { id: "projects", label: "Projects", icon: Briefcase, path: "/projects", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
+      { id: "steerco", label: "SteerCo", icon: Users, path: "/steerco", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
     ],
   },
   {

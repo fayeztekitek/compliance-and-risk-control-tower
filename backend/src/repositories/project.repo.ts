@@ -390,4 +390,90 @@ export const projectRepo = {
       [projectId, project.planning, project.quality, project.scope, project.governance, project.security, project.clientMood, project.resources, project.globalRisk, project.executiveMessage, project.planningTrend, project.qualityTrend, project.scopeTrend, project.governanceTrend, project.securityTrend, project.clientMoodTrend, project.resourcesTrend, project.globalRiskTrend]);
     return r.rows[0];
   },
+
+  // ========== SteerCo Meetings ==========
+  async listSteercoMeetings(projectId?: string) {
+    const cond = projectId ? "WHERE project_id = $1" : "";
+    const params = projectId ? [projectId] : [];
+    const r = await query(`SELECT * FROM steerco_meetings ${cond} ORDER BY date DESC`, params);
+    return r.rows.map((row: any) => ({ id: row.id, projectId: row.project_id, title: row.title, date: row.date, time: row.time, status: row.status, notes: row.notes, participants: row.participants || [], createdAt: row.created_at, updatedAt: row.updated_at }));
+  },
+
+  async getSteercoMeeting(id: string) {
+    const r = await query("SELECT * FROM steerco_meetings WHERE id=$1", [id]);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async createSteercoMeeting(projectId: string, data: any) {
+    const r = await query("INSERT INTO steerco_meetings (project_id, title, date, time, notes, participants) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *",
+      [projectId, data.title, data.date || new Date().toISOString().split("T")[0], data.time || null, data.notes || null, data.participants || []]);
+    return r.rows[0];
+  },
+
+  async updateSteercoMeeting(id: string, data: any) {
+    const fields: string[] = []; const params: any[] = []; let idx = 1;
+    const map: Record<string, string> = { title: "title", date: "date", time: "time", status: "status", notes: "notes" };
+    for (const [k, c] of Object.entries(map)) { if (data[k] !== undefined) { fields.push(`${c}=$${idx++}`); params.push(data[k]); } }
+    if (data.participants) { fields.push(`participants=$${idx++}`); params.push(data.participants); }
+    if (!fields.length) return null;
+    params.push(id);
+    const r = await query(`UPDATE steerco_meetings SET ${fields.join(",")} WHERE id=$${idx} RETURNING *`, params);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async deleteSteercoMeeting(id: string) {
+    await query("DELETE FROM steerco_meetings WHERE id=$1", [id]);
+  },
+
+  // ========== SteerCo Decisions ==========
+  async listSteercoDecisions(meetingId: string) {
+    const r = await query("SELECT * FROM steerco_decisions WHERE meeting_id=$1 ORDER BY created_at DESC", [meetingId]);
+    return r.rows.map((row: any) => ({ id: row.id, meetingId: row.meeting_id, title: row.title, description: row.description, owner: row.owner, dueDate: row.due_date, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }));
+  },
+
+  async createSteercoDecision(meetingId: string, data: any) {
+    const r = await query("INSERT INTO steerco_decisions (meeting_id, title, description, owner, due_date) VALUES ($1,$2,$3,$4,$5) RETURNING *",
+      [meetingId, data.title, data.description || null, data.owner || null, data.dueDate || null]);
+    return r.rows[0];
+  },
+
+  async updateSteercoDecision(id: string, data: any) {
+    const fields: string[] = []; const params: any[] = []; let idx = 1;
+    const map: Record<string, string> = { title: "title", description: "description", owner: "owner", dueDate: "due_date", status: "status" };
+    for (const [k, c] of Object.entries(map)) { if (data[k] !== undefined) { fields.push(`${c}=$${idx++}`); params.push(data[k]); } }
+    if (!fields.length) return null;
+    params.push(id);
+    const r = await query(`UPDATE steerco_decisions SET ${fields.join(",")} WHERE id=$${idx} RETURNING *`, params);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async deleteSteercoDecision(id: string) {
+    await query("DELETE FROM steerco_decisions WHERE id=$1", [id]);
+  },
+
+  // ========== SteerCo Action Items ==========
+  async listSteercoActionItems(meetingId: string) {
+    const r = await query("SELECT * FROM steerco_action_items WHERE meeting_id=$1 ORDER BY created_at DESC", [meetingId]);
+    return r.rows.map((row: any) => ({ id: row.id, meetingId: row.meeting_id, title: row.title, assignee: row.assignee, dueDate: row.due_date, status: row.status, notes: row.notes, createdAt: row.created_at, updatedAt: row.updated_at }));
+  },
+
+  async createSteercoActionItem(meetingId: string, data: any) {
+    const r = await query("INSERT INTO steerco_action_items (meeting_id, title, assignee, due_date, notes) VALUES ($1,$2,$3,$4,$5) RETURNING *",
+      [meetingId, data.title, data.assignee || null, data.dueDate || null, data.notes || null]);
+    return r.rows[0];
+  },
+
+  async updateSteercoActionItem(id: string, data: any) {
+    const fields: string[] = []; const params: any[] = []; let idx = 1;
+    const map: Record<string, string> = { title: "title", assignee: "assignee", dueDate: "due_date", status: "status", notes: "notes" };
+    for (const [k, c] of Object.entries(map)) { if (data[k] !== undefined) { fields.push(`${c}=$${idx++}`); params.push(data[k]); } }
+    if (!fields.length) return null;
+    params.push(id);
+    const r = await query(`UPDATE steerco_action_items SET ${fields.join(",")} WHERE id=$${idx} RETURNING *`, params);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async deleteSteercoActionItem(id: string) {
+    await query("DELETE FROM steerco_action_items WHERE id=$1", [id]);
+  },
 };

@@ -512,4 +512,24 @@ router.delete("/risks/:id", zodHandler(r => projectService.deleteRisk(r.params.i
 router.get("/projects/:id/status-snapshots", zodHandler(r => projectService.listStatusSnapshots(r.params.id)));
 router.post("/projects/:id/status-snapshots", zodHandler(r => projectService.createStatusSnapshot(r.params.id)));
 
+// ========== SteerCo Meetings ==========
+router.get("/steerco-meetings", zodHandler(_r => projectService.listSteercoMeetings()));
+router.get("/projects/:id/steerco-meetings", zodHandler(r => projectService.listSteercoMeetings(r.params.id)));
+router.get("/steerco-meetings/:id", zodHandler(r => projectService.getSteercoMeeting(r.params.id)));
+router.post("/projects/:id/steerco-meetings", zodHandler(r => projectService.createSteercoMeeting(r.params.id, r.body)));
+router.patch("/steerco-meetings/:id", zodHandler(r => projectService.updateSteercoMeeting(r.params.id, r.body)));
+router.delete("/steerco-meetings/:id", zodHandler(r => projectService.deleteSteercoMeeting(r.params.id)));
+
+// ========== SteerCo Decisions ==========
+router.get("/steerco-meetings/:id/decisions", zodHandler(r => projectService.listSteercoDecisions(r.params.id)));
+router.post("/steerco-meetings/:id/decisions", zodHandler(r => projectService.createSteercoDecision(r.params.id, r.body)));
+router.patch("/steerco-decisions/:id", zodHandler(r => projectService.updateSteercoDecision(r.params.id, r.body)));
+router.delete("/steerco-decisions/:id", zodHandler(r => projectService.deleteSteercoDecision(r.params.id)));
+
+// ========== SteerCo Action Items ==========
+router.get("/steerco-meetings/:id/action-items", zodHandler(r => projectService.listSteercoActionItems(r.params.id)));
+router.post("/steerco-meetings/:id/action-items", zodHandler(r => projectService.createSteercoActionItem(r.params.id, r.body)));
+router.patch("/steerco-action-items/:id", zodHandler(r => projectService.updateSteercoActionItem(r.params.id, r.body)));
+router.delete("/steerco-action-items/:id", zodHandler(r => projectService.deleteSteercoActionItem(r.params.id)));
+
 export default router;
