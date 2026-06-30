@@ -54,6 +54,7 @@ const ReportEnginePage = lazy(() => import("./pages/ReportEnginePage"));
 const PipelinesPage = lazy(() => import("./pages/PipelinesPage"));
 const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
+const ProjectsExecutiveDashboardPage = lazy(() => import("./pages/ProjectsExecutiveDashboardPage"));
 const ProjectDetailPage = lazy(() => import("./pages/ProjectDetailPage"));
 const SteercoPage = lazy(() => import("./pages/SteercoPage"));
 const SteercoOverviewPage = lazy(() => import("./pages/SteercoOverviewPage"));
@@ -187,6 +188,7 @@ export default function App() {
         {/* Projects Monitoring */}
         <Route path="/projects" element={<AuthLayout><ProjectsPage /></AuthLayout>} />
         <Route path="/projects/dashboard" element={<AuthLayout><ProjectsDashboard /></AuthLayout>} />
+        <Route path="/projects/executive-dashboard" element={<AuthLayout><ProjectsExecutiveDashboardPage /></AuthLayout>} />
         <Route path="/projects/:id" element={<AuthLayout><ProjectDetailPage /></AuthLayout>} />
         <Route path="/projects/:id/steerco" element={<AuthLayout><SteercoPage /></AuthLayout>} />
         <Route path="/steerco" element={<AuthLayout><SteercoOverviewPage /></AuthLayout>} />
