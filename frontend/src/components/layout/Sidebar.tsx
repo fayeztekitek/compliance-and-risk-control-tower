@@ -5,7 +5,7 @@ import {
   FileCheck, Users, Settings, LogOut, FileSignature, Scale, Shield,
   ChevronDown, ChevronRight, Sun, Moon, Building2, AppWindow, Bug,
   FileText, ShieldQuestion, AlertOctagon, CheckSquare, PanelLeftClose, PanelRightClose, User,
-  Star, Clock, Command, BarChart3, ScrollText, Siren, Bot, BookOpen, Plug, FileSpreadsheet, GitBranch,
+  Star, Clock, Command, BarChart3, ScrollText, Siren, Bot, BookOpen, Plug, FileSpreadsheet, GitBranch, Camera,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useDarkMode } from "../../hooks/useDarkMode";
@@ -84,6 +84,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "roadmaps-dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/roadmaps/dashboard", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
       { id: "roadmaps", label: "Roadmaps", icon: Map, path: "/roadmaps", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
+      { id: "snapshots", label: "Snapshots", icon: Camera, path: "/snapshots", allowedRoles: ["ADMIN", "PRODUCT_OWNER", "RISK_MANAGER", "EXECUTIVE_READ_ONLY"] },
     ],
   },
   {

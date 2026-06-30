@@ -56,6 +56,9 @@ const ProjectsPage = lazy(() => import("./pages/ProjectsPage"));
 const ProjectsDashboard = lazy(() => import("./pages/ProjectsDashboard"));
 const RoadmapsPage = lazy(() => import("./pages/RoadmapsPage"));
 const RoadmapDetailPage = lazy(() => import("./pages/RoadmapDetailPage"));
+const SnapshotOverviewPage = lazy(() => import("./pages/SnapshotOverviewPage"));
+const SnapshotDetailPage = lazy(() => import("./pages/SnapshotDetailPage"));
+const SnapshotComparePage = lazy(() => import("./pages/SnapshotComparePage"));
 
 function AuthLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -170,6 +173,11 @@ export default function App() {
         <Route path="/roadmaps" element={<AuthLayout><RoadmapsPage /></AuthLayout>} />
         <Route path="/roadmaps/:id" element={<AuthLayout><RoadmapDetailPage /></AuthLayout>} />
         <Route path="/roadmaps/dashboard" element={<AuthLayout><RoadmapsDashboard /></AuthLayout>} />
+
+        {/* Snapshots */}
+        <Route path="/snapshots" element={<AuthLayout><SnapshotOverviewPage /></AuthLayout>} />
+        <Route path="/snapshots/:id" element={<AuthLayout><SnapshotDetailPage /></AuthLayout>} />
+        <Route path="/snapshots/compare/:id1/:id2" element={<AuthLayout><SnapshotComparePage /></AuthLayout>} />
 
         {/* Projects Monitoring */}
         <Route path="/projects" element={<AuthLayout><ProjectsPage /></AuthLayout>} />
