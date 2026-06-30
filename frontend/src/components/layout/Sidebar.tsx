@@ -148,6 +148,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "admin", label: "Settings", icon: Settings, path: "/admin", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER"] },
       { id: "kpi-definitions", label: "KPI Definitions", icon: BarChart3, path: "/kpi-definitions", allowedRoles: ["ADMIN", "EXECUTIVE_READ_ONLY"] },
+      { id: "workflow", label: "Workflow Engine", icon: GitBranch, path: "/workflow", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "PRODUCT_OWNER"] },
     ],
   },
 ];

@@ -64,6 +64,7 @@ import roadmapExecutiveDashboardRoutes from "./routes/roadmap-executive-dashboar
 import snapshotRoutes from "./routes/snapshot.routes.js";
 import traceabilityRoutes from "./routes/traceability.routes.js";
 import kpiRegistryRoutes from "./routes/kpi-registry.routes.js";
+import workflowRoutes from "./routes/workflow.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import promptLibraryRoutes from "./routes/promptLibrary.routes.js";
 import agentRoutes from "./routes/agent.routes.js";
@@ -158,6 +159,7 @@ app.use("/api", roadmapExecutiveDashboardRoutes);
 app.use("/api", snapshotRoutes);
 app.use("/api", traceabilityRoutes);
 app.use("/api", kpiRegistryRoutes);
+app.use("/api", workflowRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/prompts", promptLibraryRoutes);
 app.use("/api/ai/agents", agentRoutes);
