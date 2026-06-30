@@ -192,22 +192,22 @@ function BottomBar({ dashboard, lastUpdated }: { dashboard: DashboardData; lastU
     : new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="flex items-center justify-between text-xs text-slate-400 bg-white rounded-xl border border-slate-200 px-5 py-3 shadow-sm">
+    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 bg-white rounded-xl border border-slate-200 px-5 py-3 shadow-sm">
       <span className="flex items-center gap-1.5">
-        <Building2 className="w-3.5 h-3.5" />
-        {dashboard.totalOrgs} organizations &middot; {dashboard.totalApps} applications
+        <Building2 className="w-3.5 h-3.5 shrink-0" />
+        {dashboard.totalOrgs} orgs &middot; {dashboard.totalApps} apps
       </span>
       <span className="flex items-center gap-1.5">
-        <Bug className="w-3.5 h-3.5" />
-        {dashboard.totalVulns.toLocaleString()} total vulnerabilities
+        <Bug className="w-3.5 h-3.5 shrink-0" />
+        {dashboard.totalVulns.toLocaleString()} total
       </span>
       <span className="flex items-center gap-1.5">
-        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+        <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
         {dashboard.totalOpen.toLocaleString()} open
       </span>
       <span className="flex items-center gap-1.5">
-        <ShieldAlert className="w-3.5 h-3.5" />
-        Last updated: {timeStr}
+        <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+        Updated: {timeStr}
       </span>
     </div>
   );
