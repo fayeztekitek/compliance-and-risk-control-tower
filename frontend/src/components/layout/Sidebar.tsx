@@ -5,7 +5,7 @@ import {
   FileCheck, Users, Settings, LogOut, FileSignature, Scale, Shield,
   ChevronDown, ChevronRight, Sun, Moon, Building2, AppWindow, Bug,
   FileText, ShieldQuestion, AlertOctagon, CheckSquare, PanelLeftClose, PanelRightClose, User,
-  Star, Clock, Command, BarChart3, ScrollText, Siren, Bot,
+  Star, Clock, Command, BarChart3, ScrollText, Siren, Bot, BookOpen, Plug, FileSpreadsheet, GitBranch,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useDarkMode } from "../../hooks/useDarkMode";
@@ -74,6 +74,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "waived", label: "Waived / Accepted Risks", icon: CheckSquare, path: "/waived-accepted-risks", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
       { id: "policy-rules", label: "Policy Rules", icon: Shield, path: "/policy-rules", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
       { id: "reports", label: "Security Reports", icon: FileText, path: "/reports", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
+      { id: "report-engine", label: "Report Engine", icon: FileSpreadsheet, path: "/reports/engine", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER"] },
       { id: "security", label: "Security Console", icon: ShieldAlert, path: "/security", allowedRoles: ["ADMIN", "SECURITY_MANAGER", "RISK_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
     ],
   },
@@ -132,6 +133,9 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "ai-hub", label: "AI Hub", icon: Command, path: "/ai", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR", "EXECUTIVE_READ_ONLY"] },
       { id: "ai-prompts", label: "Prompt Library", icon: FileText, path: "/ai/prompts", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER"] },
       { id: "ai-agents", label: "AI Agents", icon: Bot, path: "/ai/agents", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
+      { id: "ai-kb", label: "Knowledge Base", icon: BookOpen, path: "/ai/knowledge-base", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER", "AUDITOR"] },
+      { id: "ai-connectors", label: "MCP Connectors", icon: Plug, path: "/ai/connectors", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "RISK_MANAGER", "SECURITY_MANAGER"] },
+      { id: "pipelines", label: "CI/CD Pipelines", icon: GitBranch, path: "/pipelines", allowedRoles: ["ADMIN", "COMPLIANCE_OFFICER", "SECURITY_MANAGER", "RISK_MANAGER"] },
     ],
   },
 ];

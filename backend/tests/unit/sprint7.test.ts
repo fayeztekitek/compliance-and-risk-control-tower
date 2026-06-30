@@ -23,10 +23,11 @@ describe("Graceful Shutdown", () => {
 describe("Swagger Config", () => {
   it("should export swaggerSpec with openapi version", async () => {
     const { swaggerSpec } = await import("../../src/config/swagger.js");
-    expect(swaggerSpec).toBeDefined();
-    expect(swaggerSpec.openapi).toBe("3.0.0");
-    expect(swaggerSpec.info.title).toContain("Control Tower");
-    expect(swaggerSpec.tags).toBeInstanceOf(Array);
-    expect(swaggerSpec.tags!.length).toBeGreaterThanOrEqual(5);
+    const spec = swaggerSpec as any;
+    expect(spec).toBeDefined();
+    expect(spec.openapi).toBe("3.0.0");
+    expect(spec.info.title).toContain("Control Tower");
+    expect(spec.tags).toBeInstanceOf(Array);
+    expect(spec.tags!.length).toBeGreaterThanOrEqual(5);
   });
 });

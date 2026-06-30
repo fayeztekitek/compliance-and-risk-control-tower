@@ -383,7 +383,7 @@ router.patch("/audits/actions/:id/close", async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Committee list */
-router.get("/committees", zodHandler(_r => projectService.listCommittees()));
+router.get("/committees", zodHandler(_r => projectService.listCommittees({ page: 1, limit: 100 })));
 
 /** @openapi
  *  /committees:

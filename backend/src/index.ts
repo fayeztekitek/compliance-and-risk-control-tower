@@ -117,6 +117,13 @@ import("./services/queues/agentScheduleWorker.js").then(({ registerAgentSchedule
   logger.warn({ err }, "Failed to start agent schedule worker (Redis may be unavailable)");
 });
 
+import("./services/queues/reportScheduleWorker.js").then(({ startReportScheduleWorker, scheduleReportCheck }) => {
+  startReportScheduleWorker();
+  scheduleReportCheck();
+}).catch((err) => {
+  logger.warn({ err }, "Failed to start report schedule worker (Redis may be unavailable)");
+});
+
 app.listen(env.PORT, "0.0.0.0", () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, "Server started");
 });

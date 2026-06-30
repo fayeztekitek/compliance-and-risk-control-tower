@@ -38,4 +38,22 @@ export const emailService = {
       return false;
     }
   },
+
+  async sendReport(params: {
+    to: string[]; subject: string; title: string; bodyLines: string[];
+    severity?: string; attachments?: { path: string; filename: string }[];
+  }): Promise<boolean> {
+    try {
+      await transporter.sendMail({
+        from,
+        to: params.to.join(", "),
+        subject: params.subject,
+        html: buildHtml(params.title, params.bodyLines, params.severity),
+        attachments: params.attachments,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  },
 };

@@ -1,6 +1,7 @@
 import { query } from "../config/database.js";
 import { randomUUID } from "crypto";
 import { llmService, ChatMessage } from "./ai/llm.service.js";
+import { ragService } from "./ai/rag.service.js";
 import { logger } from "../core/logger.js";
 import { NotFoundError } from "../core/errors.js";
 
@@ -99,9 +100,20 @@ export const chatbotService = {
     userId?: string,
   ) {
     const contextPrompt = buildContextPrompt(pageContext);
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+    let ragContext = "";
+
+    if (lastUserMsg) {
+      try {
+        const result = await ragService.buildContext(lastUserMsg.content, { topK: 3, maxChars: 3000 });
+        if (result.context) ragContext = result.context;
+      } catch {}
+    }
+
+    const ragBlock = ragContext ? `\n\n${ragContext}` : "";
     const systemMsg: ChatMessage = {
       role: "system",
-      content: `You are a context-aware GRC assistant embedded in the Control Tower platform. ${contextPrompt}\n\nBe concise and reference specific data where available. If you need more context, ask the user to navigate to the relevant page.`,
+      content: `You are a context-aware GRC assistant embedded in the Control Tower platform. ${contextPrompt}${ragBlock}\n\nBe concise and reference specific data where available. If you need more context, ask the user to navigate to the relevant page.`,
     };
 
     const result = await llmService.chat([systemMsg, ...messages], {
@@ -125,9 +137,20 @@ export const chatbotService = {
     userId?: string,
   ) {
     const contextPrompt = buildContextPrompt(pageContext);
+    const lastUserMsg = [...messages].reverse().find(m => m.role === "user");
+    let ragContext = "";
+
+    if (lastUserMsg) {
+      try {
+        const result = await ragService.buildContext(lastUserMsg.content, { topK: 3, maxChars: 3000 });
+        if (result.context) ragContext = result.context;
+      } catch {}
+    }
+
+    const ragBlock = ragContext ? `\n\n${ragContext}` : "";
     const systemMsg: ChatMessage = {
       role: "system",
-      content: `You are a context-aware GRC assistant embedded in the Control Tower platform. ${contextPrompt}\n\nBe concise and reference specific data where available. If you need more context, ask the user to navigate to the relevant page.`,
+      content: `You are a context-aware GRC assistant embedded in the Control Tower platform. ${contextPrompt}${ragBlock}\n\nBe concise and reference specific data where available. If you need more context, ask the user to navigate to the relevant page.`,
     };
 
     const streamResult = await llmService.chat([systemMsg, ...messages], {

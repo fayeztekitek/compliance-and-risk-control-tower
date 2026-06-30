@@ -57,7 +57,7 @@ describe("VEG Service (unit)", () => {
 
   it("should enforce valid status transitions", async () => {
     const result = await vegService.update("known-id", { status: "SUBMITTED" });
-    expect(result.id).toBe("known-id");
+    expect(result!.id).toBe("known-id");
 
     await expect(vegService.update("known-id", { status: "APPROVED" })).rejects.toThrow(/cannot transition/i);
   });
@@ -75,7 +75,7 @@ describe("VEG Service (unit)", () => {
 
   it("should update department sign-off", async () => {
     const result = await vegService.updateDepartmentSignoff("known-id", "finance", "APPROVED");
-    expect(result.financeState).toBe("APPROVED");
+    expect(result!.financeState).toBe("APPROVED");
   });
 
   it("should update bid decision", async () => {

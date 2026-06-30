@@ -66,7 +66,7 @@ export const nexusService = {
     }));
     let sessionToken: string | null = null;
     if (creds) {
-      sessionToken = credentialStore.store(creds);
+      sessionToken = credentialStore.store({ ...creds, createdAt: new Date() });
     }
     return { connection: connectionResult, remoteOrgs, sessionToken };
   },
@@ -469,7 +469,7 @@ export const nexusService = {
           await nexusRepo.upsertScanReport({
             scanId: scanId || `report-${appId}`,
             applicationId: appId,
-            applicationPublicId: null,
+            applicationPublicId: undefined,
             stage: mapStage(entry.stage),
             scanDate: new Date(scanDate).toISOString().split("T")[0],
             reportUrl,

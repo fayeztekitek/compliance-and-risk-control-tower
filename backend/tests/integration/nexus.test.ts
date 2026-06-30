@@ -3,7 +3,7 @@ import request from "supertest";
 import { app } from "../../src/app.js";
 import { healthCheck } from "../../src/config/database.js";
 
-let authedReq: request.SuperTest<request.Test>;
+let authedReq: any;
 
 beforeAll(async () => {
   const dbOk = await healthCheck();

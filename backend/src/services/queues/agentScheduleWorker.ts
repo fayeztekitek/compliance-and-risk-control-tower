@@ -7,7 +7,7 @@ import { AGENT_DEFINITIONS, AgentType } from "../ai/tools/index.js";
 
 const AGENT_SCHEDULE_QUEUE = "agent-schedule";
 
-function createBullConnection() {
+function createBullConnection(): any {
   return new Redis({
     host: env.REDIS_HOST,
     port: env.REDIS_PORT,

@@ -10,6 +10,7 @@ import { generalLimiter, authLimiter } from "./middleware/rateLimit.middleware.j
 import { logger } from "./core/logger.js";
 
 // Patch Express to forward async route rejections to error middleware
+// @ts-expect-error - express/lib/router/layer.js has no type declarations
 import Layer from "express/lib/router/layer.js";
 const origHandle = Layer.prototype.handle_request;
 Layer.prototype.handle_request = function (this: any, req: any, res: any, next: any) {
@@ -62,6 +63,9 @@ import agentRoutes from "./routes/agent.routes.js";
 import copilotRoutes from "./routes/copilot.routes.js";
 import knowledgeBaseRoutes from "./routes/knowledgeBase.routes.js";
 import chatbotRoutes from "./routes/chatbot.routes.js";
+import mcpRoutes from "./routes/mcp.routes.js";
+import ragRoutes from "./routes/rag.routes.js";
+import pipelineRoutes from "./routes/pipeline.routes.js";
 
 const app = express();
 
@@ -146,6 +150,9 @@ app.use("/api/ai/agents", agentRoutes);
 app.use("/api/ai/copilots", copilotRoutes);
 app.use("/api/knowledge-base", knowledgeBaseRoutes);
 app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/mcp", mcpRoutes);
+app.use("/api/rag", ragRoutes);
+app.use("/api/pipelines", pipelineRoutes);
 
 // Global error handler (must be last)
 app.use(errorMiddleware);

@@ -112,7 +112,7 @@ describe("FindingOccurrence Service", () => {
     const { findingOccurrenceService } = await import("../../src/services/findingOccurrence.service.js");
     const result = await findingOccurrenceService.updateOccurrence("occ-1", { occurrenceStatus: "FIXED" });
 
-    expect(result.occurrenceStatus).toBe("FIXED");
+    expect(result!.occurrenceStatus).toBe("FIXED");
   });
 
   it("should delete occurrence", async () => {

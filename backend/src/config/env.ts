@@ -36,4 +36,9 @@ export const env = {
 
   SONARQUBE_URL: process.env.SONARQUBE_URL || "",
   SONARQUBE_TOKEN: process.env.SONARQUBE_TOKEN || "",
+
+  CREDENTIAL_ENCRYPTION_KEY: process.env.CREDENTIAL_ENCRYPTION_KEY || "",
+
+  REPORT_DIR: process.env.REPORT_DIR || "/tmp/reports",
+  REPORT_SCHEDULE_ENABLED: process.env.REPORT_SCHEDULE_ENABLED !== "false",
 };

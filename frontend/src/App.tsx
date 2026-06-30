@@ -49,6 +49,9 @@ const PromptLibraryPage = lazy(() => import("./pages/PromptLibraryPage"));
 const AiAgentsPage = lazy(() => import("./pages/AiAgentsPage"));
 const CopilotChatPage = lazy(() => import("./pages/CopilotChatPage"));
 const KnowledgeBasePage = lazy(() => import("./pages/KnowledgeBasePage"));
+const McpConnectorsPage = lazy(() => import("./pages/McpConnectorsPage"));
+const ReportEnginePage = lazy(() => import("./pages/ReportEnginePage"));
+const PipelinesPage = lazy(() => import("./pages/PipelinesPage"));
 
 function AuthLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
@@ -192,6 +195,9 @@ export default function App() {
         <Route path="/ai/agents" element={<AuthLayout><AiAgentsPage /></AuthLayout>} />
         <Route path="/ai/copilot/:type" element={<AuthLayout><CopilotChatPage /></AuthLayout>} />
         <Route path="/ai/knowledge-base" element={<AuthLayout><KnowledgeBasePage /></AuthLayout>} />
+        <Route path="/ai/connectors" element={<AuthLayout><McpConnectorsPage /></AuthLayout>} />
+        <Route path="/reports/engine" element={<AuthLayout><ReportEnginePage /></AuthLayout>} />
+        <Route path="/pipelines" element={<AuthLayout><PipelinesPage /></AuthLayout>} />
 
         {/* Default */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

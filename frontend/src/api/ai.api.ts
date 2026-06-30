@@ -14,6 +14,13 @@ export interface AiModel {
   displayName: string;
 }
 
+export interface CopilotInfo {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+}
+
 export const aiApi = {
   async chat(messages: AiMessage[], options?: { temperature?: number; maxOutputTokens?: number }) {
     const { data } = await apiClient.post<ChatResponse>("/api/ai/chat", {
@@ -47,5 +54,32 @@ export const aiApi = {
   async listModels() {
     const { data } = await apiClient.get<{ data: AiModel[] }>("/api/ai/models");
     return data.data;
+  },
+
+  async listCopilots() {
+    const { data } = await apiClient.get<{ data: CopilotInfo[] }>("/api/ai/copilots");
+    return data.data;
+  },
+
+  copilotChatStream(
+    type: string,
+    messages: AiMessage[],
+    options?: { temperature?: number; maxOutputTokens?: number },
+    signal?: AbortSignal,
+  ): Promise<ReadableStreamDefaultReader<Uint8Array>> {
+    const token = localStorage.getItem("auth_token");
+    return fetch(`/api/ai/copilots/${type}/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ messages, ...options }),
+      signal,
+    }).then((res) => {
+      if (!res.ok) throw new Error(`Copilot chat failed: ${res.status}`);
+      return res.body!.getReader();
+    });
   },
 };

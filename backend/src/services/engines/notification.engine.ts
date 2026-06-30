@@ -88,7 +88,7 @@ class NotificationEngine {
     let status = "SENT";
     try {
       if (params.channel === "EMAIL") {
-        const sent = await emailService.sendAlert(params.recipient, params.subject, params.body);
+        const sent = await emailService.sendAlert({ to: [params.recipient], subject: params.subject, title: params.subject, bodyLines: [params.body] });
         if (!sent) status = "FAILED";
       } else if (params.channel === "SLACK") {
         const sent = await slackService.sendAlert(params.body);

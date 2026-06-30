@@ -65,7 +65,7 @@ describe("Security Service (unit)", () => {
       id: "known", title: "Known Vuln", status: "OPEN", unifiedSeverity: "HIGH", slaDueDate: "2026-12-31", targetProduct: "App",
     });
     const result = await securityService.updateVulnerability("known", { status: "FIXED" });
-    expect(result.id).toBe("known");
+    expect(result!.id).toBe("known");
 
     (unifiedFindingRepo.getFinding as any).mockResolvedValueOnce({
       id: "known", title: "Known Vuln", status: "FIXED", unifiedSeverity: "HIGH", slaDueDate: "2026-12-31", targetProduct: "App",

@@ -35,12 +35,12 @@ function generateTokens(userId: string, role: string): AuthTokens {
   const token = jwt.sign(
     { sub: userId, role },
     env.JWT_SECRET,
-    { expiresIn: env.JWT_EXPIRES_IN }
+    { expiresIn: env.JWT_EXPIRES_IN as any }
   );
   const refreshToken = jwt.sign(
     { sub: userId, type: "refresh" },
     env.JWT_SECRET,
-    { expiresIn: env.JWT_REFRESH_EXPIRES_IN }
+    { expiresIn: env.JWT_REFRESH_EXPIRES_IN as any }
   );
   const expiresIn = parseTimeToSeconds(env.JWT_EXPIRES_IN);
   return { token, refreshToken, expiresIn };

@@ -83,7 +83,7 @@ describe("ScanReport Service", () => {
     const { scanReportService } = await import("../../src/services/scanReport.service.js");
     const result = await scanReportService.updateScanReport("sr-1", { totalFindings: 42 });
 
-    expect(result.totalFindings).toBe(42);
+    expect(result!.totalFindings).toBe(42);
   });
 
   it("should delete scan report", async () => {

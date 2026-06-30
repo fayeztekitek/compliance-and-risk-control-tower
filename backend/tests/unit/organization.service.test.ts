@@ -34,8 +34,8 @@ describe("Organization Service", () => {
     const result = await organizationService.listOrganizations();
 
     expect(result).toHaveLength(2);
-    expect(result[0].compliancePosture).toBeDefined();
-    expect(result[0].compliancePosture.postureGrade).toBe("GREEN");
+    expect((result[0] as any).compliancePosture).toBeDefined();
+    expect((result[0] as any).compliancePosture.postureGrade).toBe("GREEN");
   });
 
   it("should get organization by id with posture", async () => {
@@ -46,7 +46,7 @@ describe("Organization Service", () => {
     const result = await organizationService.getOrganization("org-1");
 
     expect(result.organizationId).toBe("org-1");
-    expect(result.compliancePosture.complianceScore).toBe(45);
+    expect((result as any).compliancePosture.complianceScore).toBe(45);
   });
 
   it("should throw NotFoundError for unknown org", async () => {
@@ -72,7 +72,7 @@ describe("Organization Service", () => {
     const { organizationService } = await import("../../src/services/organization.service.js");
     const result = await organizationService.updateOrganization("org-1", { description: "Updated" });
 
-    expect(result.description).toBe("Updated");
+    expect(result!.description).toBe("Updated");
   });
 
   it("should calculate compliance posture from stats", async () => {

@@ -3,7 +3,7 @@ import { unifiedFindingRepo } from "../repositories/unifiedFinding.repo.js";
 import { query } from "../config/database.js";
 import { riskScoreService } from "./riskScore.service.js";
 
-interface ExecutiveSnapshot {
+export interface ExecutiveSnapshot {
   snapshotDate: string;
   totalOrganizations: number;
   totalApplications: number;

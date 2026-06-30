@@ -74,7 +74,7 @@ describe("FindingComponent Service", () => {
     const { findingComponentService } = await import("../../src/services/findingComponent.service.js");
     const result = await findingComponentService.updateComponent("comp-1", { licenseType: "Apache-2.0" });
 
-    expect(result.licenseType).toBe("Apache-2.0");
+    expect(result!.licenseType).toBe("Apache-2.0");
   });
 
   it("should delete component", async () => {

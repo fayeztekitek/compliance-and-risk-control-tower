@@ -46,7 +46,7 @@ async function fetchEpssBatch(cveIds: string[]): Promise<Map<string, { epss: num
       logger.warn({ status: response.status, cves: cveIds.length }, "EPSS API returned non-OK status");
       return result;
     }
-    const body: EpssResponse = await response.json();
+    const body: EpssResponse = await response.json() as EpssResponse;
     for (const item of body.data) {
       result.set(item.cve.toUpperCase(), {
         epss: parseFloat(item.epss) || 0,
@@ -70,7 +70,7 @@ async function fetchKevCatalog(): Promise<Map<string, { dateAdded: string; descr
       logger.warn({ status: response.status }, "CISA KEV API returned non-OK status");
       return new Map();
     }
-    const body: KevCatalog = await response.json();
+    const body: KevCatalog = await response.json() as KevCatalog;
     const map = new Map<string, { dateAdded: string; description: string }>();
     for (const vuln of body.vulnerabilities) {
       map.set(vuln.cveID.toUpperCase(), {

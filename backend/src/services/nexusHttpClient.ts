@@ -15,7 +15,7 @@ export class NexusHttpClient {
   private logs: string[] = [];
 
   constructor(config: NexusHttpConfig) {
-    this.config = { timeoutMs: 60000, maxRetries: 2, ...config };
+    this.config = { ...config, timeoutMs: 60000, maxRetries: 2 };
   }
 
   private maskToken(msg: string): string {
@@ -145,5 +145,7 @@ export function createClientFromCredentials(creds: { url: string; username: stri
     url: creds.url,
     username: creds.username || "admin",
     token: creds.token || "",
+    timeoutMs: 60000,
+    maxRetries: 2,
   });
 }

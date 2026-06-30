@@ -56,9 +56,9 @@ describe("SonarQube Adapter", () => {
       project: { key: "my-app", name: "my-app" },
       qualityGate: { status: "OK", conditions: [] },
       issues: [
-        { key: "sq-1", severity: "MAJOR", type: "BUG", message: "bug", rule: "x", status: "OPEN" },
-        { key: "sq-2", severity: "BLOCKER", type: "VULNERABILITY", message: "vuln", rule: "y", status: "RESOLVED" },
-        { key: "sq-3", severity: "INFO", type: "CODE_SMELL", message: "smell", rule: "z", status: "OPEN" },
+        { key: "sq-1", severity: "MAJOR", type: "BUG", message: "bug", rule: "x", status: "OPEN", component: "my-app" },
+        { key: "sq-2", severity: "BLOCKER", type: "VULNERABILITY", message: "vuln", rule: "y", status: "RESOLVED", component: "my-app" },
+        { key: "sq-3", severity: "INFO", type: "CODE_SMELL", message: "smell", rule: "z", status: "OPEN", component: "my-app" },
       ],
       analysedAt: "2025-01-01T00:00:00Z",
     };
