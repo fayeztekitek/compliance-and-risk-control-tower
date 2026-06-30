@@ -1,4 +1,4 @@
-import apiClient from "./client";
+import { apiClient } from "./client";
 
 export interface ComplianceDashboardData {
   kpis: {
@@ -97,3 +97,78 @@ export async function fetchRoadmapsDashboard(): Promise<RoadmapsDashboardData> {
   const { data } = await apiClient.get<{ data: RoadmapsDashboardData }>("/api/dashboard/roadmaps");
   return data.data;
 }
+
+export interface OrgDrilldownData {
+  kpis: Record<string, number>;
+  severityDistribution: { severity: string; count: number }[];
+  slaBreaches: { id: string; title: string; severity: string; status: string }[];
+  topVulnerableComponents: { id: string; name: string; vulnerability_count: number; avg_cvss: number }[];
+}
+
+export interface DashboardPageData {
+  kpis: Record<string, number>;
+  charts: Record<string, any[]>;
+}
+
+export const dashboardApi = {
+  async executive() {
+    return apiClient.get("/api/dashboard/executive");
+  },
+  async kpis() {
+    return apiClient.get("/api/dashboard/kpi");
+  },
+  async kris() {
+    return apiClient.get("/api/dashboard/kri");
+  },
+  async heatmap() {
+    return apiClient.get("/api/dashboard/heatmap");
+  },
+  async trends(months = 12) {
+    return apiClient.get("/api/dashboard/trends", { params: { months } });
+  },
+  async mttr() {
+    return apiClient.get("/api/dashboard/mttr");
+  },
+  async slaBreach() {
+    return apiClient.get("/api/dashboard/sla-breach");
+  },
+  async distinctVsOccurrences() {
+    return apiClient.get("/api/dashboard/distinct-vs-occurrences");
+  },
+  async compliancePosture() {
+    return apiClient.get("/api/dashboard/compliance-posture");
+  },
+  async nexusLifecycleSummary() {
+    return apiClient.get("/api/dashboard/nexus-lifecycle-summary");
+  },
+  async nexusLifecycleOccurrences(vulnId: string) {
+    return apiClient.get(`/api/dashboard/nexus-lifecycle-occurrences/${vulnId}`);
+  },
+  async orgHierarchy() {
+    return apiClient.get("/api/dashboard/org-hierarchy");
+  },
+  async orgDrilldown(orgId: string, params?: Record<string, any>) {
+    return apiClient.get<{ data: OrgDrilldownData }>(`/api/dashboard/org-drilldown/${orgId}`, { params });
+  },
+  async topRiskyApps(limit = 20) {
+    return apiClient.get("/api/dashboard/top-risky-apps", { params: { limit } });
+  },
+  async topComponents(limit = 20) {
+    return apiClient.get("/api/dashboard/top-components", { params: { limit } });
+  },
+  async appsRequiringAction(limit = 20) {
+    return apiClient.get("/api/dashboard/apps-requiring-action", { params: { limit } });
+  },
+  async latestScanSummary(limit = 20) {
+    return apiClient.get("/api/dashboard/latest-scan-summary", { params: { limit } });
+  },
+  async orgRiskHeatmap() {
+    return apiClient.get("/api/dashboard/org-risk-heatmap");
+  },
+  async dashboardPage(page: string) {
+    return apiClient.get<{ data: DashboardPageData }>(`/api/dashboard-pages/${page}`);
+  },
+  async fetchLiveNexusKpis(_sessionToken: string) {
+    return apiClient.get("/api/dashboard/kpi");
+  },
+};

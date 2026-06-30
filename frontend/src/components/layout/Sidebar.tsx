@@ -5,7 +5,7 @@ import {
   FileCheck, Users, Settings, LogOut, FileSignature, Scale, Shield,
   ChevronDown, ChevronRight, Sun, Moon, Building2, AppWindow, Bug,
   FileText, ShieldQuestion, AlertOctagon, CheckSquare, PanelLeftClose, PanelRightClose, User,
-  Star, Clock, Command, BarChart3, ScrollText, Siren,
+  Star, Clock, Command, BarChart3, ScrollText, Siren, Bot,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useDarkMode } from "../../hooks/useDarkMode";
