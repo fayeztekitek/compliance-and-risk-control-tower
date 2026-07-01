@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Filter, RefreshCw, Download, Loader2 } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { useVegDashboardData } from "../hooks/useVegDashboardData";
 import { useVegDashboardFilterStore } from "../store/vegDashboardFilter.store";
 import VegKpiCards from "../components/veg/VegKpiCards";
@@ -24,6 +25,28 @@ export default function VegComexDashboard() {
   const { dashboard, isFetching, isError, refetch } = useVegDashboardData(
     hasFilters ? filters : undefined
   );
+
+  const chronosAlignmentData = useMemo(() => {
+    if (!dashboard?.dealRows) return [];
+    const counts: Record<string, number> = {};
+    for (const row of dashboard.dealRows) {
+      const key = row.chronos_alignment || "Missing Chronos";
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [dashboard?.dealRows]);
+
+  const dossierCompletenessData = useMemo(() => {
+    if (!dashboard?.dealRows) return [];
+    const counts: Record<string, number> = {};
+    for (const row of dashboard.dealRows) {
+      const key = row.dossier_completeness || "Incomplete";
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [dashboard?.dealRows]);
+
+  const PIE_COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"];
 
   return (
     <div className="space-y-6">
@@ -97,6 +120,7 @@ export default function VegComexDashboard() {
             topClients={dashboard.topClients}
             topOpportunities={dashboard.topOpportunities}
             kpis={dashboard.kpis}
+            decisions={dashboard.decisions}
           />
 
           <VegWorkloadCharts
@@ -104,6 +128,32 @@ export default function VegComexDashboard() {
             workloadByOwner={dashboard.workloadByOwner}
             workloadByRegion={dashboard.workloadByRegion}
           />
+
+          {/* Chronos Alignment & Dossier Completeness */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+              <h4 className="text-sm font-semibold text-slate-900 mb-3">Chronos Alignment Status</h4>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie data={chronosAlignmentData} cx="50%" cy="50%" innerRadius={50} outerRadius={100} dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    {chronosAlignmentData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+              <h4 className="text-sm font-semibold text-slate-900 mb-3">Dossiers Completeness</h4>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie data={dossierCompletenessData} cx="50%" cy="50%" innerRadius={50} outerRadius={100} dataKey="value" nameKey="name" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    {dossierCompletenessData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
           {/* Footer stats */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm text-center text-sm text-slate-400">

@@ -341,6 +341,25 @@ export const nexusRepo = {
     return r.rows.length ? r.rows[0].id : null;
   },
 
+  async getScanReport(scanId: string) {
+    const r = await query("SELECT id, scan_id, application_id, scan_date FROM nexus_scan_reports WHERE scan_id = $1", [scanId]);
+    return r.rows.length ? r.rows[0] : null;
+  },
+
+  async updateScanReportCounts(scanId: string, critical: number, high: number, medium: number, low: number, waived?: number) {
+    await query(
+      `UPDATE nexus_scan_reports SET
+        critical_count = GREATEST($1, (SELECT COUNT(*) FROM nexus_policy_violations WHERE report_id = $6 AND threat_level >= 8)),
+        high_count = GREATEST($2, (SELECT COUNT(*) FROM nexus_policy_violations WHERE report_id = $6 AND threat_level >= 5 AND threat_level < 8)),
+        medium_count = GREATEST($3, (SELECT COUNT(*) FROM nexus_policy_violations WHERE report_id = $6 AND threat_level >= 3 AND threat_level < 5)),
+        low_count = GREATEST($4, (SELECT COUNT(*) FROM nexus_policy_violations WHERE report_id = $6 AND threat_level >= 1 AND threat_level < 3)),
+        waived_count = GREATEST(COALESCE($5, 0), (SELECT COUNT(*) FROM nexus_policy_violations WHERE report_id = $6 AND is_waived = true)),
+        updated_at = NOW()
+      WHERE scan_id = $6`,
+      [critical, high, medium, low, waived ?? 0, scanId]
+    );
+  },
+
   async bulkUpsertVulnerabilitiesFromNexus(vulns: any[]) {
     if (!vulns.length) return;
     const BATCH_SIZE = 100;
@@ -475,24 +494,45 @@ export const nexusRepo = {
   async getOrgHierarchy(filters?: DashboardFilters) {
     const { clause, params } = buildWhereClause(filters);
     const r = await query(`
+      WITH RECURSIVE org_descendants AS (
+        SELECT organization_id AS ancestor_id, organization_id AS descendant_id
+        FROM nexus_organizations
+        UNION ALL
+        SELECT od.ancestor_id, o.organization_id
+        FROM org_descendants od
+        JOIN nexus_organizations o ON o.parent_organization_id = od.descendant_id
+      ),
+      org_agg AS (
+        SELECT
+          od.ancestor_id,
+          COUNT(DISTINCT a.id) AS total_apps,
+          COUNT(DISTINCT sr.id) AS scanned_apps,
+          COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS open_critical,
+          COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS open_high,
+          COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'MEDIUM' THEN uf.id END) AS open_medium,
+          COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'LOW' THEN uf.id END) AS open_low,
+          COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open
+        FROM org_descendants od
+        LEFT JOIN nexus_applications a ON a.organization_id = od.descendant_id
+        LEFT JOIN nexus_scan_reports sr ON sr.application_id = a.application_id
+        LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+        GROUP BY od.ancestor_id
+      )
       SELECT
         o.organization_id, o.organization_name, o.parent_organization_id,
         p.organization_name AS parent_organization_name,
-        COUNT(DISTINCT a.id) AS total_apps,
-        COUNT(DISTINCT sr.id) AS scanned_apps,
+        COALESCE(oa.total_apps, 0) AS total_apps,
+        COALESCE(oa.scanned_apps, 0) AS scanned_apps,
         (SELECT COUNT(*) FROM nexus_organizations child WHERE child.parent_organization_id = o.organization_id) AS sub_org_count,
-        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'CRITICAL' THEN uf.id END) AS open_critical,
-        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'HIGH' THEN uf.id END) AS open_high,
-        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'MEDIUM' THEN uf.id END) AS open_medium,
-        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' AND uf.unified_severity = 'LOW' THEN uf.id END) AS open_low,
-        COUNT(DISTINCT CASE WHEN uf.status = 'OPEN' THEN uf.id END) AS total_open
+        COALESCE(oa.open_critical, 0) AS open_critical,
+        COALESCE(oa.open_high, 0) AS open_high,
+        COALESCE(oa.open_medium, 0) AS open_medium,
+        COALESCE(oa.open_low, 0) AS open_low,
+        COALESCE(oa.total_open, 0) AS total_open
       FROM nexus_organizations o
       LEFT JOIN nexus_organizations p ON o.parent_organization_id = p.organization_id
-      LEFT JOIN nexus_applications a ON a.organization_id = o.organization_id
-      LEFT JOIN nexus_scan_reports sr ON sr.application_id = a.application_id
-      LEFT JOIN unified_findings uf ON uf.application_id = a.id AND uf.deleted_at IS NULL
+      LEFT JOIN org_agg oa ON oa.ancestor_id = o.organization_id
       WHERE 1=1${clause}
-      GROUP BY o.organization_id, o.organization_name, o.parent_organization_id, p.organization_name
       ORDER BY o.parent_organization_id NULLS FIRST, o.organization_name
     `, params.length > 0 ? params : undefined);
     return r.rows.map((row: any) => ({

@@ -111,6 +111,12 @@ import("./services/nexusSyncWorker.js").then(({ scheduleNexusSync, startNexusSyn
   logger.warn({ err }, "Failed to schedule Nexus sync (Redis may be unavailable)");
 });
 
+import("./services/nexusIncSyncWorker.js").then(({ startNexusIncSyncWorker }) => {
+  startNexusIncSyncWorker();
+}).catch((err) => {
+  logger.warn({ err }, "Failed to start Nexus incremental sync worker (Redis may be unavailable)");
+});
+
 import("./services/queues/agentScheduleWorker.js").then(({ registerAgentSchedules }) => {
   registerAgentSchedules();
 }).catch((err) => {

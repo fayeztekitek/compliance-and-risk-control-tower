@@ -1,4 +1,5 @@
 import { nexusRepo } from "../repositories/nexus.repo.js";
+import { env } from "../config/env.js";
 import http from "http";
 import https from "https";
 
@@ -134,10 +135,13 @@ export class NexusHttpClient {
 
 export async function createClientFromConfig(): Promise<NexusHttpClient> {
   const cfg = await nexusRepo.getConfig();
-  if (cfg) {
-    return new NexusHttpClient({ url: cfg.url, username: cfg.username, token: cfg.tokenEncrypted || "", timeoutMs: cfg.timeoutMs, maxRetries: cfg.maxRetries });
+  const url = cfg?.url || env.NEXUS_IQ_URL || "";
+  const username = cfg?.username || env.NEXUS_IQ_USERNAME || "admin";
+  const token = cfg?.tokenEncrypted || process.env.NEXUS_IQ_PASSWORD || env.NEXUS_IQ_TOKEN || "";
+  if (!url) {
+    throw new Error("Nexus IQ configuration not found. Please configure Nexus IQ server URL, username, and token in the settings.");
   }
-  throw new Error("Nexus IQ configuration not found. Please configure Nexus IQ server URL, username, and token in the settings.");
+  return new NexusHttpClient({ url, username, token, timeoutMs: cfg?.timeoutMs, maxRetries: cfg?.maxRetries });
 }
 
 export function createClientFromCredentials(creds: { url: string; username: string; token: string }): NexusHttpClient {

@@ -863,4 +863,123 @@ router.post("/kpis/executive/live", async (_req: Request, res: Response, next: N
   } catch (err) { next(err); }
 });
 
+/**
+ * @openapi
+ * /nexus/sync/incremental:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Run incremental sync (process reports updated in last N hours)
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               hours:
+ *                 type: number
+ *                 default: 24
+ *                 description: Lookback window in hours
+ *     responses:
+ *       202:
+ *         description: Incremental sync queued
+ */
+router.post("/sync/incremental", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const hours = typeof req.body?.hours === "number" ? req.body.hours : 24;
+    const { nexusIncSyncQueue } = await import("../services/nexusIncSyncWorker.js");
+    const job = await nexusIncSyncQueue.add("incremental-sync", {
+      hours,
+      triggeredBy: (req as any).user?.id || "manual",
+    });
+    res.status(202).json({ data: { jobId: job.id, hours, status: "queued" } });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
+ * @openapi
+ * /nexus/sync/daily:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Run daily incremental sync (24h lookback)
+ *     responses:
+ *       202:
+ *         description: Daily sync queued
+ */
+router.post("/sync/daily", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { nexusIncSyncQueue } = await import("../services/nexusIncSyncWorker.js");
+    const job = await nexusIncSyncQueue.add("daily-sync", {
+      hours: 24,
+      triggeredBy: (req as any).user?.id || "manual",
+    });
+    res.status(202).json({ data: { jobId: job.id, hours: 24, status: "queued" } });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
+ * @openapi
+ * /nexus/sync/4hour:
+ *   post:
+ *     tags: [Nexus]
+ *     summary: Run 4-hour incremental sync
+ *     responses:
+ *       202:
+ *         description: 4-hour sync queued
+ */
+router.post("/sync/4hour", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { nexusIncSyncQueue } = await import("../services/nexusIncSyncWorker.js");
+    const job = await nexusIncSyncQueue.add("4hour-sync", {
+      hours: 4,
+      triggeredBy: (req as any).user?.id || "manual",
+    });
+    res.status(202).json({ data: { jobId: job.id, hours: 4, status: "queued" } });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
+ * @openapi
+ * /nexus/organizations/count:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get total organization count from Nexus IQ
+ *     responses:
+ *       200:
+ *         description: Organization count
+ */
+router.get("/organizations/count", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.getOrganizationCount();
+    res.json({ data: result });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
+/**
+ * @openapi
+ * /nexus/organizations/root:
+ *   get:
+ *     tags: [Nexus]
+ *     summary: Get root (top-level) organization from Nexus IQ
+ *     responses:
+ *       200:
+ *         description: Root organization info
+ */
+router.get("/organizations/root", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await nexusService.getRootOrganization();
+    res.json({ data: result });
+  } catch (err: any) {
+    next(err);
+  }
+});
+
 export default router;

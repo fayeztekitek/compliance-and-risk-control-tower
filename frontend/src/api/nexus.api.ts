@@ -447,7 +447,21 @@ export const nexusApi = {
   },
 
   getScanCounts(applicationIds: string[]) {
-    return apiClient.post<{ data: Record<string, { count: number; latest: string; latestDate: string | null; latestStage: string | null; policyStatus: string | null }> }>("/api/nexus/reports/scan-counts", { applicationIds });
+    return apiClient.post<{ data: Record<string, {
+      count: number;
+      latest: string;
+      latestDate: string | null;
+      latestStage: string | null;
+      policyStatus: string | null;
+      criticalCount: number;
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      waivedCount: number;
+      totalComponents: number;
+      affectedComponents: number;
+      initiator: string | null;
+    }> }>("/api/nexus/reports/scan-counts", { applicationIds });
   },
 
   getStoredReports(applicationId: string, params?: { page?: number; limit?: number }) {

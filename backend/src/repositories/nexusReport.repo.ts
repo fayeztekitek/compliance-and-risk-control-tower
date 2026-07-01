@@ -237,7 +237,15 @@ export const nexusReportRepo = {
               COUNT(*) OVER (PARTITION BY sr.application_uuid) AS count,
               sr.scan_date AS latest_date,
               sr.stage AS latest_stage,
-              sr.policy_evaluation_status AS policy_status
+              sr.policy_evaluation_status AS policy_status,
+              sr.critical_count,
+              sr.high_count,
+              sr.medium_count,
+              sr.low_count,
+              sr.waived_count,
+              sr.total_components,
+              sr.affected_components,
+              sr.initiator
        FROM nexus_scan_reports sr
        WHERE sr.application_uuid IN (${p1}) OR sr.application_id IN (${p2})
        ORDER BY sr.application_uuid, sr.scan_date DESC`,
@@ -249,6 +257,14 @@ export const nexusReportRepo = {
       latestDate: string | null;
       latestStage: string | null;
       policyStatus: string | null;
+      criticalCount: number;
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      waivedCount: number;
+      totalComponents: number;
+      affectedComponents: number;
+      initiator: string | null;
     }> = {};
     for (const row of result.rows) {
       counts[row.id] = {
@@ -256,6 +272,15 @@ export const nexusReportRepo = {
         latest: row.latest_date ? row.latest_date.toISOString() : "—",
         latestDate: row.latest_date ? row.latest_date.toISOString() : null,
         latestStage: row.latest_stage || null,
+        policyStatus: row.policy_status || null,
+        criticalCount: row.critical_count || 0,
+        highCount: row.high_count || 0,
+        mediumCount: row.medium_count || 0,
+        lowCount: row.low_count || 0,
+        waivedCount: row.waived_count || 0,
+        totalComponents: row.total_components || 0,
+        affectedComponents: row.affected_components || 0,
+        initiator: row.initiator || null,
         policyStatus: row.policy_status || null,
       };
     }

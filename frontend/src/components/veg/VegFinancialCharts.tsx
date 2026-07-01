@@ -79,6 +79,46 @@ function TopOpportunitiesChart({ data }: { data: VegDashboardTopOpportunity[] })
   );
 }
 
+function TcvPieChart({ data, title }: { data: VegDashboardDimension[]; title: string }) {
+  const chartData = data.filter(d => parseFloat(d.tcv) > 0);
+  const OTHER_LIMIT = 8;
+  const top = chartData.slice(0, OTHER_LIMIT);
+  const rest = chartData.slice(OTHER_LIMIT);
+  if (rest.length > 0) {
+    top.push({ label: "Others", tcv: rest.reduce((s, r) => s + parseFloat(r.tcv), 0).toString(), ps: "0", saas: "0", ip_maintenance: "0", count: "0" });
+  }
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+      <h4 className="text-sm font-semibold text-slate-900 mb-3">{title}</h4>
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart>
+          <Pie data={top} cx="50%" cy="50%" innerRadius={50} outerRadius={100} dataKey="tcv" nameKey="label" label={({ label, percent }) => `${label} ${(percent * 100).toFixed(0)}%`}>
+            {top.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+          </Pie>
+          <Tooltip formatter={(v: number) => fmtK(v)} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function DecisionPieChart({ decisions }: { decisions: { decision: string; count: string; total_tcv: string }[] }) {
+  const data = decisions.filter(d => parseInt(d.count) > 0);
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+      <h4 className="text-sm font-semibold text-slate-900 mb-3">Decision Distribution</h4>
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart>
+          <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={100} dataKey="count" nameKey="decision" label={({ decision, percent }) => `${decision} ${(percent * 100).toFixed(0)}%`}>
+            {data.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+          </Pie>
+          <Tooltip />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function RevenuePie({ kpis }: { kpis: VegDashboardKpis }) {
   const data = [
     { name: "PS", value: parseFloat(kpis.total_ps) },
@@ -109,17 +149,19 @@ interface Props {
   topClients: VegDashboardTopClient[];
   topOpportunities: VegDashboardTopOpportunity[];
   kpis: VegDashboardKpis;
+  decisions: { decision: string; count: string; total_tcv: string }[];
 }
 
-export default function VegFinancialCharts({ tcvByClient, tcvByRegion, tcvByBusinessLine, tcvByProduct, topClients, topOpportunities, kpis }: Props) {
+export default function VegFinancialCharts({ tcvByClient, tcvByRegion, tcvByBusinessLine, tcvByProduct, topClients, topOpportunities, kpis, decisions }: Props) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <TcvBarChart data={tcvByClient} title="TCV by Client" />
-      <TcvBarChart data={tcvByRegion} title="TCV by Region" />
+      <TcvPieChart data={tcvByRegion} title="TCV by Region" />
       <TcvBarChart data={tcvByBusinessLine} title="TCV by Business Line" />
       <TcvBarChart data={tcvByProduct} title="TCV by Product" />
       <RevenueStackedBar data={tcvByClient} />
       <RevenuePie kpis={kpis} />
+      <DecisionPieChart decisions={decisions} />
       <TopClientsChart data={topClients} />
       <TopOpportunitiesChart data={topOpportunities} />
     </div>

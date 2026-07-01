@@ -9,6 +9,7 @@ const connection = {
 
 export const queues = {
   nexusSync: new Queue("nexus-sync", { connection }),
+  nexusIncSync: new Queue("nexus-inc-sync", { connection }),
   slaBreach: new Queue("sla-breach", { connection }),
   waiverExpiry: new Queue("waiver-expiry", { connection }),
   emailNotify: new Queue("email-notify", { connection }),
@@ -20,13 +21,6 @@ export const queues = {
 };
 
 export async function startWorkers() {
-  new Worker("nexus-sync", async (job: Job) => {
-    logger.info({ jobId: job.id, data: job.data }, "Nexus sync job started");
-    const { nexusService } = await import("./nexus.service.js");
-    await nexusService.fullSync(job.data);
-    logger.info({ jobId: job.id }, "Nexus sync job completed");
-  }, { connection });
-
   new Worker("sla-breach", async (job: Job) => {
     logger.info({ jobId: job.id }, "SLA breach detection job started");
     const { securityService } = await import("./security.service.js");
@@ -69,7 +63,12 @@ export async function startWorkers() {
 
 export async function scheduleRecurringJobs() {
   const { queues } = await import("./queue.service.js");
-  await queues.nexusSync.add("nexus-sync-hourly", {}, { repeat: { pattern: "0 */2 * * *" } });
+  // Full sync: weekly on Sunday at 2am
+  await queues.nexusSync.add("nexus-sync-weekly", {}, { repeat: { pattern: "0 2 * * 0" } });
+  // Daily incremental sync (24h lookback): every day at 3am
+  await queues.nexusIncSync.add("nexus-inc-sync-daily", { hours: 24 }, { repeat: { pattern: "0 3 * * *" } });
+  // 4-hour incremental sync: every 4 hours
+  await queues.nexusIncSync.add("nexus-inc-sync-4hour", { hours: 4 }, { repeat: { pattern: "0 */4 * * *" } });
   await queues.slaBreach.add("sla-breach-hourly", {}, { repeat: { pattern: "0 * * * *" } });
   await queues.waiverExpiry.add("waiver-expiry-hourly", {}, { repeat: { pattern: "0 * * * *" } });
   await queues.kpiRecalc.add("kpi-recalc-15min", {}, { repeat: { pattern: "*/15 * * * *" } });

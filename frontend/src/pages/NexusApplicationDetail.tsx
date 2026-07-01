@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, ChevronRight, FileText, Shield, Layers, Loader2, RefreshCw, BarChart3, ExternalLink, Bug } from "lucide-react";
+import { ArrowLeft, Shield, Loader2, RefreshCw, BarChart3, ExternalLink, Bug } from "lucide-react";
 import { nexusApi, NexusStoredReport, NexusPolicyViolation } from "../api/nexus.api";
 import { SkeletonPage } from "../components/ui/Skeleton";
 
@@ -31,17 +31,6 @@ function SeverityBadge({ count, label, color }: { count: number; label: string; 
   );
 }
 
-function SevInline({ c, h, m, l }: { c: number; h: number; m: number; l: number }) {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      {c > 0 && <span className="text-red-600 font-medium">{c}C</span>}
-      {h > 0 && <span className="text-orange-600 font-medium">{h}H</span>}
-      {m > 0 && <span className="text-amber-600 font-medium">{m}M</span>}
-      {l > 0 && <span className="text-slate-400 font-medium">{l}L</span>}
-    </div>
-  );
-}
-
 export default function NexusApplicationDetail({ applicationId: propAppId, applicationPublicId, applicationName, organizationName: propOrgName, onBack, onBackToOverview }: Props) {
   const { appId } = useParams<{ appId: string }>();
   const organizationName = propOrgName || "";
@@ -51,14 +40,6 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
-
-  // Compare
-
-  // Inline violation panel
-  const [selectedReport, setSelectedReport] = useState<NexusStoredReport | null>(null);
-  const [reportViolations, setReportViolations] = useState<NexusPolicyViolation[]>([]);
-  const [violationsLoading, setViolationsLoading] = useState(false);
-
   const sessionToken = localStorage.getItem("nexus_session_token");
 
   // Live vulnerabilities from Nexus IQ
@@ -119,25 +100,6 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
     }
   };
 
-  const openViolations = async (report: NexusStoredReport) => {
-    if (selectedReport?.id === report.id) {
-      setSelectedReport(null);
-      setReportViolations([]);
-      return;
-    }
-    setSelectedReport(report);
-    setViolationsLoading(true);
-    setReportViolations([]);
-    try {
-      const res = await nexusApi.getStoredReportViolations(report.id, { page: 1, limit: 50 });
-      setReportViolations(res.data.data || []);
-    } catch {
-      setReportViolations([]);
-    } finally {
-      setViolationsLoading(false);
-    }
-  };
-
   const appName = applicationName || applicationId;
 
   if (loading) return <SkeletonPage />;
@@ -146,6 +108,7 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
   const totalHigh = reports.reduce((s, r) => s + r.highCount, 0);
   const totalMedium = reports.reduce((s, r) => s + r.mediumCount, 0);
   const totalLow = reports.reduce((s, r) => s + r.lowCount, 0);
+  const totalWaived = reports.reduce((s, r) => s + (r as any).waivedCount, 0);
 
   return (
     <div className="space-y-6">
@@ -185,6 +148,23 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
             <BarChart3 className="w-4 h-4" />
             Evolution
           </Link>
+          {sessionToken && applicationPublicId && (() => {
+            const nexusUrl = localStorage.getItem("nexus_url");
+            const nativeUrl = nexusUrl
+              ? `${nexusUrl}/assets/index.html#/applicationLatestEvaluations/${applicationPublicId}/stage/build`
+              : null;
+            return nativeUrl ? (
+              <a
+                href={nativeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Latest Evaluations
+              </a>
+            ) : null;
+          })()}
           <button
             onClick={handleSync}
             disabled={syncing || !sessionToken}
@@ -214,6 +194,7 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
             <SeverityBadge label="High" count={totalHigh} color="text-orange-600" />
             <SeverityBadge label="Medium" count={totalMedium} color="text-amber-600" />
             <SeverityBadge label="Low" count={totalLow} color="text-slate-500" />
+            {totalWaived > 0 && <SeverityBadge label="Waived" count={totalWaived} color="text-slate-400" />}
             <SeverityBadge label="Total" count={totalCritical + totalHigh + totalMedium + totalLow} color="text-indigo-600" />
           </div>
         </div>
@@ -251,104 +232,74 @@ export default function NexusApplicationDetail({ applicationId: propAppId, appli
       )}
 
 
-      {/* Report List */}
-      <div className="bg-white rounded-xl border border-slate-200">
-        <div className="px-5 py-3 border-b border-slate-100">
+      {/* Report Table */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-slate-700">Reports ({reports.length})</h3>
+          <Link
+            to={`/nexus/evolution/${applicationId}?applicationName=${encodeURIComponent(appName)}`}
+            className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
+          >
+            <BarChart3 className="w-3 h-3" />
+            Evolution
+          </Link>
         </div>
-        <div className="divide-y divide-slate-100">
-          {reports.map((r) => (
-            <div key={r.id}>
-              <button
-                onClick={() => openViolations(r)}
-                className="w-full px-5 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <FileText className="w-4 h-4 text-slate-400 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">{r.reportTitle || "Scan Report"}</p>
-                    <p className="text-xs text-slate-400">
-                      {r.scanDate} · {r.stage}
-                      {r.initiator && ` · ${r.initiator}`}
-                      {r.commitHash && <span className="font-mono ml-1">· {r.commitHash.slice(0, 7)}</span>}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {r.totalViolations > 0 && (
-                    <SevInline c={r.criticalCount} h={r.highCount} m={r.mediumCount} l={r.lowCount} />
-                  )}
-                  <span className="text-xs text-slate-400 min-w-[4rem] text-right">{r.totalViolations} violations</span>
-                  <ChevronRight className="w-4 h-4 text-slate-300" />
-                </div>
-              </button>
-
-              {/* Inline Violation Panel */}
-              {selectedReport?.id === r.id && (
-                <div className="border-t border-slate-100 bg-slate-50 px-5 py-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-slate-700">Violations (preview)</h4>
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to={`/nexus/report/${r.id}?applicationId=${applicationId}&applicationName=${encodeURIComponent(appName)}`}
-                        className="flex items-center gap-1 text-xs text-indigo-600 hover:underline"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        Full Report
-                      </Link>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSelectedReport(null); setReportViolations([]); }}
-                        className="text-xs text-slate-500 hover:underline"
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                  {violationsLoading ? (
-                    <div className="flex items-center justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-slate-300" /></div>
-                  ) : reportViolations.length === 0 ? (
-                    <div className="text-sm text-slate-400 py-4 text-center">No violations in this report</div>
-                  ) : (
-                    <div className="space-y-1.5 max-h-80 overflow-y-auto">
-                      {reportViolations.map((v) => {
-                        const tl = v.threatLevel ?? 0;
-                        const dotColor = tl >= 8 ? "bg-red-500" : tl >= 5 ? "bg-orange-500" : tl >= 3 ? "bg-amber-500" : "bg-slate-400";
-                        return (
-                          <div key={v.violationId} className="flex items-center gap-3 text-xs bg-white rounded-lg px-3 py-2 border border-slate-100">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-slate-700 truncate">{v.displayName || v.componentName || v.policyName}</span>
-                                {v.cveId && <span className="text-slate-400 font-mono text-[10px]">{v.cveId}</span>}
-                              </div>
-                              <div className="text-slate-400">{v.policyName}{v.constraintName ? ` / ${v.constraintName}` : ""}</div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                v.status === "OPEN" ? "bg-red-50 text-red-600" :
-                                v.status === "WAIVED" ? "bg-amber-50 text-amber-600" :
-                                v.status === "FIXED" ? "bg-green-50 text-green-600" :
-                                "bg-slate-50 text-slate-500"
-                              }`}>
-                                {v.status}
-                              </span>
-                              <span className="text-slate-400">{tl >= 8 ? "CRITICAL" : tl >= 5 ? "HIGH" : tl >= 3 ? "MEDIUM" : "LOW"}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-          {reports.length === 0 && (
-            <div className="px-5 py-8 text-center text-sm text-slate-400">
-              No scan reports stored. Click <strong>Sync</strong> to fetch from Nexus IQ.
-            </div>
-          )}
-        </div>
+        {reports.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm text-slate-400">
+            No scan reports stored. Click <strong>Sync</strong> to fetch from Nexus IQ.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider">
+                  <th className="text-left px-5 py-2.5 font-medium">Evaluation Date</th>
+                  <th className="text-left px-5 py-2.5 font-medium">Trigger</th>
+                  <th className="text-left px-5 py-2.5 font-medium">Version</th>
+                  <th className="text-center px-5 py-2.5 font-medium">Violations</th>
+                  <th className="text-right px-5 py-2.5 font-medium">Components</th>
+                  <th className="text-right px-5 py-2.5 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {reports.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-5 py-3 text-slate-700 whitespace-nowrap font-mono text-xs">
+                      {r.scanDate}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600 whitespace-nowrap text-xs">
+                      {r.initiator || "—"}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600 whitespace-nowrap font-mono text-xs">
+                      {r.commitHash ? r.commitHash.slice(0, 7) : "—"}
+                    </td>
+                    <td className="px-5 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2 text-xs font-semibold">
+                        <span className="text-red-600">{r.criticalCount}</span>
+                        <span className="text-orange-600">{r.highCount}</span>
+                        <span className="text-amber-600">{r.mediumCount}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-right text-slate-700 text-xs font-medium">
+                      {r.totalComponents}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          to={`/nexus/report/${r.id}?applicationId=${applicationId}&applicationName=${encodeURIComponent(appName)}`}
+                          className="text-xs text-indigo-600 hover:underline flex items-center gap-1"
+                        >
+                          View Report
+                          <ExternalLink className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

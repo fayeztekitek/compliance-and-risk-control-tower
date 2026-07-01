@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { Building2, Loader2, CheckCircle2, XCircle, ChevronRight, ChevronLeft } from "lucide-react";
 import NexusApplicationDetail from "./NexusApplicationDetail";
 import { nexusApi, ApplicationOverview, ScanStatusResult } from "../api/nexus.api";
@@ -21,6 +22,8 @@ export default function NexusOverview() {
   const [appsLoading, setAppsLoading] = useState(false);
   const [scanStatuses, setScanStatuses] = useState<Record<string, ScanStatusResult>>({});
   const [scanStatusesLoading, setScanStatusesLoading] = useState(false);
+  const [scanCounts, setScanCounts] = useState<Record<string, any>>({});
+  const [scanCountsLoading, setScanCountsLoading] = useState(false);
 
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -95,6 +98,20 @@ export default function NexusOverview() {
           setScanStatusesLoading(false);
         }
       }
+
+      // Fetch stored scan report counts with vulnerability data
+      if (appList.length > 0) {
+        setScanCountsLoading(true);
+        try {
+          const ids = appList.map((a: any) => a.id);
+          const { data: countsRes } = await nexusApi.getScanCounts(ids);
+          setScanCounts(countsRes.data || {});
+        } catch {
+          setScanCounts({});
+        } finally {
+          setScanCountsLoading(false);
+        }
+      }
     } catch {
       setApps([]);
     } finally {
@@ -128,19 +145,25 @@ export default function NexusOverview() {
     );
   }
 
-  function buildOverview(app: any): ApplicationOverview {
+  function buildOverview(app: any): ApplicationOverview & { criticalCount: number; highCount: number; mediumCount: number; waivedCount: number; totalComponents: number } {
     const s = scanStatuses[app.id];
+    const sc = scanCounts[app.id];
     return {
       id: app.id,
       publicId: app.publicId,
       organizationId: selectedOrgId,
       applicationName: app.name,
       scanPerformed: s?.scanPerformed ?? false,
-      scanReportCount: s?.scanReportCount ?? 0,
-      latestScanDate: s?.latestScanDate ?? null,
+      scanReportCount: s?.scanReportCount ?? (sc?.count ?? 0),
+      latestScanDate: s?.latestScanDate ?? sc?.latestDate ?? null,
       latestScanAge: s?.latestScanAge ?? "N/A",
       statusLabel: s?.statusLabel ?? "N/A",
       statusColor: s?.statusColor ?? "grey",
+      criticalCount: sc?.criticalCount ?? 0,
+      highCount: sc?.highCount ?? 0,
+      mediumCount: sc?.mediumCount ?? 0,
+      waivedCount: sc?.waivedCount ?? 0,
+      totalComponents: sc?.totalComponents ?? 0,
     };
   }
 
@@ -300,38 +323,52 @@ export default function NexusOverview() {
                     </span>
                   </div>
 
-                  {/* Scan Reports Count */}
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-slate-500 text-xs font-medium">Scan Reports</span>
-                    <span className="font-semibold text-slate-800">{o.scanReportCount}</span>
+                  {/* Violation Counts */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-xs font-bold text-red-600">{o.criticalCount}C</span>
+                    <span className="text-xs font-bold text-orange-600">{o.highCount}H</span>
+                    <span className="text-xs font-bold text-amber-600">{o.mediumCount}M</span>
+                    {o.waivedCount > 0 && <span className="text-xs font-bold text-slate-400">{o.waivedCount}W</span>}
                   </div>
 
-                  {/* Last Scan Date */}
+                  {/* Last Scan */}
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-slate-500 text-xs font-medium">Last Scan</span>
-                    <span className="text-xs text-slate-600 font-mono">
-                      {o.latestScanDate ? (() => {
-                        const d = new Date(o.latestScanDate!);
-                        const year = d.getUTCFullYear();
-                        const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-                        const day = String(d.getUTCDate()).padStart(2, "0");
-                        const hours = String(d.getUTCHours()).padStart(2, "0");
-                        const minutes = String(d.getUTCMinutes()).padStart(2, "0");
-                        return `${year}-${month}-${day} ${hours}:${minutes} UTC`;
-                      })() : "N/A"}
-                    </span>
+                    <span className="text-xs text-slate-600">{o.latestScanDate ? (() => {
+                      const diff = Date.now() - new Date(o.latestScanDate!).getTime();
+                      const hours = Math.floor(diff / 3600000);
+                      if (hours < 1) return "Less than 1 hour ago";
+                      if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+                      const days = Math.floor(hours / 24);
+                      return `${days} day${days > 1 ? "s" : ""} ago`;
+                    })() : "N/A"}</span>
                   </div>
 
-                  {/* Last Scan Age */}
+                  {/* Reports Count */}
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500 text-xs font-medium">Scan Age</span>
-                    <span className="text-xs text-slate-600">{o.scanPerformed ? o.latestScanAge : "N/A"}</span>
+                    <span className="text-slate-500 text-xs font-medium">Reports</span>
+                    <span className="text-xs text-slate-600">{o.scanReportCount}</span>
                   </div>
 
                   {/* Card Footer */}
-                  <div className="mt-auto pt-3 border-t border-slate-100 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-400">
-                    <span>ID: <span className="font-mono">{o.id.slice(0, 8)}</span></span>
-                    {selectedOrgName && <span>Org: {selectedOrgName}</span>}
+                  <div className="mt-auto pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="text-slate-400">{selectedOrgName || "—"}</span>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/nexus/app/${o.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-indigo-600 hover:underline font-medium"
+                      >
+                        Reports
+                      </Link>
+                      <a
+                        href={`/nexus/app/${o.id}`}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedAppId(o.id); setNexusView("application"); }}
+                        className="text-indigo-600 hover:underline font-medium"
+                      >
+                        Priorities
+                      </a>
+                    </div>
                   </div>
                 </button>
               );

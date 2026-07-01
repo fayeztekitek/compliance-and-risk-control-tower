@@ -42,15 +42,15 @@ describe("Workflow Service", () => {
   it("startInstance should create instance and log audit entry", async () => {
     mockQuery
       .mockResolvedValueOnce({ rows: [MOCK_DEFINITION] })  // fetch definition
-      .mockResolvedValueOnce({ rows: [{ id: "wi1", ...MOCK_INSTANCE_ROW }] })  // INSERT instance
+      .mockResolvedValueOnce({ rows: [{ ...MOCK_INSTANCE_ROW }] })  // INSERT instance
       .mockResolvedValueOnce({ rows: [] })  // INSERT audit log
-      .mockResolvedValueOnce({ rows: [MOCK_INSTANCE_ROW] });  // getInstance fetch
+      .mockResolvedValueOnce({ rows: [{ ...MOCK_INSTANCE_ROW }] });  // getInstance fetch
 
     const { workflowService } = await import("../../src/services/workflow.service.js");
     const instance = await workflowService.startInstance("wd1", "e1", "test", "user1");
 
     expect(instance).toBeDefined();
-    expect(instance.currentState).toBe("DRAFT");
+    expect(instance!.currentState).toBe("DRAFT");
     expect(mockQuery).toHaveBeenCalledTimes(4);
   });
 
@@ -78,7 +78,8 @@ describe("Workflow Service", () => {
     const { workflowService } = await import("../../src/services/workflow.service.js");
     const result = await workflowService.transition("wi1", "SUBMITTED", "admin");
 
-    expect(result.currentState).toBe("SUBMITTED");
+    expect(result).toBeDefined();
+    expect(result!.currentState).toBe("SUBMITTED");
   });
 
   it("transition should throw on invalid state transition", async () => {
@@ -131,7 +132,8 @@ describe("Workflow Service", () => {
     const { workflowService } = await import("../../src/services/workflow.service.js");
     const result = await workflowService.setStatus("wi1", "COMPLETED");
 
-    expect(result.status).toBe("COMPLETED");
+    expect(result).toBeDefined();
+    expect(result!.status).toBe("COMPLETED");
   });
 
   it("updateInstance should update assignee and dueDate", async () => {
@@ -142,6 +144,7 @@ describe("Workflow Service", () => {
     const { workflowService } = await import("../../src/services/workflow.service.js");
     const result = await workflowService.updateInstance("wi1", { assignee: "user2" });
 
-    expect(result.assignee).toBe("user2");
+    expect(result).toBeDefined();
+    expect(result!.assignee).toBe("user2");
   });
 });

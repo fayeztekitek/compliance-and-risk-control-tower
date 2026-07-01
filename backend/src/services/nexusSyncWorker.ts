@@ -10,9 +10,8 @@ const connection = {
 export const nexusSyncQueue = new Queue("nexus-sync", { connection });
 
 export async function scheduleNexusSync() {
-  await nexusSyncQueue.add("nexus-sync-10am", {}, { repeat: { pattern: "0 10 * * *" } });
-  await nexusSyncQueue.add("nexus-sync-1pm", {}, { repeat: { pattern: "0 13 * * *" } });
-  logger.info("Nexus full sync scheduled daily at 10:00 and 13:00");
+  await nexusSyncQueue.add("nexus-sync-weekly", {}, { repeat: { pattern: "0 2 * * 0" } });
+  logger.info("Nexus full sync scheduled weekly on Sunday at 02:00");
 }
 
 export function startNexusSyncWorker() {

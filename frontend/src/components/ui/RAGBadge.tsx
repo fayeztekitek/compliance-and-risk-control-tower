@@ -63,3 +63,6 @@ export function goLiveToRAG(state: string): RAGStatus {
 export function complianceToRAG(status: string): RAGStatus {
   return COMPLIANCE_MAP[status] || "amber";
 }
+
+export { projectStatusToRAG as projectToRAG };
+export default RAGBadge;

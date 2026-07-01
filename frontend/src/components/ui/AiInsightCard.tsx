@@ -67,3 +67,5 @@ export function AiInsightCard({ title, content, icon: Icon, severity = "info", c
     </div>
   );
 }
+
+export default AiInsightCard;

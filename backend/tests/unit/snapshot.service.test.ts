@@ -47,7 +47,7 @@ describe("Snapshot Service", () => {
     expect(result.deltas.highRiskDelta).toBe(1);
 
     const alphaChanges = result.changed.filter((c: any) => c.projectId === "p1");
-    const statusChange = alphaChanges.find((c: any) => c.field === "status");
+    const statusChange = alphaChanges.find((c: any) => c.field === "status")!;
     expect(statusChange).toBeDefined();
     expect(statusChange.from).toBe("ON_TRACK");
     expect(statusChange.to).toBe("DEVIATING");
