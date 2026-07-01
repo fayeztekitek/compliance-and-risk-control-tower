@@ -20,11 +20,14 @@ function buildKpiCards(snapshot: any, kpis: any): KpiCardData[] {
   const total = kpis?.totalVulnerabilities || snapshot?.totalOpenVulnerabilities || 0;
   const open = snapshot?.totalOpenVulnerabilities || 0;
   const waived = snapshot?.waivedCount || 0;
+  const orgDelta = snapshot?.previousOrganizations !== undefined ? snapshot.totalOrganizations - snapshot.previousOrganizations : 0;
+  const appDelta = snapshot?.previousApplications !== undefined ? snapshot.totalApplications - snapshot.previousApplications : 0;
+  const vulnDelta = snapshot?.previousTotal !== undefined ? total - snapshot.previousTotal : 0;
   return [
-    { icon: "building", title: "Total Organizations", value: snapshot?.totalOrganizations || 0, delta: snapshot?.previousTotal ? snapshot.totalOrganizations - snapshot.previousTotal : 0, deltaLabel: "vs last month", deltaDirection: "flat" },
-    { icon: "appwindow", title: "Total Applications", value: snapshot?.totalApplications || 0, delta: 0, deltaLabel: "vs last month", deltaDirection: "flat" },
-    { icon: "bug", title: "Total Vulnerabilities", value: total, delta: snapshot?.previousTotal ? total - snapshot.previousTotal : 0, deltaLabel: "vs last month", deltaDirection: "flat" },
-    { icon: "alert", title: "Open Vulnerabilities", value: open, delta: snapshot?.previousTotal ? open - snapshot.previousTotal : 0, deltaLabel: "vs last month", deltaDirection: "flat" },
+    { icon: "building", title: "Total Organizations", value: snapshot?.totalOrganizations || 0, delta: orgDelta, deltaLabel: "vs last month", deltaDirection: orgDelta > 0 ? "up" : orgDelta < 0 ? "down" : "flat" },
+    { icon: "appwindow", title: "Total Applications", value: snapshot?.totalApplications || 0, delta: appDelta, deltaLabel: "vs last month", deltaDirection: appDelta > 0 ? "up" : appDelta < 0 ? "down" : "flat" },
+    { icon: "bug", title: "Total Vulnerabilities", value: total, delta: vulnDelta, deltaLabel: "vs last month", deltaDirection: vulnDelta > 0 ? "up" : vulnDelta < 0 ? "down" : "flat" },
+    { icon: "alert", title: "Open Vulnerabilities", value: open, delta: vulnDelta, deltaLabel: "vs last month", deltaDirection: vulnDelta > 0 ? "up" : vulnDelta < 0 ? "down" : "flat" },
     { icon: "shield", title: "Waived Vulnerabilities", value: waived, delta: 0, deltaLabel: "across all apps", deltaDirection: "flat" },
   ];
 }

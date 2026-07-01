@@ -46,6 +46,8 @@ export interface ExecutiveSnapshot {
   previousCritical: number;
   previousHigh: number;
   previousRiskScore: number;
+  previousOrganizations: number;
+  previousApplications: number;
   trendDirection: string;
 }
 
@@ -261,7 +263,8 @@ export const kpiService = {
     // ── Trend comparison (vs previous snapshot) ─────────────────────
     const prevSnapshot = await query(
       `SELECT total_vulnerabilities as prev_total, critical_vulnerabilities as prev_critical,
-              high_vulnerabilities as prev_high, global_security_risk_score as prev_risk
+              high_vulnerabilities as prev_high, global_security_risk_score as prev_risk,
+              total_organizations as prev_orgs, total_applications as prev_apps
         FROM nexus_kpi_snapshots ORDER BY snapshot_date DESC, created_at DESC LIMIT 1 OFFSET 1`
     );
     const prev = prevSnapshot.rows[0] || {};
@@ -269,6 +272,8 @@ export const kpiService = {
     const previousCritical = parseInt(prev.prev_critical || '0', 10);
     const previousHigh = parseInt(prev.prev_high || '0', 10);
     const previousRiskScore = Number(prev.prev_risk || 0);
+    const previousOrganizations = parseInt(prev.prev_orgs || '0', 10);
+    const previousApplications = parseInt(prev.prev_apps || '0', 10);
 
     const totalVulns = openCritical + openHigh + openMedium + openLow;
     let trendDirection = 'stable';
@@ -296,7 +301,8 @@ export const kpiService = {
         products_red_count, products_orange_count, products_green_count,
         security_debt_score, compliance_score,
         previous_total, previous_critical, previous_high, previous_risk_score,
-        trend_direction
+        trend_direction,
+        previous_organizations, previous_applications
       ) VALUES (
         $1, 'computed',
         $2, $3, $4, $5,
@@ -315,7 +321,7 @@ export const kpiService = {
         $40, $41, $42,
         $43, $44,
         $45, $46, $47, $48,
-        $49
+        $49, $50, $51
       )`,
       [
         snapshotDate,
@@ -336,6 +342,7 @@ export const kpiService = {
         Math.round((totalVulns - mitigatedVulnerabilities) * 4), complianceRate,
         previousTotal, previousCritical, previousHigh, previousRiskScore,
         trendDirection,
+        previousOrganizations, previousApplications,
       ]
     );
 
@@ -389,6 +396,8 @@ export const kpiService = {
       previousCritical: s.previous_critical || 0,
       previousHigh: s.previous_high || 0,
       previousRiskScore: Number(s.previous_risk_score || 0),
+      previousOrganizations: s.previous_organizations || 0,
+      previousApplications: s.previous_applications || 0,
       trendDirection: s.trend_direction || 'stable',
     };
   },
