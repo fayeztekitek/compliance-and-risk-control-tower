@@ -67,7 +67,7 @@ export const kpiRegistryService = {
     const r = await query("SELECT rag_rules FROM kpi_definitions WHERE name = $1", [name]);
     if (!r.rows.length) return "GREEN";
     const rules: { rule: string; condition: string }[] = r.rows[0].rag_rules || [];
-    for (const rule of rules.reverse()) {
+    for (const rule of [...rules].reverse()) {
       try {
         const fn = new Function("value", `return ${rule.condition}`);
         if (fn(value)) return rule.rule as any;
