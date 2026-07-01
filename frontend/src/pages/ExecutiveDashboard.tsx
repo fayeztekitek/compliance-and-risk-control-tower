@@ -75,7 +75,7 @@ export default function ExecutiveDashboard() {
         lastUpdated={lastUpdated}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         {dashboard.kpiCards.map((kpi, i) => (
           <KpiCard key={i} {...kpi} />
         ))}
