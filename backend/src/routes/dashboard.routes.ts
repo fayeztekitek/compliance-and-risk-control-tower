@@ -398,6 +398,25 @@ router.get("/latest-snapshot", async (_req: Request, res: Response, next: NextFu
 
 /**
  * @openapi
+ * /dashboard/scan-health:
+ *   get:
+ *     tags: [Dashboard]
+ *     summary: Aggregate scan health metrics across all applications
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Scan health KPIs including coverage, frequency, trend, status
+ */
+router.get("/scan-health", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await kpiService.getScanHealthMetrics();
+    res.json({ data: result });
+  } catch (err) { next(err); }
+});
+
+/**
+ * @openapi
  * /dashboard/org-drilldown/{orgId}:
  *   get:
  *     tags: [Dashboard]

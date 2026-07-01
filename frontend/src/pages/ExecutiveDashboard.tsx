@@ -8,6 +8,7 @@ import { useExecutiveDashboardData } from "../hooks/useExecutiveDashboardData";
 import { useDashboardFilterStore } from "../store/dashboardFilter.store";
 import { dashboardApi } from "../api/dashboard.api";
 import { KpiCard } from "../components/executive/KpiCard";
+import { ScanningHealthCard } from "../components/executive/ScanningHealthCard";
 import { OrganizationCard } from "../components/executive/OrganizationCard";
 import { OrganizationDrilldown } from "../components/executive/OrganizationDrilldown";
 import { SeverityDonut } from "../components/executive/SeverityDonut";
@@ -80,6 +81,12 @@ export default function ExecutiveDashboard() {
           <KpiCard key={i} {...kpi} />
         ))}
       </div>
+
+      {dashboard.scanHealthCard && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          <ScanningHealthCard data={dashboard.scanHealthCard} />
+        </div>
+      )}
 
       <section>
         <div className="flex items-center justify-between mb-3">

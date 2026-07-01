@@ -9,7 +9,6 @@ import {
 import { Add, CompareArrows, Refresh } from "@mui/icons-material";
 import { snapshotApi, SnapshotSummary } from "../api/snapshot.api";
 import { PageHeader } from "../components/ui/DashboardGrid";
-import { roadmapMonitoringApi } from "../api/roadmap-monitoring.api";
 import { format } from "date-fns";
 
 const SnapshotOverviewPage: React.FC = () => {
@@ -32,8 +31,6 @@ const SnapshotOverviewPage: React.FC = () => {
   useEffect(() => { fetch(); }, [fetch]);
 
   const handleCreateOpen = async () => {
-    const r = await roadmapMonitoringApi.getEnriched();
-    setRoadmapOptions(r.data.data.map((rm: any) => ({ id: rm.id, name: rm.title || rm.name })));
     setOpenCreate(true);
   };
 

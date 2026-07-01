@@ -619,6 +619,92 @@ export const kpiService = {
     return { distinctFindings: 0, totalOccurrences: 0 };
   },
 
+  async getScanHealthMetrics() {
+    const r = await query(`
+      WITH app_stats AS (
+        SELECT
+          a.application_id,
+          a.application_name,
+          a.business_criticality,
+          COUNT(sr.id)::int AS total_reports,
+          MAX(sr.scan_date) AS last_scan_date,
+          (SELECT stage FROM nexus_scan_reports
+           WHERE application_id = a.application_id
+           ORDER BY scan_date DESC LIMIT 1) AS last_stage
+        FROM nexus_applications a
+        LEFT JOIN nexus_scan_reports sr ON sr.application_id = a.application_id
+        GROUP BY a.application_id, a.application_name, a.business_criticality
+      ),
+      app_dates AS (
+        SELECT application_id, scan_date,
+               LAG(scan_date) OVER (PARTITION BY application_id ORDER BY scan_date) AS prev_scan_date
+        FROM nexus_scan_reports
+      ),
+      app_intervals AS (
+        SELECT application_id,
+               AVG(EXTRACT(EPOCH FROM (scan_date::timestamp - prev_scan_date::timestamp)) / 86400)::numeric(10,1) AS avg_interval_days
+        FROM app_dates WHERE prev_scan_date IS NOT NULL
+        GROUP BY application_id
+      ),
+      monthly_counts AS (
+        SELECT
+          DATE_TRUNC('month', scan_date)::date AS month,
+          COUNT(*)::int AS scan_count
+        FROM nexus_scan_reports
+        WHERE scan_date >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '2 months')
+        GROUP BY DATE_TRUNC('month', scan_date)
+      )
+      SELECT
+        COUNT(*)::int AS total_apps,
+        COUNT(*) FILTER (WHERE a.total_reports > 0)::int AS scanned_apps,
+        COALESCE(AVG(CURRENT_DATE - a.last_scan_date) FILTER (WHERE a.last_scan_date IS NOT NULL), 0)::numeric(10,1) AS avg_scan_age_days,
+        COALESCE(MAX(CURRENT_DATE - a.last_scan_date) FILTER (WHERE a.last_scan_date IS NOT NULL), 0)::int AS max_scan_age_days,
+        COALESCE(SUM(a.total_reports), 0)::int AS total_reports,
+        COALESCE(AVG(i.avg_interval_days), 0)::numeric(10,1) AS avg_frequency_days,
+        COALESCE((SELECT scan_count FROM monthly_counts WHERE month = DATE_TRUNC('month', CURRENT_DATE)), 0)::int AS scans_this_month,
+        COALESCE((SELECT scan_count FROM monthly_counts WHERE month = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')), 0)::int AS scans_last_month,
+        COALESCE(MIN(CASE WHEN a.last_scan_date IS NULL THEN 9999
+                    WHEN CURRENT_DATE - a.last_scan_date <= 7 THEN 1
+                    WHEN CURRENT_DATE - a.last_scan_date <= 14 THEN 2
+                    ELSE 3 END), 3)::int AS worst_status
+      FROM app_stats a
+      LEFT JOIN app_intervals i ON i.application_id = a.application_id
+    `);
+    const row = r.rows[0] || {};
+    const totalApps = parseInt(row.total_apps || '0', 10);
+    const scannedApps = parseInt(row.scanned_apps || '0', 10);
+    const totalReports = parseInt(row.total_reports || '0', 10);
+    const scansThisMonth = parseInt(row.scans_this_month || '0', 10);
+    const scansLastMonth = parseInt(row.scans_last_month || '0', 10);
+    const avgScanAgeDays = Number(row.avg_scan_age_days || 0);
+    const maxScanAgeDays = parseInt(row.max_scan_age_days || '0', 10);
+    const avgFrequencyDays = Number(row.avg_frequency_days || 0);
+    const worstStatus = parseInt(row.worst_status || '3', 10);
+
+    const coverageRate = totalApps > 0 ? Math.round((scannedApps / totalApps) * 100) : 0;
+    const trendPct = scansLastMonth > 0
+      ? Math.round(((scansThisMonth - scansLastMonth) / scansLastMonth) * 100)
+      : scansThisMonth > 0 ? 100 : 0;
+    const statusLabel = worstStatus === 1 ? 'fresh' : worstStatus === 2 ? 'aging' : 'stale';
+    const statusColor = worstStatus === 1 ? 'green' : worstStatus === 2 ? 'amber' : 'red';
+
+    return {
+      totalApps,
+      scannedApps,
+      coverageRate,
+      avgScanAgeDays,
+      maxScanAgeDays,
+      totalReports,
+      avgFrequencyDays: avgFrequencyDays > 0 ? avgFrequencyDays : null,
+      scansThisMonth,
+      scansLastMonth,
+      trendPct,
+      status: statusLabel,
+      statusColor,
+      appsNeverScanned: totalApps - scannedApps,
+    };
+  },
+
   async getNewVsFixedTrends(months = 6) {
     const cutoff = new Date();
     cutoff.setMonth(cutoff.getMonth() - months);

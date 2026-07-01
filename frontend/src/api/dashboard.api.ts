@@ -204,6 +204,9 @@ export const dashboardApi = {
   async orgRiskHeatmap() {
     return apiClient.get("/api/dashboard/org-risk-heatmap");
   },
+  async scanHealth() {
+    return apiClient.get("/api/dashboard/scan-health");
+  },
   async dashboardPage(page: string) {
     return apiClient.get<{ data: DashboardPageData }>(`/api/dashboard-pages/${page}`);
   },

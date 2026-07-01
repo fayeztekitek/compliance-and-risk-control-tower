@@ -3,7 +3,7 @@ import { dashboardApi, DashboardFilterParams } from "../api/dashboard.api";
 import {
   DashboardData, KpiCardData, OrgCardData, OrgDrilldownData,
   SeverityDistribution, TrendPoint, TopRiskyAppItem,
-  RiskStatusDistribution, LatestScanRow,
+  RiskStatusDistribution, LatestScanRow, ScanHealthData, ScanHealthCardData,
 } from "../types/nexus";
 import { OrgHierarchyItem, TopRiskyApp, LatestScanSummary } from "../api/dashboard.api";
 
@@ -103,6 +103,25 @@ function buildRiskDistribution(orgs: OrgHierarchyItem[]): RiskStatusDistribution
   ];
 }
 
+function buildScanHealthCard(data: ScanHealthData | null): ScanHealthCardData | null {
+  if (!data) return null;
+  const days = Math.round(data.avgScanAgeDays);
+  const latestScanAge = days === 0 ? "Today" : days === 1 ? "1 day ago" : `${days} days ago`;
+  const totalReports = data.totalReports.toLocaleString();
+  const avgFrequency = data.avgFrequencyDays
+    ? `Every ${data.avgFrequencyDays.toFixed(1)} days`
+    : "—";
+  return {
+    status: data.status,
+    statusColor: data.statusColor,
+    latestScanAge,
+    totalReports,
+    avgFrequency,
+    coverageRate: data.coverageRate,
+    trendPct: data.trendPct,
+  };
+}
+
 function buildLatestScans(scans: LatestScanSummary[]): LatestScanRow[] {
   if (!scans?.length) return [];
   return scans.slice(0, 10).map(s => ({
@@ -162,6 +181,16 @@ export function useExecutiveDashboardData(filterParams?: DashboardFilterParams):
     retry: 2,
   });
 
+  const scanHealth = useQuery({
+    queryKey: ["dashboard", "scan-health", filterParams],
+    queryFn: async () => {
+      const { data } = await dashboardApi.scanHealth();
+      return data.data as ScanHealthData;
+    },
+    staleTime: 60_000,
+    retry: 2,
+  });
+
   const isFetching = executive.isFetching || orgHierarchy.isFetching;
   const isError = executive.isError && orgHierarchy.isError;
 
@@ -171,6 +200,7 @@ export function useExecutiveDashboardData(filterParams?: DashboardFilterParams):
   const orgs: OrgHierarchyItem[] = orgHierarchy.data || [];
   const topAppData: TopRiskyApp[] = topApps.data || [];
   const scanData: LatestScanSummary[] = scans.data || [];
+  const scanHealthData: ScanHealthData | null = scanHealth.data || null;
 
   const dashboard: DashboardData = {
     kpiCards: buildKpiCards(snapshot, kpis),
@@ -180,6 +210,7 @@ export function useExecutiveDashboardData(filterParams?: DashboardFilterParams):
     topFiveApps: buildTopApps(topAppData),
     riskStatusDistribution: buildRiskDistribution(orgs),
     latestScans: buildLatestScans(scanData),
+    scanHealthCard: buildScanHealthCard(scanHealthData),
     totalOrgs: snapshot.totalOrganizations || orgs.length || 0,
     totalApps: snapshot.totalApplications || 0,
     totalVulns: kpis.totalVulnerabilities || snapshot.totalOpenVulnerabilities || 0,
@@ -196,6 +227,7 @@ export function useExecutiveDashboardData(filterParams?: DashboardFilterParams):
       orgHierarchy.refetch();
       topApps.refetch();
       scans.refetch();
+      scanHealth.refetch();
     },
   };
 }

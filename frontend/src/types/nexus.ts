@@ -198,6 +198,32 @@ export interface RiskStatusDistribution {
   color: string;
 }
 
+export interface ScanHealthData {
+  totalApps: number;
+  scannedApps: number;
+  coverageRate: number;
+  avgScanAgeDays: number;
+  maxScanAgeDays: number;
+  totalReports: number;
+  avgFrequencyDays: number | null;
+  scansThisMonth: number;
+  scansLastMonth: number;
+  trendPct: number;
+  status: "fresh" | "aging" | "stale";
+  statusColor: "green" | "amber" | "red";
+  appsNeverScanned: number;
+}
+
+export interface ScanHealthCardData {
+  status: "fresh" | "aging" | "stale";
+  statusColor: "green" | "amber" | "red";
+  latestScanAge: string;
+  totalReports: string;
+  avgFrequency: string;
+  coverageRate: number;
+  trendPct: number;
+}
+
 export interface DashboardData {
   kpiCards: KpiCardData[];
   topLevelOrganizations: OrgCardData[];
@@ -206,6 +232,7 @@ export interface DashboardData {
   topFiveApps: TopRiskyAppItem[];
   riskStatusDistribution: RiskStatusDistribution[];
   latestScans: LatestScanRow[];
+  scanHealthCard: ScanHealthCardData | null;
   totalOrgs: number;
   totalApps: number;
   totalVulns: number;

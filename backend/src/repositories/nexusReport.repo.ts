@@ -281,7 +281,6 @@ export const nexusReportRepo = {
         totalComponents: row.total_components || 0,
         affectedComponents: row.affected_components || 0,
         initiator: row.initiator || null,
-        policyStatus: row.policy_status || null,
       };
     }
     return counts;

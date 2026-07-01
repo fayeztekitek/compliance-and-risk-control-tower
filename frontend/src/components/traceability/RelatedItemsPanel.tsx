@@ -6,7 +6,7 @@ import {
   FormControl, InputLabel, IconButton,
 } from "@mui/material";
 import { Link as LinkIcon, Add, Delete } from "@mui/icons-material";
-import { apiClient } from "../api/client";
+import { apiClient } from "../../api/client";
 
 export interface RelatedItem {
   id: string;

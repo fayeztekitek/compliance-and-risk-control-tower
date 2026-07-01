@@ -57,6 +57,30 @@ describe("KPI Service", () => {
     expect(Array.isArray(trends.securityTrends)).toBe(true);
     expect(Array.isArray(trends.projectTrends)).toBe(true);
   });
+
+  it("getScanHealthMetrics should return aggregate scan health with correct shape", async () => {
+    if (!dbOk) return;
+    const result = await kpiService.getScanHealthMetrics();
+    expect(result).toHaveProperty("totalApps");
+    expect(result).toHaveProperty("scannedApps");
+    expect(result).toHaveProperty("coverageRate");
+    expect(result).toHaveProperty("avgScanAgeDays");
+    expect(result).toHaveProperty("maxScanAgeDays");
+    expect(result).toHaveProperty("totalReports");
+    expect(result).toHaveProperty("avgFrequencyDays");
+    expect(result).toHaveProperty("scansThisMonth");
+    expect(result).toHaveProperty("scansLastMonth");
+    expect(result).toHaveProperty("trendPct");
+    expect(result).toHaveProperty("status");
+    expect(result).toHaveProperty("statusColor");
+    expect(result).toHaveProperty("appsNeverScanned");
+    expect(["fresh", "aging", "stale"]).toContain(result.status);
+    expect(["green", "amber", "red"]).toContain(result.statusColor);
+    expect(result.totalApps).toBeGreaterThanOrEqual(0);
+    expect(result.scannedApps).toBeGreaterThanOrEqual(0);
+    expect(result.coverageRate).toBeGreaterThanOrEqual(0);
+    expect(result.coverageRate).toBeLessThanOrEqual(100);
+  });
 });
 
 describe("RiskScoreService helpers", () => {
